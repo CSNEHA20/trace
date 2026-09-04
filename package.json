@@ -1,0 +1,16 @@
+{
+  "name": "trace-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TRACE — Tamper-Resistant AI Case Evidence Monorepo Workspace",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "start": "npm --prefix frontend start",
+    "validate": "npm --prefix frontend run validate",
+    "test": "npm --prefix frontend test -- --watchAll=false",
+    "lint": "npm --prefix frontend run lint"
+  }
+}

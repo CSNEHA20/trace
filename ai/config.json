@@ -1,0 +1,20 @@
+{
+  "gemma": {
+    "model": "gemma-2b-it-cpu-int4",
+    "quantization": "int4",
+    "maxTokens": 512,
+    "temperature": 0.2
+  },
+  "mlkit": {
+    "textRecognitionV2": true,
+    "faceDetection": {
+      "performanceMode": "accurate",
+      "landmarkMode": "all",
+      "classificationMode": "all"
+    }
+  },
+  "whisper": {
+    "model": "ggml-tiny.en.bin",
+    "threads": 4
+  }
+}

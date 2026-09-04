@@ -1,0 +1,11 @@
+{
+  "name": "trace-backend",
+  "version": "1.0.0",
+  "description": "TRACE Forensic Evidence Verification API Service",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"No backend tests yet\" && exit 0"
+  },
+  "private": true
+}
