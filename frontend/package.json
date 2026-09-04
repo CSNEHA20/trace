@@ -12,6 +12,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@expo/metro-runtime": "~3.2.3",
     "@mediapipe/tasks-genai": "^0.10.14",
     "@mediapipe/tasks-vision": "^0.10.14",
     "exifreader": "^4.25.0",
@@ -29,12 +30,14 @@
     "jszip": "^3.10.1",
     "nativewind": "^2.0.11",
     "react": "18.2.0",
+    "react-dom": "^18.2.0",
     "react-native": "0.74.5",
     "react-native-html-to-pdf": "^0.12.0",
     "react-native-paper": "^5.12.5",
     "react-native-safe-area-context": "4.10.5",
     "react-native-screens": "~3.31.1",
     "react-native-svg": "15.2.0",
+    "react-native-web": "^0.19.13",
     "zustand": "^4.5.5"
   },
   "devDependencies": {

@@ -1,12 +1,13 @@
 /**
- * TRACE System-wide Type Definitions & Interfaces
+ * TRACE System-wide Type Definitions & Database Models
  */
 
 export type CaseStatus = 'ACTIVE' | 'ARCHIVED' | 'CLOSED' | 'UNDER_REVIEW';
 
-export type EvidenceType = 'IMAGE' | 'AUDIO' | 'VIDEO' | 'DOCUMENT';
+export type MediaCategory = 'IMAGE' | 'AUDIO' | 'VIDEO' | 'DOCUMENT';
+export type EvidenceType = MediaCategory;
 
-export type HashAlgorithm = 'SHA-256' | 'SHA-512';
+export type EventSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
 export interface ExifMetadata {
   make?: string;
@@ -30,12 +31,77 @@ export interface AiAnalysisResult {
   processedAt?: number;
 }
 
+// --------------------------------------------------
+// STEP 3 DATABASE TABLE MODELS
+// --------------------------------------------------
+
+export interface CaseRecord {
+  id: string;
+  case_number: string;
+  title: string;
+  description?: string;
+  investigator_name: string;
+  status: CaseStatus;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface EvidenceRecord {
+  id: string;
+  case_id: string;
+  file_path: string;
+  media_type: MediaCategory;
+  import_ts: number;
+  exif_ts?: number;
+  user_ts?: number;
+  ocr_text?: string;
+  transcription?: string;
+  sha256_import: string;
+  sha256_processed?: string;
+}
+
+export interface EventRecord {
+  id: string;
+  case_id: string;
+  event_type: string;
+  severity: EventSeverity;
+  timestamp: number;
+  ai_summary?: string;
+  evidence_ids: string[]; // Stored as JSON stringified array in SQLite
+  actor_ids: string[];    // Stored as JSON stringified array in SQLite
+}
+
+export interface ActorRecord {
+  id: string;
+  case_id: string;
+  name: string;
+  role: string;
+  contact_info?: string;
+  created_at: number;
+}
+
+export interface HashChainRecord {
+  id: string;
+  evidence_id: string;
+  operation: string;
+  payload_hash: string;
+  chain_hash: string;
+  timestamp: number;
+}
+
+export interface SchemaMigrationRecord {
+  version: number;
+  name: string;
+  applied_at: number;
+}
+
+// Legacy UI Type Wrappers
 export interface EvidenceItem {
   id: string;
   caseId: string;
   title: string;
   description?: string;
-  type: EvidenceType;
+  type: MediaCategory;
   fileUri: string;
   fileName: string;
   fileSize: number;
@@ -68,7 +134,7 @@ export interface TimelineEvent {
   timestamp: number;
   title: string;
   description: string;
-  category: 'CAPTURE' | 'ANALYSIS' | 'EXPORT' | 'SYSTEM' | 'TAMPER_ALERT';
+  category: string;
   actor?: string;
   metadata?: Record<string, unknown>;
 }
@@ -87,7 +153,7 @@ export interface AppConfig {
   appName: string;
   version: string;
   buildNumber: string;
-  hashAlgorithm: HashAlgorithm;
+  hashAlgorithm: 'SHA-256' | 'SHA-512';
   autoAnalyzeOnCapture: boolean;
   storageLimitMb: number;
   themeMode: 'dark' | 'light' | 'system';

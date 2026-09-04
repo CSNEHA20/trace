@@ -1,208 +1,207 @@
-import { Case, EvidenceItem, TimelineEvent } from '../types';
+import {
+  CaseRecord,
+  EvidenceRecord,
+  EventRecord,
+  ActorRecord,
+  HashChainRecord,
+  Case,
+  EvidenceItem,
+  TimelineEvent,
+} from '../types';
+import { databaseEngine } from '../../../database/services/databaseEngine';
 import { generateUUID } from '../utils/crypto';
 import { logger } from '../utils/logger';
 
 /**
- * Encrypted Database Abstraction Layer for TRACE
- * Manages Cases, Evidence Items, Timelines, and Audit Logs locally.
+ * Frontend DatabaseService — thin facade over DatabaseEngine
+ * Maps CaseRecord / EvidenceRecord to legacy UI types (Case, EvidenceItem)
+ * and delegates all persistence to the DatabaseEngine.
  */
 class DatabaseService {
-  private isInitialized = false;
-  private casesStore: Map<string, Case> = new Map();
-  private evidenceStore: Map<string, EvidenceItem> = new Map();
-  private timelineStore: Map<string, TimelineEvent> = new Map();
-
   async initialize(): Promise<void> {
-    if (this.isInitialized) return;
-    logger.info('Initializing TRACE Encrypted SQLite Database Service...');
-
-    // Populate default seed case if database is fresh
-    const seedCaseId = 'case-001-demo';
-    const demoCase: Case = {
-      id: seedCaseId,
-      caseNumber: 'TR-2026-0089',
-      title: 'Digital Forensic Verification Case #1',
-      description: 'Initial forensic investigation into digital evidence authenticity and tamper detection.',
-      investigatorName: 'Lead Investigator (SNEHA C)',
-      status: 'ACTIVE',
-      createdAt: Date.now() - 86400000,
-      updatedAt: Date.now(),
-      evidenceIds: ['ev-001-sample', 'ev-002-sample'],
-    };
-
-    const demoEvidence1: EvidenceItem = {
-      id: 'ev-001-sample',
-      caseId: seedCaseId,
-      title: 'Security Camera Screenshot (Scene A)',
-      description: 'Primary visual evidence captured at crime scene perimeter.',
-      type: 'IMAGE',
-      fileUri: 'file:///sample/camera_01.jpg',
-      fileName: 'camera_01.jpg',
-      fileSize: 2458290,
-      mimeType: 'image/jpeg',
-      sha256Hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-      signature: 'SIG_TRACE_SHA256_e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-      timestamp: Date.now() - 80000000,
-      exifData: {
-        make: 'iQOO',
-        model: 'Legend 2026',
-        dateTimeOriginal: '2026-09-04 14:32:00',
-        gpsLatitude: 12.9716,
-        gpsLongitude: 77.5946,
-      },
-      aiAnalysis: {
-        gemmaSummary: 'High probability visual match. No metadata tampering observed in initial EXIF scan.',
-        detectedText: ['ENTRY RESTRICTED', 'ZONE 4'],
-        facesCount: 1,
-        confidenceScore: 0.98,
-      },
-      isTampered: false,
-    };
-
-    const demoEvidence2: EvidenceItem = {
-      id: 'ev-002-sample',
-      caseId: seedCaseId,
-      title: 'Voice Recording Interview',
-      description: 'Audio statement from witness on scene.',
-      type: 'AUDIO',
-      fileUri: 'file:///sample/statement.wav',
-      fileName: 'statement.wav',
-      fileSize: 5214000,
-      mimeType: 'audio/wav',
-      sha256Hash: '4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a',
-      signature: 'SIG_TRACE_SHA256_4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a',
-      timestamp: Date.now() - 40000000,
-      aiAnalysis: {
-        transcription: 'I saw the individual near the east entrance at approximately 2:15 PM.',
-        gemmaSummary: 'Audio evidence transcribed cleanly with high acoustic fidelity.',
-      },
-      isTampered: false,
-    };
-
-    const demoTimeline1: TimelineEvent = {
-      id: generateUUID(),
-      caseId: seedCaseId,
-      evidenceId: 'ev-001-sample',
-      timestamp: Date.now() - 80000000,
-      title: 'Visual Evidence Captured',
-      description: 'Primary image added to case TR-2026-0089 with hardware signature.',
-      category: 'CAPTURE',
-      actor: 'Investigator SNEHA C',
-    };
-
-    const demoTimeline2: TimelineEvent = {
-      id: generateUUID(),
-      caseId: seedCaseId,
-      evidenceId: 'ev-002-sample',
-      timestamp: Date.now() - 40000000,
-      title: 'Witness Audio Interview Logged',
-      description: 'Audio statement transcribed via on-device AI engine.',
-      category: 'ANALYSIS',
-      actor: 'Gemma 2B AI Engine',
-    };
-
-    this.casesStore.set(seedCaseId, demoCase);
-    this.evidenceStore.set(demoEvidence1.id, demoEvidence1);
-    this.evidenceStore.set(demoEvidence2.id, demoEvidence2);
-    this.timelineStore.set(demoTimeline1.id, demoTimeline1);
-    this.timelineStore.set(demoTimeline2.id, demoTimeline2);
-
-    this.isInitialized = true;
-    logger.info('TRACE Encrypted Database initialized successfully.');
+    await databaseEngine.initialize();
   }
 
+  // ---- CASES ----
+
   async getAllCases(): Promise<Case[]> {
-    await this.initialize();
-    return Array.from(this.casesStore.values());
+    const recs = await databaseEngine.getAllCases();
+    return recs.map(this.mapCaseRecordToCase);
   }
 
   async getCaseById(id: string): Promise<Case | null> {
-    await this.initialize();
-    return this.casesStore.get(id) || null;
+    const rec = await databaseEngine.getCaseById(id);
+    if (!rec) return null;
+    return this.mapCaseRecordToCase(rec);
   }
 
   async createCase(title: string, description: string, investigatorName: string): Promise<Case> {
-    await this.initialize();
-    const newCase: Case = {
-      id: generateUUID(),
-      caseNumber: `TR-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+    const rec = await databaseEngine.createCase({
+      case_number: `TR-2026-${Math.floor(1000 + Math.random() * 9000)}`,
       title,
       description,
-      investigatorName,
+      investigator_name: investigatorName,
       status: 'ACTIVE',
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+    });
+    return this.mapCaseRecordToCase(rec);
+  }
+
+  private mapCaseRecordToCase(rec: CaseRecord): Case {
+    return {
+      id: rec.id,
+      caseNumber: rec.case_number,
+      title: rec.title,
+      description: rec.description,
+      investigatorName: rec.investigator_name,
+      status: rec.status,
+      createdAt: rec.created_at,
+      updatedAt: rec.updated_at,
       evidenceIds: [],
     };
-    this.casesStore.set(newCase.id, newCase);
-    return newCase;
+  }
+
+  // ---- EVIDENCE ----
+
+  async getAllEvidence(): Promise<EvidenceItem[]> {
+    const allCases = await databaseEngine.getAllCases();
+    const all: EvidenceItem[] = [];
+    for (const c of allCases) {
+      const recs = await databaseEngine.getEvidenceForCase(c.id);
+      all.push(...recs.map(this.mapEvidenceRecordToItem));
+    }
+    return all;
   }
 
   async getEvidenceForCase(caseId: string): Promise<EvidenceItem[]> {
-    await this.initialize();
-    return Array.from(this.evidenceStore.values()).filter((e) => e.caseId === caseId);
-  }
-
-  async getAllEvidence(): Promise<EvidenceItem[]> {
-    await this.initialize();
-    return Array.from(this.evidenceStore.values());
+    const recs = await databaseEngine.getEvidenceForCase(caseId);
+    return recs.map(this.mapEvidenceRecordToItem);
   }
 
   async getEvidenceById(id: string): Promise<EvidenceItem | null> {
-    await this.initialize();
-    return this.evidenceStore.get(id) || null;
+    const rec = await databaseEngine.getEvidenceById(id);
+    if (!rec) return null;
+    return this.mapEvidenceRecordToItem(rec);
   }
 
   async addEvidence(item: Omit<EvidenceItem, 'id' | 'timestamp'>): Promise<EvidenceItem> {
-    await this.initialize();
-    const newEvidence: EvidenceItem = {
-      ...item,
-      id: generateUUID(),
-      timestamp: Date.now(),
-    };
-    this.evidenceStore.set(newEvidence.id, newEvidence);
-
-    // Update parent case
-    const targetCase = this.casesStore.get(item.caseId);
-    if (targetCase) {
-      targetCase.evidenceIds.push(newEvidence.id);
-      targetCase.updatedAt = Date.now();
-    }
-
-    // Auto-create timeline event
-    await this.addTimelineEvent({
-      caseId: item.caseId,
-      evidenceId: newEvidence.id,
-      timestamp: newEvidence.timestamp,
-      title: `Evidence Captured: ${newEvidence.title}`,
-      description: `Cryptographic SHA-256 hash ${newEvidence.sha256Hash.substring(0, 12)}... logged for evidence file.`,
-      category: 'CAPTURE',
-      actor: 'TRACE Mobile Hardware Agent',
+    // Store only file_path reference in DB — never raw binary evidence data
+    const rec = await databaseEngine.insertEvidence({
+      case_id: item.caseId,
+      file_path: item.fileUri,
+      media_type: item.type,
+      import_ts: Date.now(),
+      sha256_import: item.sha256Hash,
+      sha256_processed: item.sha256Hash,
+      ocr_text: item.aiAnalysis?.detectedText?.join('\n'),
+      transcription: item.aiAnalysis?.transcription,
     });
 
-    return newEvidence;
+    // Append hash chain entry for the imported evidence
+    await this.appendHashChain(rec.id, 'IMPORT', rec.sha256_import);
+
+    return this.mapEvidenceRecordToItem(rec);
   }
 
+  private mapEvidenceRecordToItem(rec: EvidenceRecord): EvidenceItem {
+    return {
+      id: rec.id,
+      caseId: rec.case_id,
+      title: `Evidence ${rec.id.substring(0, 8)}`,
+      type: rec.media_type,
+      fileUri: rec.file_path,
+      fileName: rec.file_path.split('/').pop() || rec.id,
+      fileSize: 0,
+      mimeType: rec.media_type === 'IMAGE' ? 'image/jpeg' : rec.media_type === 'AUDIO' ? 'audio/wav' : 'application/octet-stream',
+      sha256Hash: rec.sha256_import,
+      signature: `SIG_TRACE_HARDWARE_${rec.sha256_import.substring(0, 16)}`,
+      timestamp: rec.import_ts,
+      aiAnalysis: rec.ocr_text || rec.transcription ? {
+        detectedText: rec.ocr_text ? rec.ocr_text.split('\n') : undefined,
+        transcription: rec.transcription,
+      } : undefined,
+      isTampered: rec.sha256_processed !== undefined && rec.sha256_processed !== rec.sha256_import,
+    };
+  }
+
+  // ---- EVENTS / TIMELINE ----
+
   async getTimelineForCase(caseId: string): Promise<TimelineEvent[]> {
-    await this.initialize();
-    return Array.from(this.timelineStore.values())
-      .filter((t) => t.caseId === caseId)
-      .sort((a, b) => a.timestamp - b.timestamp);
+    const evs = await databaseEngine.getEventsForCase(caseId);
+    return evs.map((ev) => ({
+      id: ev.id,
+      caseId: ev.case_id,
+      timestamp: ev.timestamp,
+      title: ev.event_type,
+      description: ev.ai_summary || ev.event_type,
+      category: ev.event_type,
+    }));
   }
 
   async getAllTimelineEvents(): Promise<TimelineEvent[]> {
-    await this.initialize();
-    return Array.from(this.timelineStore.values()).sort((a, b) => b.timestamp - a.timestamp);
+    const allCases = await databaseEngine.getAllCases();
+    const all: TimelineEvent[] = [];
+    for (const c of allCases) {
+      const evs = await this.getTimelineForCase(c.id);
+      all.push(...evs);
+    }
+    return all.sort((a, b) => b.timestamp - a.timestamp);
   }
 
   async addTimelineEvent(event: Omit<TimelineEvent, 'id'>): Promise<TimelineEvent> {
-    await this.initialize();
-    const newEvent: TimelineEvent = {
-      ...event,
-      id: generateUUID(),
+    const rec = await databaseEngine.insertEvent({
+      case_id: event.caseId,
+      event_type: event.category,
+      severity: 'MEDIUM',
+      timestamp: event.timestamp,
+      ai_summary: event.description,
+      evidence_ids: event.evidenceId ? [event.evidenceId] : [],
+      actor_ids: [],
+    });
+    return {
+      id: rec.id,
+      caseId: rec.case_id,
+      timestamp: rec.timestamp,
+      title: rec.event_type,
+      description: rec.ai_summary || rec.event_type,
+      category: rec.event_type,
     };
-    this.timelineStore.set(newEvent.id, newEvent);
-    return newEvent;
+  }
+
+  // ---- HASH CHAIN ----
+
+  async appendHashChain(evidenceId: string, operation: string, payloadHash: string): Promise<HashChainRecord> {
+    const prev = await databaseEngine.getLatestHashChainNode(evidenceId);
+    const prevChainHash = prev?.chain_hash || '0000000000000000000000000000000000000000000000000000000000000000';
+    // Deterministic chain_hash = hash of (prevChainHash + payloadHash)
+    const combined = prevChainHash + payloadHash + evidenceId + operation;
+    let chainHash = 0;
+    for (let i = 0; i < combined.length; i++) {
+      chainHash = (chainHash << 5) - chainHash + combined.charCodeAt(i);
+      chainHash |= 0;
+    }
+    const hexChainHash = `${Math.abs(chainHash).toString(16).padStart(8, '0')}${payloadHash.substring(8, 64)}`;
+
+    return databaseEngine.insertHashChain({
+      evidence_id: evidenceId,
+      operation,
+      payload_hash: payloadHash,
+      chain_hash: hexChainHash,
+      timestamp: Date.now(),
+    });
+  }
+
+  async getHashChainForEvidence(evidenceId: string): Promise<HashChainRecord[]> {
+    return databaseEngine.getHashChainForEvidence(evidenceId);
+  }
+
+  // ---- ACTORS ----
+
+  async insertActor(caseId: string, name: string, role: string, contactInfo?: string): Promise<ActorRecord> {
+    return databaseEngine.insertActor({ case_id: caseId, name, role, contact_info: contactInfo });
+  }
+
+  async getActorsForCase(caseId: string): Promise<ActorRecord[]> {
+    return databaseEngine.getActorsForCase(caseId);
   }
 }
 
