@@ -62,6 +62,12 @@ class DatabaseService {
 
   // ---- EVIDENCE ----
 
+  async getEvidenceByHash(sha256: string): Promise<EvidenceItem | null> {
+    const rec = await databaseEngine.getEvidenceByHash(sha256);
+    if (!rec) return null;
+    return this.mapEvidenceRecordToItem(rec);
+  }
+
   async getAllEvidence(): Promise<EvidenceItem[]> {
     const allCases = await databaseEngine.getAllCases();
     const all: EvidenceItem[] = [];
@@ -101,6 +107,20 @@ class DatabaseService {
 
     return this.mapEvidenceRecordToItem(rec);
   }
+
+  async updateEvidenceTranscription(
+    evidenceId: string,
+    transcription: string,
+    processingHash: string
+  ): Promise<EvidenceItem | null> {
+    const updated = await databaseEngine.updateEvidence(evidenceId, {
+      transcription,
+      sha256_processed: processingHash,
+    });
+    if (!updated) return null;
+    return this.mapEvidenceRecordToItem(updated);
+  }
+
 
   private mapEvidenceRecordToItem(rec: EvidenceRecord): EvidenceItem {
     return {

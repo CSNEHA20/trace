@@ -1,14 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useEvidenceStore } from '../store/evidenceStore';
 import { AppHeader } from '../components/AppHeader';
+import { AudioTranscriptionCard } from '../components/AudioTranscriptionCard';
+import { whisperService } from '../services/whisperService';
 import { palette } from '../theme';
 import { useLocalSearchParams } from 'expo-router';
 import { formatDate, formatFileSize } from '../utils/crypto';
+import { TranscriptionStatus, TranscriptionResult } from '../types';
 
 export function EvidenceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const item = useEvidenceStore((state) => state.evidenceList.find((e) => e.id === id) || state.selectedEvidence);
+  const fetchEvidence = useEvidenceStore((state) => state.fetchEvidence);
+
+  const [transcribeStatus, setTranscribeStatus] = useState<TranscriptionStatus>('IDLE');
+  const [progressPercent, setProgressPercent] = useState(0);
+  const [statusMessage, setStatusMessage] = useState('');
+  const [transcribeResult, setTranscribeResult] = useState<TranscriptionResult | null>(null);
+  const [cancelSignal, setCancelSignal] = useState<{ isCancelled: boolean }>({ isCancelled: false });
 
   if (!item) {
     return (
@@ -18,6 +28,56 @@ export function EvidenceDetailScreen() {
       </View>
     );
   }
+
+  const handleStartTranscription = async () => {
+    setTranscribeStatus('LOADING_MODEL');
+    setProgressPercent(5);
+    setStatusMessage('Loading Whisper GGML model...');
+    const signal = { isCancelled: false };
+    setCancelSignal(signal);
+
+    try {
+      const res = await whisperService.transcribeAudio(item.id, item.fileUri, {
+        model: 'tiny',
+        language: 'en',
+        cancellationSignal: signal,
+        onProgress: (pct, msg) => {
+          if (!signal.isCancelled) {
+            setProgressPercent(pct);
+            setStatusMessage(msg);
+            if (pct >= 20 && pct < 80) {
+              setTranscribeStatus('PROCESSING');
+            }
+          }
+        },
+      });
+
+      if (signal.isCancelled || res.status === 'CANCELLED') {
+        setTranscribeStatus('CANCELLED');
+        setTranscribeResult(res);
+      } else if (res.status === 'COMPLETED') {
+        setTranscribeStatus('COMPLETED');
+        setTranscribeResult(res);
+        await fetchEvidence(item.caseId);
+      } else {
+        setTranscribeStatus('FAILED');
+        setTranscribeResult(res);
+      }
+    } catch (err: unknown) {
+      setTranscribeStatus('FAILED');
+      setTranscribeResult({
+        status: 'FAILED',
+        error: (err as Error)?.message || 'Transcription error',
+        errorCode: 'UNKNOWN',
+      });
+    }
+  };
+
+  const handleCancelTranscription = () => {
+    cancelSignal.isCancelled = true;
+    setTranscribeStatus('CANCELLED');
+    setStatusMessage('Cancelled by user');
+  };
 
   return (
     <View style={styles.container}>
@@ -30,6 +90,20 @@ export function EvidenceDetailScreen() {
           <Text style={styles.monoLabel}>Hardware Signature:</Text>
           <Text style={styles.monoVal}>{item.signature}</Text>
         </View>
+
+        {item.type === 'AUDIO' && (
+          <AudioTranscriptionCard
+            evidenceId={item.id}
+            fileUri={item.fileUri}
+            existingTranscription={item.aiAnalysis?.transcription}
+            status={transcribeStatus}
+            progressPercent={progressPercent}
+            statusMessage={statusMessage}
+            result={transcribeResult}
+            onStartTranscription={handleStartTranscription}
+            onCancelTranscription={handleCancelTranscription}
+          />
+        )}
 
         {item.exifData ? (
           <View style={styles.card}>
@@ -47,6 +121,9 @@ export function EvidenceDetailScreen() {
             {item.aiAnalysis.detectedText?.length ? (
               <Text style={styles.metaLine}>OCR Text: {item.aiAnalysis.detectedText.join(', ')}</Text>
             ) : null}
+            {item.aiAnalysis.transcription ? (
+              <Text style={styles.metaLine}>Transcription: {item.aiAnalysis.transcription}</Text>
+            ) : null}
           </View>
         ) : null}
 
@@ -60,6 +137,7 @@ export function EvidenceDetailScreen() {
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {

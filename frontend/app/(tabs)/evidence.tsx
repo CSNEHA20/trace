@@ -1,6 +1,6 @@
 import React from 'react';
-import { EvidenceScreen } from '../../src/screens/EvidenceScreen';
+import { EvidenceVaultScreen } from '../../src/screens/EvidenceVaultScreen';
 
 export default function EvidenceRoute() {
-  return <EvidenceScreen />;
+  return <EvidenceVaultScreen />;
 }

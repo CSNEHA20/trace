@@ -1,6 +1,7 @@
 import React from 'react';
-import { ReportScreen } from '../../src/screens/ReportScreen';
+import { ForensicReportScreen } from '../../src/screens/ForensicReportScreen';
 
 export default function ReportRoute() {
-  return <ReportScreen />;
+  return <ForensicReportScreen />;
 }
+

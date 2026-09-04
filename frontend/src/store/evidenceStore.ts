@@ -1,9 +1,10 @@
 import { create } from 'zustand';
-import { EvidenceItem, EvidenceType } from '../types';
+import { EvidenceItem, EvidenceType, IngestionResult, IngestionStatus } from '../types';
 import { databaseService } from '../services/databaseService';
 import { cryptoService } from '../services/cryptoService';
 import { exifService } from '../services/exifService';
 import { aiService } from '../services/aiService';
+import { ingestionService, IngestionInput } from '../services/ingestionService';
 import { logger } from '../utils/logger';
 
 interface EvidenceState {
@@ -13,10 +14,28 @@ interface EvidenceState {
   filterType: EvidenceType | 'ALL';
   searchQuery: string;
   error: string | null;
+
+  // Step 4 ingestion state
+  ingestionStatus: IngestionStatus | null;
+  ingestionFilename: string | null;
+  lastIngestionResult: IngestionResult | null;
+
   fetchEvidence: (caseId?: string) => Promise<void>;
   selectEvidence: (id: string) => Promise<void>;
   setFilterType: (type: EvidenceType | 'ALL') => void;
   setSearchQuery: (query: string) => void;
+
+  /**
+   * Step 4: Secure evidence ingestion pipeline.
+   * Accepts an IngestionInput and runs the full pipeline:
+   * format check → storage → copy → hash → duplicate check → DB record
+   */
+  ingestEvidence: (input: IngestionInput) => Promise<IngestionResult>;
+
+  /**
+   * Legacy method preserved for backward compatibility with old tests.
+   * Internally calls ingestEvidence with a mock-friendly path.
+   */
   captureAndProcessEvidence: (params: {
     caseId: string;
     title: string;
@@ -36,6 +55,9 @@ export const useEvidenceStore = create<EvidenceState>((set, get) => ({
   filterType: 'ALL',
   searchQuery: '',
   error: null,
+  ingestionStatus: null,
+  ingestionFilename: null,
+  lastIngestionResult: null,
 
   fetchEvidence: async (caseId?: string) => {
     set({ isLoading: true, error: null });
@@ -58,6 +80,43 @@ export const useEvidenceStore = create<EvidenceState>((set, get) => ({
   setFilterType: (type) => set({ filterType: type }),
   setSearchQuery: (query) => set({ searchQuery: query }),
 
+  // ──────────────────────────────────────────────────────────────────────
+  // Step 4: Main ingestion action
+  // ──────────────────────────────────────────────────────────────────────
+  ingestEvidence: async (input: IngestionInput): Promise<IngestionResult> => {
+    set({ isLoading: true, error: null, ingestionStatus: 'PENDING', ingestionFilename: input.originalFilename });
+
+    const result = await ingestionService.ingest({
+      ...input,
+      onStatusUpdate: (status) => {
+        set({ ingestionStatus: status });
+      },
+    });
+
+    set({ lastIngestionResult: result });
+
+    if (result.status === 'COMPLETE') {
+      // Refresh vault list after successful import
+      try {
+        const list = await databaseService.getEvidenceForCase(input.caseId);
+        set({ evidenceList: list, isLoading: false, ingestionStatus: 'COMPLETE' });
+      } catch {
+        set({ isLoading: false, ingestionStatus: 'COMPLETE' });
+      }
+    } else {
+      set({
+        isLoading: false,
+        ingestionStatus: result.status,
+        error: result.error || null,
+      });
+    }
+
+    return result;
+  },
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Legacy capture method (Step 3 compat)
+  // ──────────────────────────────────────────────────────────────────────
   captureAndProcessEvidence: async (params) => {
     set({ isLoading: true, error: null });
     try {
