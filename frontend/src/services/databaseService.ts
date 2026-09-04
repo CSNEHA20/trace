@@ -11,6 +11,8 @@ import {
 import { databaseEngine } from '../../../database/services/databaseEngine';
 import { generateUUID } from '../utils/crypto';
 import { logger } from '../utils/logger';
+import { chainService } from './chainService';
+import { ChainOperation } from '../types/integrity';
 
 /**
  * Frontend DatabaseService — thin facade over DatabaseEngine
@@ -189,25 +191,21 @@ class DatabaseService {
 
   // ---- HASH CHAIN ----
 
-  async appendHashChain(evidenceId: string, operation: string, payloadHash: string): Promise<HashChainRecord> {
-    const prev = await databaseEngine.getLatestHashChainNode(evidenceId);
-    const prevChainHash = prev?.chain_hash || '0000000000000000000000000000000000000000000000000000000000000000';
-    // Deterministic chain_hash = hash of (prevChainHash + payloadHash)
-    const combined = prevChainHash + payloadHash + evidenceId + operation;
-    let chainHash = 0;
-    for (let i = 0; i < combined.length; i++) {
-      chainHash = (chainHash << 5) - chainHash + combined.charCodeAt(i);
-      chainHash |= 0;
-    }
-    const hexChainHash = `${Math.abs(chainHash).toString(16).padStart(8, '0')}${payloadHash.substring(8, 64)}`;
-
-    return databaseEngine.insertHashChain({
-      evidence_id: evidenceId,
+  async appendHashChain(evidenceId: string, operation: ChainOperation, payloadHash: string): Promise<HashChainRecord> {
+    // Delegate to the proper SHA-256 chain service
+    const node = await chainService.appendNode({
+      evidenceId,
       operation,
-      payload_hash: payloadHash,
-      chain_hash: hexChainHash,
-      timestamp: Date.now(),
+      data: { payload_hash: payloadHash },
     });
+    return {
+      id: node.id,
+      evidence_id: node.evidence_id,
+      operation: node.operation,
+      payload_hash: node.payload_hash,
+      chain_hash: node.chain_hash,
+      timestamp: node.timestamp,
+    };
   }
 
   async getHashChainForEvidence(evidenceId: string): Promise<HashChainRecord[]> {
