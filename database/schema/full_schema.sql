@@ -64,7 +64,11 @@ CREATE TABLE IF NOT EXISTS actors (
   name TEXT NOT NULL,
   role TEXT NOT NULL,
   contact_info TEXT,
+  identifiers TEXT NOT NULL DEFAULT '[]',
+  confidence REAL NOT NULL DEFAULT 0,
+  uncertainty_notes TEXT,
   created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
   FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE
 );
 
@@ -78,6 +82,22 @@ CREATE TABLE IF NOT EXISTS hash_chain (
   timestamp INTEGER NOT NULL,
   FOREIGN KEY (evidence_id) REFERENCES evidence(id) ON DELETE CASCADE
 );
+
+-- 6. Narratives Table
+CREATE TABLE IF NOT EXISTS narratives (
+  id TEXT PRIMARY KEY NOT NULL,
+  case_id TEXT NOT NULL,
+  content TEXT NOT NULL,
+  generated_at INTEGER NOT NULL,
+  events_snapshot TEXT NOT NULL DEFAULT '[]', -- JSON stringified array of event IDs used
+  disclaimer TEXT NOT NULL,
+  parse_error TEXT,
+  user_reviewed INTEGER NOT NULL DEFAULT 0,
+  user_edited INTEGER NOT NULL DEFAULT 0,
+  FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_narratives_case_id ON narratives(case_id);
 
 -- Database Indexes for Query Optimization & Foreign Key Enforcement
 CREATE INDEX IF NOT EXISTS idx_evidence_case_id ON evidence(case_id);

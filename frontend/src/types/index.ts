@@ -152,13 +152,45 @@ export interface EventRecord {
   timestamp_unresolved?: boolean;
 }
 
+export type ActorRole = 'victim' | 'offender' | 'bystander' | 'other' | 'unknown';
+
+export type ActorIdentifierType = 'username' | 'phone_number' | 'display_name' | 'email' | 'face_detection' | 'ai_context';
+
+export interface ActorIdentifier {
+  type: ActorIdentifierType;
+  value: string;
+  evidence_ids: string[];
+  confidence: number;
+  first_seen: number;
+  last_seen: number;
+}
+
 export interface ActorRecord {
   id: string;
   case_id: string;
   name: string;
-  role: string;
+  role: ActorRole;
   contact_info?: string;
+  identifiers: ActorIdentifier[];
+  confidence: number;
+  uncertainty_notes?: string[];
   created_at: number;
+  updated_at: number;
+}
+
+export interface ActorMatchResult {
+  actor_id: string;
+  matched_identifiers: ActorIdentifier[];
+  confidence: number;
+  match_reason: string;
+}
+
+export interface CrossEvidenceActorMatch {
+  primary_actor_id: string;
+  matched_actor_id: string;
+  match_confidence: number;
+  matched_identifiers: ActorIdentifier[];
+  evidence_overlap: string[];
 }
 
 export interface HashChainRecord {
@@ -168,6 +200,18 @@ export interface HashChainRecord {
   payload_hash: string;
   chain_hash: string;
   timestamp: number;
+}
+
+export interface NarrativeRecord {
+  id: string;
+  case_id: string;
+  content: string;
+  generated_at: number;
+  events_snapshot: string; // JSON stringified array of event IDs
+  disclaimer: string;
+  parse_error?: string;
+  user_reviewed: boolean;
+  user_edited: boolean;
 }
 
 export interface SchemaMigrationRecord {

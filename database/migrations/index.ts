@@ -65,7 +65,11 @@ export const MIGRATIONS: Migration[] = [
         name TEXT NOT NULL,
         role TEXT NOT NULL,
         contact_info TEXT,
+        identifiers TEXT NOT NULL DEFAULT '[]',
+        confidence REAL NOT NULL DEFAULT 0,
+        uncertainty_notes TEXT,
         created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
         FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE
       );`,
       `CREATE TABLE IF NOT EXISTS hash_chain (
@@ -77,6 +81,18 @@ export const MIGRATIONS: Migration[] = [
         timestamp INTEGER NOT NULL,
         FOREIGN KEY (evidence_id) REFERENCES evidence(id) ON DELETE CASCADE
       );`,
+      `CREATE TABLE IF NOT EXISTS narratives (
+        id TEXT PRIMARY KEY NOT NULL,
+        case_id TEXT NOT NULL,
+        content TEXT NOT NULL,
+        generated_at INTEGER NOT NULL,
+        events_snapshot TEXT NOT NULL DEFAULT '[]',
+        disclaimer TEXT NOT NULL,
+        parse_error TEXT,
+        user_reviewed INTEGER NOT NULL DEFAULT 0,
+        user_edited INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE
+      );`,
       `CREATE INDEX IF NOT EXISTS idx_evidence_case_id ON evidence(case_id);`,
       `CREATE INDEX IF NOT EXISTS idx_evidence_sha256_import ON evidence(sha256_import);`,
       `CREATE INDEX IF NOT EXISTS idx_events_case_id ON events(case_id);`,
@@ -84,6 +100,17 @@ export const MIGRATIONS: Migration[] = [
       `CREATE INDEX IF NOT EXISTS idx_actors_case_id ON actors(case_id);`,
       `CREATE INDEX IF NOT EXISTS idx_hash_chain_evidence_id ON hash_chain(evidence_id);`,
       `CREATE INDEX IF NOT EXISTS idx_hash_chain_timestamp ON hash_chain(timestamp);`,
+      `CREATE INDEX IF NOT EXISTS idx_narratives_case_id ON narratives(case_id);`,
+    ],
+  },
+  {
+    version: 2,
+    name: '002_actor_identification_fields',
+    upSql: [
+      `ALTER TABLE actors ADD COLUMN identifiers TEXT NOT NULL DEFAULT '[]';`,
+      `ALTER TABLE actors ADD COLUMN confidence REAL NOT NULL DEFAULT 0;`,
+      `ALTER TABLE actors ADD COLUMN uncertainty_notes TEXT;`,
+      `ALTER TABLE actors ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0;`,
     ],
   },
 ];

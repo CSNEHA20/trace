@@ -3,7 +3,10 @@ import {
   EvidenceRecord,
   EventRecord,
   ActorRecord,
+  ActorIdentifier,
+  ActorIdentifierType,
   HashChainRecord,
+  NarrativeRecord,
   SchemaMigrationRecord,
   IncidentSeverity,
 } from '../../frontend/src/types';
@@ -43,6 +46,7 @@ export class DatabaseEngine {
   private eventsStore: Map<string, EventRecord> = new Map();
   private actorsStore: Map<string, ActorRecord> = new Map();
   private hashChainStore: Map<string, HashChainRecord> = new Map();
+  private narrativesStore: Map<string, NarrativeRecord> = new Map();
 
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
@@ -87,6 +91,7 @@ export class DatabaseEngine {
     const snapEvents = new Map(this.eventsStore);
     const snapActors = new Map(this.actorsStore);
     const snapHashChain = new Map(this.hashChainStore);
+    const snapNarratives = new Map(this.narrativesStore);
 
     try {
       const result = await callback(this);
@@ -99,6 +104,7 @@ export class DatabaseEngine {
       this.eventsStore = snapEvents;
       this.actorsStore = snapActors;
       this.hashChainStore = snapHashChain;
+      this.narrativesStore = snapNarratives;
       throw err;
     }
   }
@@ -305,7 +311,7 @@ export class DatabaseEngine {
   // ACTORS CRUD
   // --------------------------------------------------
 
-  async insertActor(a: Omit<ActorRecord, 'id' | 'created_at'> & { id?: string }): Promise<ActorRecord> {
+  async insertActor(a: Omit<ActorRecord, 'id' | 'created_at' | 'updated_at'> & { id?: string }): Promise<ActorRecord> {
     await this.initialize();
 
     // Verify foreign key case_id
@@ -313,12 +319,31 @@ export class DatabaseEngine {
       throw new Error(`FOREIGN KEY constraint failed: actors.case_id (${a.case_id})`);
     }
 
+    const now = Date.now();
     const rec: ActorRecord = {
       ...a,
       id: a.id || generateUUID(),
-      created_at: Date.now(),
+      created_at: now,
+      updated_at: now,
     };
     this.actorsStore.set(rec.id, rec);
+    return rec;
+  }
+
+  async updateActor(id: string, updates: Partial<ActorRecord>): Promise<ActorRecord | null> {
+    await this.initialize();
+    const current = this.actorsStore.get(id);
+    if (!current) return null;
+
+    const rec: ActorRecord = {
+      ...current,
+      ...updates,
+      id: current.id,
+      case_id: current.case_id,
+      created_at: current.created_at,
+      updated_at: Date.now(),
+    };
+    this.actorsStore.set(id, rec);
     return rec;
   }
 
@@ -335,6 +360,258 @@ export class DatabaseEngine {
   async deleteActor(id: string): Promise<boolean> {
     await this.initialize();
     return this.actorsStore.delete(id);
+  }
+
+  async addIdentifier(actorId: string, identifier: ActorIdentifier): Promise<ActorRecord | null> {
+    await this.initialize();
+    const actor = this.actorsStore.get(actorId);
+    if (!actor) return null;
+
+    const existingIndex = actor.identifiers.findIndex(
+      (id) => id.type === identifier.type && id.value === identifier.value
+    );
+
+    let updatedIdentifiers: ActorIdentifier[];
+    if (existingIndex >= 0) {
+      const existing = actor.identifiers[existingIndex];
+      updatedIdentifiers = [...actor.identifiers];
+      updatedIdentifiers[existingIndex] = {
+        ...existing,
+        evidence_ids: [...new Set([...existing.evidence_ids, ...identifier.evidence_ids])],
+        confidence: Math.max(existing.confidence, identifier.confidence),
+        last_seen: Math.max(existing.last_seen, identifier.last_seen),
+      };
+    } else {
+      updatedIdentifiers = [...actor.identifiers, identifier];
+    }
+
+    return this.updateActor(actorId, {
+      identifiers: updatedIdentifiers,
+      confidence: this.calculateActorConfidence(updatedIdentifiers),
+    });
+  }
+
+  private calculateActorConfidence(identifiers: ActorIdentifier[]): number {
+    if (identifiers.length === 0) return 0;
+
+    const weights: Record<string, number> = {
+      phone_number: 1.0,
+      email: 1.0,
+      username: 0.9,
+      display_name: 0.7,
+      ai_context: 0.5,
+      face_detection: 0.4,
+    };
+
+    let weightedSum = 0;
+    let totalWeight = 0;
+
+    for (const id of identifiers) {
+      const weight = weights[id.type] || 0.5;
+      weightedSum += id.confidence * weight;
+      totalWeight += weight;
+    }
+
+    return totalWeight > 0 ? weightedSum / totalWeight : 0;
+  }
+
+  async findActorByIdentifier(
+    caseId: string,
+    type: ActorIdentifierType,
+    value: string
+  ): Promise<ActorRecord | null> {
+    await this.initialize();
+    const actors = Array.from(this.actorsStore.values()).filter((a) => a.case_id === caseId);
+
+    for (const actor of actors) {
+      for (const id of actor.identifiers) {
+        if (id.type === type) {
+          let match = false;
+          switch (type) {
+            case 'phone_number':
+              match = this.normalizePhoneNumber(id.value) === this.normalizePhoneNumber(value);
+              break;
+            case 'username':
+              match = this.normalizeUsername(id.value) === this.normalizeUsername(value);
+              break;
+            case 'email':
+              match = id.value.toLowerCase().trim() === value.toLowerCase().trim();
+              break;
+            case 'display_name':
+              match = id.value.toLowerCase().trim() === value.toLowerCase().trim();
+              break;
+            case 'face_detection':
+            case 'ai_context':
+              match = id.value === value;
+              break;
+          }
+          if (match) return actor;
+        }
+      }
+    }
+    return null;
+  }
+
+  private normalizePhoneNumber(phone: string): string {
+    return phone.replace(/[\s\-\(\)\+]/g, '').replace(/^0+/, '');
+  }
+
+  private normalizeUsername(username: string): string {
+    return username.toLowerCase().trim().replace(/^@/, '');
+  }
+
+  async findActorsByIdentifiers(
+    caseId: string,
+    identifiers: ActorIdentifier[]
+  ): Promise<Array<{ actor_id: string; matched_identifiers: ActorIdentifier[]; confidence: number; match_reason: string }>> {
+    await this.initialize();
+    const actors = Array.from(this.actorsStore.values()).filter((a) => a.case_id === caseId);
+    const results: Array<{ actor_id: string; matched_identifiers: ActorIdentifier[]; confidence: number; match_reason: string }> = [];
+
+    for (const actor of actors) {
+      const matchedIdentifiers: ActorIdentifier[] = [];
+      let totalScore = 0;
+      let matchCount = 0;
+
+      for (const newId of identifiers) {
+        for (const existingId of actor.identifiers) {
+          if (newId.type === existingId.type) {
+            let score = 0;
+            switch (newId.type) {
+              case 'phone_number':
+                score = this.normalizePhoneNumber(newId.value) === this.normalizePhoneNumber(existingId.value) ? 1.0 : 0;
+                break;
+              case 'username':
+                score = this.normalizeUsername(newId.value) === this.normalizeUsername(existingId.value) ? 1.0 : 0;
+                break;
+              case 'email':
+                score = newId.value.toLowerCase().trim() === existingId.value.toLowerCase().trim() ? 1.0 : 0;
+                break;
+              case 'display_name':
+                score = newId.value.toLowerCase().trim() === existingId.value.toLowerCase().trim() ? 1.0 : 0;
+                break;
+              case 'face_detection':
+                score = newId.value === existingId.value ? 0.9 : 0;
+                break;
+              case 'ai_context':
+                score = newId.value.toLowerCase().trim() === existingId.value.toLowerCase().trim() ? 0.7 : 0;
+                break;
+            }
+            if (score > 0) {
+              matchedIdentifiers.push(existingId);
+              totalScore += score * newId.confidence * existingId.confidence;
+              matchCount++;
+            }
+          }
+        }
+      }
+
+      if (matchCount > 0) {
+        const avgScore = totalScore / matchCount;
+        if (avgScore >= 0.6) {
+          results.push({
+            actor_id: actor.id,
+            matched_identifiers: matchedIdentifiers,
+            confidence: avgScore,
+            match_reason: `Matched ${matchCount} identifier(s) with ${(avgScore * 100).toFixed(0)}% confidence`,
+          });
+        }
+      }
+    }
+
+    return results.sort((a, b) => b.confidence - a.confidence);
+  }
+
+  async mergeActors(primaryActorId: string, secondaryActorId: string): Promise<ActorRecord | null> {
+    await this.initialize();
+    const primary = this.actorsStore.get(primaryActorId);
+    const secondary = this.actorsStore.get(secondaryActorId);
+    
+    if (!primary || !secondary) return null;
+    if (primary.case_id !== secondary.case_id) {
+      throw new Error('Cannot merge actors from different cases');
+    }
+
+    const mergedIdentifiers = [...primary.identifiers];
+    
+    for (const secId of secondary.identifiers) {
+      const existingIndex = mergedIdentifiers.findIndex(
+        (pid) => pid.type === secId.type && pid.value === secId.value
+      );
+
+      if (existingIndex >= 0) {
+        const existing = mergedIdentifiers[existingIndex];
+        mergedIdentifiers[existingIndex] = {
+          ...existing,
+          evidence_ids: [...new Set([...existing.evidence_ids, ...secId.evidence_ids])],
+          confidence: Math.max(existing.confidence, secId.confidence),
+          last_seen: Math.max(existing.last_seen, secId.last_seen),
+        };
+      } else {
+        mergedIdentifiers.push(secId);
+      }
+    }
+
+    const mergedActor = await this.updateActor(primaryActorId, {
+      identifiers: mergedIdentifiers,
+      confidence: this.calculateActorConfidence(mergedIdentifiers),
+      uncertainty_notes: [
+        ...(primary.uncertainty_notes || []),
+        ...(secondary.uncertainty_notes || []),
+        `Merged with actor ${secondaryActorId} (${secondary.name})`,
+      ],
+    });
+
+    await this.deleteActor(secondaryActorId);
+
+    return mergedActor;
+  }
+
+  async getActorsForEvidence(evidenceId: string): Promise<ActorRecord[]> {
+    await this.initialize();
+    return Array.from(this.actorsStore.values()).filter((actor) =>
+      actor.identifiers.some((id) => id.evidence_ids.includes(evidenceId))
+    );
+  }
+
+  async linkActorToEvidence(actorId: string, evidenceId: string): Promise<void> {
+    await this.initialize();
+    const actor = this.actorsStore.get(actorId);
+    if (!actor) return;
+
+    const updatedIdentifiers = actor.identifiers.map((id) => {
+      if (!id.evidence_ids.includes(evidenceId)) {
+        return {
+          ...id,
+          evidence_ids: [...id.evidence_ids, evidenceId],
+          last_seen: Date.now(),
+        };
+      }
+      return id;
+    });
+
+    await this.updateActor(actorId, {
+      identifiers: updatedIdentifiers,
+      confidence: this.calculateActorConfidence(updatedIdentifiers),
+    });
+  }
+
+  async unlinkActorFromEvidence(actorId: string, evidenceId: string): Promise<void> {
+    await this.initialize();
+    const actor = this.actorsStore.get(actorId);
+    if (!actor) return;
+
+    const updatedIdentifiers = actor.identifiers
+      .map((id) => ({
+        ...id,
+        evidence_ids: id.evidence_ids.filter((eid) => eid !== evidenceId),
+      }))
+      .filter((id) => id.evidence_ids.length > 0);
+
+    await this.updateActor(actorId, {
+      identifiers: updatedIdentifiers,
+      confidence: this.calculateActorConfidence(updatedIdentifiers),
+    });
   }
 
   // --------------------------------------------------
@@ -367,6 +644,66 @@ export class DatabaseEngine {
   async getLatestHashChainNode(evidenceId: string): Promise<HashChainRecord | null> {
     const list = await this.getHashChainForEvidence(evidenceId);
     return list.length > 0 ? list[list.length - 1] : null;
+  }
+
+  // --------------------------------------------------
+  // NARRATIVE CRUD
+  // --------------------------------------------------
+
+  async insertNarrative(n: Omit<NarrativeRecord, 'id'> & { id?: string }): Promise<NarrativeRecord> {
+    await this.initialize();
+
+    if (!this.casesStore.has(n.case_id)) {
+      throw new Error(`FOREIGN KEY constraint failed: narratives.case_id (${n.case_id})`);
+    }
+
+    const rec: NarrativeRecord = {
+      ...n,
+      id: n.id || generateUUID(),
+      user_reviewed: n.user_reviewed ?? false,
+      user_edited: n.user_edited ?? false,
+    };
+    this.narrativesStore.set(rec.id, rec);
+    return rec;
+  }
+
+  async getNarrativeById(id: string): Promise<NarrativeRecord | null> {
+    await this.initialize();
+    return this.narrativesStore.get(id) || null;
+  }
+
+  async getNarrativesForCase(caseId: string): Promise<NarrativeRecord[]> {
+    await this.initialize();
+    return Array.from(this.narrativesStore.values())
+      .filter((n) => n.case_id === caseId)
+      .sort((a, b) => b.generated_at - a.generated_at);
+  }
+
+  async getLatestNarrativeForCase(caseId: string): Promise<NarrativeRecord | null> {
+    const narratives = await this.getNarrativesForCase(caseId);
+    return narratives.length > 0 ? narratives[0] : null;
+  }
+
+  async updateNarrative(id: string, updates: Partial<NarrativeRecord>): Promise<NarrativeRecord | null> {
+    await this.initialize();
+    const current = this.narrativesStore.get(id);
+    if (!current) return null;
+
+    const rec: NarrativeRecord = {
+      ...current,
+      ...updates,
+      id: current.id,
+      case_id: current.case_id,
+      user_reviewed: updates.user_reviewed ?? current.user_reviewed,
+      user_edited: updates.user_edited ?? current.user_edited,
+    };
+    this.narrativesStore.set(id, rec);
+    return rec;
+  }
+
+  async deleteNarrative(id: string): Promise<boolean> {
+    await this.initialize();
+    return this.narrativesStore.delete(id);
   }
 }
 
