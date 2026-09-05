@@ -6,7 +6,7 @@ module.exports = {
   setupFilesAfterEnv: [],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
   // Allow Jest to resolve and transform files outside the frontend root
-  roots: ['<rootDir>', '<rootDir>/../database'],
+  roots: ['<rootDir>', '<rootDir>/../database', '<rootDir>/../ai'],
   // Instruct Jest babel transform to cover database directory too
   transform: {
     '^.+\\.(js|jsx|ts|tsx)$': 'babel-jest',
