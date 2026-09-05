@@ -46,11 +46,17 @@ export const MIGRATIONS: Migration[] = [
         id TEXT PRIMARY KEY NOT NULL,
         case_id TEXT NOT NULL,
         event_type TEXT NOT NULL,
-        severity TEXT NOT NULL DEFAULT 'MEDIUM',
+        severity INTEGER NOT NULL DEFAULT 3,
         timestamp INTEGER NOT NULL,
+        timestamp_hint TEXT,
         ai_summary TEXT,
         evidence_ids TEXT NOT NULL DEFAULT '[]',
         actor_ids TEXT NOT NULL DEFAULT '[]',
+        source TEXT NOT NULL DEFAULT 'system',
+        user_annotation TEXT,
+        user_edited INTEGER NOT NULL DEFAULT 0,
+        timestamp_conflict INTEGER NOT NULL DEFAULT 0,
+        timestamp_unresolved INTEGER NOT NULL DEFAULT 0,
         FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE
       );`,
       `CREATE TABLE IF NOT EXISTS actors (

@@ -25,6 +25,10 @@ export function HomeScreen() {
             Local SQLite database encrypted with hardware keys. On-Device AI ready.
           </Text>
         </View>
+        <TouchableOpacity style={styles.aiLink} onPress={() => router.push('/ai-status')}>
+          <Text style={styles.aiLinkTitle}>On Device AI Capability</Text>
+          <Text style={styles.aiLinkSubtitle}>Verify Gemma model availability before analyzing evidence</Text>
+        </TouchableOpacity>
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Active Cases</Text>
@@ -87,6 +91,16 @@ const styles = StyleSheet.create({
     color: palette.textSecondary,
     lineHeight: 18,
   },
+  aiLink: {
+    backgroundColor: palette.surface,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: palette.border,
+    marginBottom: 20,
+  },
+  aiLinkTitle: { fontSize: 15, fontWeight: 'bold', color: palette.text },
+  aiLinkSubtitle: { fontSize: 12, color: palette.textSecondary, marginTop: 4 },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',

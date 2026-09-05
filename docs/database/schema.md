@@ -63,18 +63,24 @@ Immutable evidence items. Stores metadata + file path reference only.
 ---
 
 ### `events`
-Timeline events: captures, analyses, exports, tampering alerts.
+Timeline events: incident clusters, captures, analyses, exports, tampering alerts.
 
 | Column         | Type    | Constraints               | Description                             |
 |---------------|---------|---------------------------|-----------------------------------------|
 | `id`          | TEXT    | PRIMARY KEY               | UUID v4                                 |
 | `case_id`     | TEXT    | FK → cases.id, NOT NULL   | Parent case                             |
-| `event_type`  | TEXT    | NOT NULL                  | `CAPTURE` \| `ANALYSIS` \| `EXPORT` \| `ALERT` \| etc. |
-| `severity`    | TEXT    | NOT NULL                  | `LOW` \| `MEDIUM` \| `HIGH` \| `CRITICAL` |
+| `event_type`  | TEXT    | NOT NULL                  | Incident types (`initial_contact`, `threat`, `demand`, `escalation`, `evidence_sharing`, `impersonation`, `other`) or system types |
+| `severity`    | INTEGER | NOT NULL                  | `1`–`5` (legacy LOW/MEDIUM/HIGH/CRITICAL coerced on write) |
 | `timestamp`   | INTEGER | NOT NULL                  | UNIX ms timestamp of the event          |
+| `timestamp_hint` | TEXT |                        | Original model or investigator time hint |
 | `ai_summary`  | TEXT    |                           | AI-generated natural language summary   |
 | `evidence_ids`| TEXT    | NOT NULL                  | JSON array of linked evidence UUIDs     |
 | `actor_ids`   | TEXT    | NOT NULL                  | JSON array of linked actor UUIDs        |
+| `source`      | TEXT    | NOT NULL                  | `ai` \| `user` \| `system`              |
+| `user_annotation` | TEXT |                        | Investigator annotation of an AI event  |
+| `user_edited` | INTEGER | NOT NULL                  | `1` if investigator edited the reconstruction |
+| `timestamp_conflict` | INTEGER | NOT NULL             | `1` if linked clocks contradict         |
+| `timestamp_unresolved` | INTEGER | NOT NULL           | `1` if no parseable timestamp hint      |
 
 **Indexes:** `idx_events_case_id`, `idx_events_timestamp`
 **Cascade Delete:** When parent case is deleted, all events are removed.

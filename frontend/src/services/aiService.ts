@@ -1,6 +1,7 @@
-import { AiAnalysisResult, EvidenceType } from '../types';
-import { whisperService } from './whisperService';
+import { AiAnalysisResult, EvidenceType, EventRecord } from '../types';
 import { logger } from '../utils/logger';
+import { timelineClusterer, ClusterOptions } from '../../../ai/clustering/timelineClusterer';
+import { ClusterOperationResult } from '../../../ai/clustering/clusterTypes';
 
 class AiService {
   async analyzeEvidence(
@@ -10,43 +11,29 @@ class AiService {
   ): Promise<AiAnalysisResult> {
     logger.info(`Running on-device AI inference pipeline for ${type} at ${fileUri}`);
 
-    switch (type) {
-      case 'IMAGE':
-        return {
-          gemmaSummary: 'On-device Gemma 2B INT4: High clarity scene image. Visual features and metadata integrity verified clean.',
-          detectedText: ['EVIDENCE TAG #0089', 'RESTRICTED AREA'],
-          facesCount: 1,
-          confidenceScore: 0.96,
-          processedAt: Date.now(),
-        };
-      case 'AUDIO': {
-        if (evidenceId) {
-          const res = await whisperService.transcribeAudio(evidenceId, fileUri);
-          if (res.status === 'COMPLETED' && res.text) {
-            return {
-              transcription: res.text,
-              gemmaSummary: `Whisper.cpp audio transcription completed with ${((res.confidence || 0.99) * 100).toFixed(1)}% acoustic fidelity confidence.`,
-              confidenceScore: res.confidence || 0.99,
-              processedAt: Date.now(),
-            };
-          }
-        }
-        return {
-          transcription: 'Voice audio interview captured locally. Statement: "All evidence recorded without modification."',
-          gemmaSummary: 'Whisper.cpp audio transcription completed with 99.1% acoustic fidelity confidence.',
-          confidenceScore: 0.99,
-          processedAt: Date.now(),
-        };
-      }
-      default:
-        return {
-          gemmaSummary: 'Document forensic parsing complete. Hash matches source manifest.',
-          confidenceScore: 0.95,
-          processedAt: Date.now(),
-        };
+    // This legacy method has no extracted text input. Do not fabricate a model
+    // response; callers must invoke the on-device inference service with real
+    // OCR/transcription text once the local model status is AVAILABLE.
+    return { processedAt: Date.now() };
+  }
+
+  async clusterIncidentEvents(caseId: string, options?: ClusterOptions): Promise<ClusterOperationResult> {
+    logger.info(`Clustering incident events for case ${caseId} with local Gemma 2B`);
+    return timelineClusterer.clusterCase(caseId, options);
+  }
+
+  async annotateClusterEvent(
+    eventId: string,
+    updates: {
+      event_type?: string;
+      severity?: number;
+      ai_summary?: string;
+      user_annotation?: string;
+      timestamp_hint?: string | null;
     }
+  ): Promise<EventRecord> {
+    return timelineClusterer.annotateEvent(eventId, updates);
   }
 }
 
 export const aiService = new AiService();
-

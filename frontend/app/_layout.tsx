@@ -12,6 +12,7 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="case/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="evidence/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="ai-status" options={{ headerShown: false }} />
         </Stack>
       </ThemeProvider>
     </PaperProvider>

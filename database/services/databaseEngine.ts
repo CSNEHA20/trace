@@ -5,10 +5,29 @@ import {
   ActorRecord,
   HashChainRecord,
   SchemaMigrationRecord,
+  IncidentSeverity,
 } from '../../frontend/src/types';
 import { MIGRATIONS } from '../migrations';
 import { generateUUID } from '../../frontend/src/utils/crypto';
 import { logger } from '../../frontend/src/utils/logger';
+
+const LEGACY_SEVERITY: Record<string, IncidentSeverity> = {
+  LOW: 1,
+  MEDIUM: 3,
+  HIGH: 4,
+  CRITICAL: 5,
+};
+
+export function coerceEventSeverity(value: unknown): IncidentSeverity {
+  if (typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 5) {
+    return value as IncidentSeverity;
+  }
+  if (typeof value === 'string') {
+    if (LEGACY_SEVERITY[value] !== undefined) return LEGACY_SEVERITY[value];
+    if (/^[1-5]$/.test(value.trim())) return Number(value.trim()) as IncidentSeverity;
+  }
+  throw new Error('Invalid event severity: must be an integer from 1 to 5');
+}
 
 /**
  * TRACE Local SQLite Database Engine
@@ -223,7 +242,7 @@ export class DatabaseEngine {
   // EVENTS CRUD (JSON Serialization for evidence_ids & actor_ids)
   // --------------------------------------------------
 
-  async insertEvent(ev: Omit<EventRecord, 'id'> & { id?: string }): Promise<EventRecord> {
+  async insertEvent(ev: Omit<EventRecord, 'id' | 'severity'> & { id?: string; severity: EventRecord['severity'] | string | number }): Promise<EventRecord> {
     await this.initialize();
 
     // Verify foreign key case_id
@@ -238,10 +257,30 @@ export class DatabaseEngine {
     const rec: EventRecord = {
       ...ev,
       id: ev.id || generateUUID(),
+      severity: coerceEventSeverity(ev.severity),
       evidence_ids: JSON.parse(serializedEvidenceIds),
       actor_ids: JSON.parse(serializedActorIds),
+      source: ev.source ?? 'system',
     };
     this.eventsStore.set(rec.id, rec);
+    return rec;
+  }
+
+  async updateEvent(id: string, updates: Partial<EventRecord>): Promise<EventRecord | null> {
+    await this.initialize();
+    const current = this.eventsStore.get(id);
+    if (!current) return null;
+    const nextSeverity = updates.severity !== undefined ? coerceEventSeverity(updates.severity) : current.severity;
+    const rec: EventRecord = {
+      ...current,
+      ...updates,
+      id: current.id,
+      case_id: current.case_id,
+      severity: nextSeverity,
+      evidence_ids: updates.evidence_ids ? JSON.parse(JSON.stringify(updates.evidence_ids)) : current.evidence_ids,
+      actor_ids: updates.actor_ids ? JSON.parse(JSON.stringify(updates.actor_ids)) : current.actor_ids,
+    };
+    this.eventsStore.set(id, rec);
     return rec;
   }
 

@@ -67,6 +67,16 @@ export interface MediaTypeDetection {
 }
 
 export type EventSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type IncidentEventType =
+  | 'initial_contact'
+  | 'threat'
+  | 'demand'
+  | 'escalation'
+  | 'evidence_sharing'
+  | 'impersonation'
+  | 'other';
+export type IncidentSeverity = 1 | 2 | 3 | 4 | 5;
+export type EventSource = 'ai' | 'user' | 'system';
 
 export interface ExifMetadata {
   make?: string;
@@ -129,11 +139,17 @@ export interface EventRecord {
   id: string;
   case_id: string;
   event_type: string;
-  severity: EventSeverity;
+  severity: IncidentSeverity;
   timestamp: number;
+  timestamp_hint?: string | null;
   ai_summary?: string;
   evidence_ids: string[]; // Stored as JSON stringified array in SQLite
   actor_ids: string[];    // Stored as JSON stringified array in SQLite
+  source?: EventSource;
+  user_annotation?: string;
+  user_edited?: boolean;
+  timestamp_conflict?: boolean;
+  timestamp_unresolved?: boolean;
 }
 
 export interface ActorRecord {

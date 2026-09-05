@@ -147,6 +147,14 @@ class DatabaseService {
 
   // ---- EVENTS / TIMELINE ----
 
+  async getEventRecordsForCase(caseId: string): Promise<EventRecord[]> {
+    return databaseEngine.getEventsForCase(caseId);
+  }
+
+  async updateEventRecord(id: string, updates: Partial<EventRecord>): Promise<EventRecord | null> {
+    return databaseEngine.updateEvent(id, updates);
+  }
+
   async getTimelineForCase(caseId: string): Promise<TimelineEvent[]> {
     const evs = await databaseEngine.getEventsForCase(caseId);
     return evs.map((ev) => ({
@@ -173,7 +181,7 @@ class DatabaseService {
     const rec = await databaseEngine.insertEvent({
       case_id: event.caseId,
       event_type: event.category,
-      severity: 'MEDIUM',
+      severity: 3,
       timestamp: event.timestamp,
       ai_summary: event.description,
       evidence_ids: event.evidenceId ? [event.evidenceId] : [],

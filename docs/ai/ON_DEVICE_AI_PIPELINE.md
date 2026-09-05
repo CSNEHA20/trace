@@ -8,3 +8,6 @@
 ## 2. Privacy & Offline Integrity
 - **Zero Cloud Leakage:** All AI models run 100% locally on the mobile host device. No network calls or cloud API tokens are required.
 - **Prompt Engineering:** Standardized prompt wrappers defined in `ai/prompts/gemmaPrompts.ts`.
+
+## 3. Incident Event Clustering
+STEP 11 reconstructs incident events from OCR and transcripts using Gemma 2B locally. See [event-clustering.md](event-clustering.md). Model JSON is schema-validated; malformed or unsupported events are never written to SQLite. Investigators must review the reconstruction.
