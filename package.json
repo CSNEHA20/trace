@@ -12,5 +12,8 @@
     "validate": "npm --prefix frontend run validate",
     "test": "npm --prefix frontend test -- --watchAll=false",
     "lint": "npm --prefix frontend run lint"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.7"
   }
 }

@@ -11,10 +11,8 @@ module.exports = {
   transform: {
     '^.+\\.(js|jsx|ts|tsx)$': 'babel-jest',
   },
-  // Map @babel/runtime to the installed copy in frontend/node_modules
-  moduleNameMapper: {
-    '^@babel/runtime/(.*)$': '<rootDir>/node_modules/@babel/runtime/$1',
-  },
+  // Ensure proper module resolution in monorepo
+  modulePaths: ['<rootDir>/node_modules', '<rootDir>/../node_modules'],
   // Exclude helper utilities from being treated as test suites
   testPathIgnorePatterns: [
     '/node_modules/',

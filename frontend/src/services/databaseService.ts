@@ -4,6 +4,7 @@ import {
   EventRecord,
   ActorRecord,
   HashChainRecord,
+  NarrativeRecord,
   Case,
   EvidenceItem,
   TimelineEvent,
@@ -228,6 +229,39 @@ class DatabaseService {
 
   async getActorsForCase(caseId: string): Promise<ActorRecord[]> {
     return databaseEngine.getActorsForCase(caseId);
+  }
+
+  // ---- NARRATIVES ----
+
+  async saveNarrative(caseId: string, narrative: {
+    content: string;
+    eventsSnapshot: string[];
+    disclaimer: string;
+    parseError?: string;
+  }): Promise<NarrativeRecord> {
+    return databaseEngine.insertNarrative({
+      case_id: caseId,
+      content: narrative.content,
+      generated_at: Date.now(),
+      events_snapshot: JSON.stringify(narrative.eventsSnapshot),
+      disclaimer: narrative.disclaimer,
+      parse_error: narrative.parseError,
+    });
+  }
+
+  async getNarrativesForCase(caseId: string): Promise<NarrativeRecord[]> {
+    return databaseEngine.getNarrativesForCase(caseId);
+  }
+
+  async getLatestNarrativeForCase(caseId: string): Promise<NarrativeRecord | null> {
+    return databaseEngine.getLatestNarrativeForCase(caseId);
+  }
+
+  async markNarrativeReviewed(narrativeId: string, reviewed: boolean, edited: boolean = false): Promise<NarrativeRecord | null> {
+    return databaseEngine.updateNarrative(narrativeId, {
+      user_reviewed: reviewed,
+      user_edited: edited,
+    });
   }
 }
 

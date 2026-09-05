@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, RefreshControl, ScrollView, StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { useCaseStore } from '../store/caseStore';
 import { useAiStore } from '../store/aiStore';
 import { databaseService } from '../services/databaseService';
@@ -8,29 +8,64 @@ import { AppHeader } from '../components/AppHeader';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
 import { EventReviewModal } from '../components/EventReviewModal';
-import { EventRecord } from '../types';
+import { TimelineEventCard } from '../components/TimelineEventCard';
+import { TimelineEventDetailModal } from '../components/TimelineEventDetailModal';
+import { TimelineFilters } from '../components/TimelineFilters';
+import { EventRecord, EvidenceItem, ActorRecord, IncidentSeverity, MediaCategory } from '../types';
 import { palette } from '../theme';
-import { formatDate } from '../utils/crypto';
 import { RECONSTRUCTION_DISCLAIMER } from '../../../ai/clustering/eventTypes';
 
 export function TimelineScreen() {
   const activeCase = useCaseStore((state) => state.activeCase);
   const { progress, setProgress, clusterResult, setClusterResult } = useAiStore();
+
   const [events, setEvents] = useState<EventRecord[]>([]);
+  const [allEvidence, setAllEvidence] = useState<EvidenceItem[]>([]);
+  const [allActors, setAllActors] = useState<ActorRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [clustering, setClustering] = useState(false);
-  const [selected, setSelected] = useState<EventRecord | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const [selectedEvent, setSelectedEvent] = useState<EventRecord | null>(null);
+  const [detailEvent, setDetailEvent] = useState<EventRecord | null>(null);
+  const [detailVisible, setDetailVisible] = useState(false);
+
+  const [selectedSeverities, setSelectedSeverities] = useState<IncidentSeverity[]>([1, 2, 3, 4, 5]);
+  const [selectedActors, setSelectedActors] = useState<string[]>([]);
+  const [selectedMediaTypes, setSelectedMediaTypes] = useState<MediaCategory[]>(['IMAGE', 'VIDEO', 'AUDIO', 'DOCUMENT']);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const load = useCallback(async () => {
     if (!activeCase?.id) {
       setEvents([]);
+      setAllEvidence([]);
+      setAllActors([]);
       setIsLoading(false);
       return;
     }
-    const recs = await databaseService.getEventRecordsForCase(activeCase.id);
-    setEvents([...recs].sort((a, b) => a.timestamp - b.timestamp));
-    setIsLoading(false);
+    setError(null);
+    try {
+      const [evs, evidence, actors] = await Promise.all([
+        databaseService.getEventRecordsForCase(activeCase.id),
+        databaseService.getEvidenceForCase(activeCase.id),
+        databaseService.getActorsForCase(activeCase.id),
+      ]);
+      setEvents([...evs].sort((a, b) => a.timestamp - b.timestamp));
+      setAllEvidence(evidence);
+      setAllActors(actors);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load timeline');
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
   }, [activeCase?.id]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    load();
+  }, [load]);
 
   useEffect(() => {
     setIsLoading(true);
@@ -54,70 +89,194 @@ export function TimelineScreen() {
       });
       setClusterResult(result);
       await load();
-    } catch (error) {
-      Alert.alert('Clustering failed', error instanceof Error ? error.message : 'Local clustering failed.');
+    } catch (err) {
+      Alert.alert('Clustering failed', err instanceof Error ? err.message : 'Local clustering failed.');
     } finally {
       setClustering(false);
     }
   };
 
+  const handleSeverityToggle = (severity: IncidentSeverity) => {
+    setSelectedSeverities((prev) =>
+      prev.includes(severity) ? prev.filter((s) => s !== severity) : [...prev, severity]
+    );
+  };
+
+  const handleActorToggle = (actorId: string) => {
+    setSelectedActors((prev) =>
+      prev.includes(actorId) ? prev.filter((a) => a !== actorId) : [...prev, actorId]
+    );
+  };
+
+  const handleMediaTypeToggle = (mediaType: MediaCategory) => {
+    setSelectedMediaTypes((prev) =>
+      prev.includes(mediaType) ? prev.filter((m) => m !== mediaType) : [...prev, mediaType]
+    );
+  };
+
+  const clearAllFilters = () => {
+    setSelectedSeverities([1, 2, 3, 4, 5]);
+    setSelectedActors([]);
+    setSelectedMediaTypes(['IMAGE', 'VIDEO', 'AUDIO', 'DOCUMENT']);
+    setSearchQuery('');
+  };
+
+  const hasActiveFilters = useMemo(() => {
+    return (
+      selectedSeverities.length !== 5 ||
+      selectedActors.length > 0 ||
+      selectedMediaTypes.length !== 4 ||
+      searchQuery.trim() !== ''
+    );
+  }, [selectedSeverities, selectedActors, selectedMediaTypes, searchQuery]);
+
+  const filteredEvents = useMemo(() => {
+    let result = events;
+
+    if (selectedSeverities.length < 5) {
+      result = result.filter((e) => selectedSeverities.includes(e.severity));
+    }
+
+    if (selectedActors.length > 0) {
+      result = result.filter((e) => e.actor_ids?.some((a) => selectedActors.includes(a)));
+    }
+
+    if (selectedMediaTypes.length < 4) {
+      result = result.filter((e) =>
+        e.evidence_ids?.some((eid) => {
+          const ev = allEvidence.find((e) => e.id === eid);
+          return ev && selectedMediaTypes.includes(ev.type);
+        })
+      );
+    }
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      result = result.filter(
+        (e) =>
+          e.event_type.toLowerCase().includes(query) ||
+          e.ai_summary?.toLowerCase().includes(query) ||
+          e.user_annotation?.toLowerCase().includes(query) ||
+          e.timestamp_hint?.toLowerCase().includes(query) ||
+          e.evidence_ids?.some((id) => id.toLowerCase().includes(query))
+      );
+    }
+
+    return result;
+  }, [events, selectedSeverities, selectedActors, selectedMediaTypes, searchQuery, allEvidence]);
+
+  const getPrimaryEvidence = (event: EventRecord): EvidenceItem | null => {
+    if (!event.evidence_ids?.length) return null;
+    const primaryId = event.evidence_ids[0];
+    return allEvidence.find((e) => e.id === primaryId) || null;
+  };
+
+  const handleEventPress = (event: EventRecord) => {
+    setDetailEvent(event);
+    setDetailVisible(true);
+  };
+
+  const handleEventReviewPress = (event: EventRecord) => {
+    setSelectedEvent(event);
+  };
+
   return (
     <View style={styles.container}>
       <AppHeader title="Case Timeline" subtitle="AI incident reconstruction — review required" />
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.disclaimer}>{RECONSTRUCTION_DISCLAIMER}</Text>
-        <TouchableOpacity style={styles.clusterBtn} onPress={runClustering} disabled={clustering}>
-          <Text style={styles.clusterBtnText}>{clustering ? 'Clustering on device…' : 'Cluster incident events'}</Text>
-        </TouchableOpacity>
-        {clustering ? <Text style={styles.progress}>{progress.message}</Text> : null}
-        {clusterResult ? (
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.primary]} />
+        }
+      >
+        <View style={styles.disclaimerContainer}>
+          <Text style={styles.disclaimer}>{RECONSTRUCTION_DISCLAIMER}</Text>
+        </View>
+
+        <View style={styles.actionRow}>
+          <TouchableOpacity style={styles.clusterBtn} onPress={runClustering} disabled={clustering}>
+            <Text style={styles.clusterBtnText}>
+              {clustering ? 'Clustering on device…' : 'Cluster incident events'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {clustering && <Text style={styles.progress}>{progress.message}</Text>}
+        {clusterResult && (
           <Text style={styles.meta}>
             Accepted {clusterResult.persisted.length} · Rejected {clusterResult.rejected.length}
             {clusterResult.skippedReason ? ` · ${clusterResult.skippedReason}` : ''}
           </Text>
-        ) : null}
+        )}
+
+        {error && (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorText}>⚠️ {error}</Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={onRefresh}>
+              <Text style={styles.retryBtnText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <TimelineFilters
+          selectedSeverities={selectedSeverities}
+          onSeverityToggle={handleSeverityToggle}
+          selectedActors={selectedActors}
+          onActorToggle={handleActorToggle}
+          availableActors={allActors}
+          selectedMediaTypes={selectedMediaTypes}
+          onMediaTypeToggle={handleMediaTypeToggle}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onClearAll={clearAllFilters}
+          hasActiveFilters={hasActiveFilters}
+        />
+
         {isLoading ? (
           <LoadingSpinner label="Loading timeline..." />
-        ) : events.length === 0 ? (
-          <EmptyState title="Timeline Empty" message="No chronological events logged yet." />
+        ) : filteredEvents.length === 0 ? (
+          <EmptyState
+            title={events.length === 0 ? 'Timeline Empty' : 'No Matching Events'}
+            message={
+              events.length === 0
+                ? 'No chronological events logged yet. Run clustering to reconstruct events from evidence.'
+                : 'Try adjusting your filters or search query.'
+            }
+          />
         ) : (
-          events.map((ev, index) => (
-            <View key={ev.id} style={styles.timelineNode}>
-              <View style={styles.lineCol}>
-                <View style={styles.dot} />
-                {index < events.length - 1 ? <View style={styles.line} /> : null}
-              </View>
-              <View style={styles.nodeContent}>
-                <View style={styles.nodeHeader}>
-                  <Text style={styles.category}>{ev.event_type}</Text>
-                  <Text style={styles.date}>{ev.timestamp ? formatDate(ev.timestamp) : 'Unresolved time'}</Text>
-                </View>
-                <Text style={styles.title}>{ev.ai_summary || ev.event_type}</Text>
-                <Text style={styles.desc}>Severity {ev.severity} · Source {ev.source || 'system'}</Text>
-                {ev.timestamp_hint ? <Text style={styles.desc}>Hint: {ev.timestamp_hint}</Text> : null}
-                {ev.timestamp_conflict ? <Text style={styles.warn}>Contradictory timestamps flagged</Text> : null}
-                {ev.timestamp_unresolved ? <Text style={styles.warn}>Timestamp unresolved from evidence</Text> : null}
-                {ev.evidence_ids?.length ? <Text style={styles.desc}>Evidence: {ev.evidence_ids.join(', ')}</Text> : null}
-                {ev.user_annotation ? <Text style={styles.actor}>Annotation: {ev.user_annotation}</Text> : null}
-                {ev.source === 'ai' ? (
-                  <TouchableOpacity onPress={() => setSelected(ev)}>
-                    <Text style={styles.edit}>Edit / annotate</Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-            </View>
-          ))
+          <View style={styles.timelineContainer}>
+            {filteredEvents.map((ev, index) => (
+              <TimelineEventCard
+                key={ev.id}
+                event={ev}
+                index={index}
+                total={filteredEvents.length}
+                primaryEvidence={getPrimaryEvidence(ev)}
+                onPress={() => handleEventPress(ev)}
+                isSelected={detailEvent?.id === ev.id}
+              />
+            ))}
+          </View>
         )}
       </ScrollView>
+
       <EventReviewModal
-        event={selected}
-        visible={!!selected}
-        onClose={() => setSelected(null)}
+        event={selectedEvent}
+        visible={!!selectedEvent}
+        onClose={() => setSelectedEvent(null)}
         onSave={async (updates) => {
-          if (!selected) return;
-          await aiService.annotateClusterEvent(selected.id, updates);
+          if (!selectedEvent) return;
+          await aiService.annotateClusterEvent(selectedEvent.id, updates);
           await load();
         }}
+      />
+
+      <TimelineEventDetailModal
+        event={detailEvent}
+        visible={detailVisible}
+        onClose={() => setDetailVisible(false)}
+        caseId={activeCase?.id || ''}
       />
     </View>
   );
@@ -125,23 +284,38 @@ export function TimelineScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.background },
-  content: { padding: 20 },
-  disclaimer: { color: palette.warning, fontSize: 12, lineHeight: 18, marginBottom: 12 },
-  clusterBtn: { backgroundColor: palette.primary, borderRadius: 10, padding: 12, alignItems: 'center', marginBottom: 12 },
-  clusterBtnText: { color: '#041018', fontWeight: 'bold' },
-  progress: { color: palette.textSecondary, marginBottom: 8 },
+  scrollView: { flex: 1 },
+  content: { padding: 16, paddingBottom: 40 },
+  disclaimerContainer: { marginBottom: 12 },
+  disclaimer: { color: palette.warning, fontSize: 12, lineHeight: 18 },
+  actionRow: { marginBottom: 12 },
+  clusterBtn: {
+    backgroundColor: palette.primary,
+    borderRadius: 10,
+    padding: 14,
+    alignItems: 'center',
+  },
+  clusterBtnText: { color: '#041018', fontWeight: 'bold', fontSize: 14 },
+  progress: { color: palette.textSecondary, marginBottom: 8, fontSize: 13 },
   meta: { color: palette.textSecondary, fontSize: 12, marginBottom: 12 },
-  timelineNode: { flexDirection: 'row', marginBottom: 20 },
-  lineCol: { alignItems: 'center', marginRight: 14 },
-  dot: { width: 12, height: 12, borderRadius: 6, backgroundColor: palette.primary, marginTop: 4 },
-  line: { width: 2, flex: 1, backgroundColor: palette.border, marginTop: 4 },
-  nodeContent: { flex: 1, backgroundColor: palette.card, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: palette.border },
-  nodeHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-  category: { fontSize: 11, fontWeight: 'bold', color: palette.secondary },
-  date: { fontSize: 11, color: palette.textSecondary },
-  title: { fontSize: 15, fontWeight: 'bold', color: palette.text, marginBottom: 4 },
-  desc: { fontSize: 12, color: palette.textSecondary, marginBottom: 6 },
-  warn: { fontSize: 12, color: palette.warning, marginBottom: 6 },
-  actor: { fontSize: 11, color: palette.accent, fontWeight: '600' },
-  edit: { color: palette.primary, fontWeight: 'bold', marginTop: 6 },
+  errorBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderWidth: 1,
+    borderColor: palette.error,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
+  errorText: { color: palette.error, fontSize: 13, flex: 1 },
+  retryBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    backgroundColor: palette.error,
+    borderRadius: 6,
+  },
+  retryBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
+  timelineContainer: { gap: 0 },
 });

@@ -1,7 +1,9 @@
-import { AiAnalysisResult, EvidenceType, EventRecord } from '../types';
+import { AiAnalysisResult, EvidenceType, EventRecord, NarrativeRecord } from '../types';
 import { logger } from '../utils/logger';
 import { timelineClusterer, ClusterOptions } from '../../../ai/clustering/timelineClusterer';
 import { ClusterOperationResult } from '../../../ai/clustering/clusterTypes';
+import { narrativeGenerator, NarrativeGenerationResult } from '../../../ai/narrative/narrativeGenerator';
+import { databaseService } from './databaseService';
 
 class AiService {
   async analyzeEvidence(
@@ -33,6 +35,43 @@ class AiService {
     }
   ): Promise<EventRecord> {
     return timelineClusterer.annotateEvent(eventId, updates);
+  }
+
+  async generateIncidentNarrative(
+    caseId: string,
+    options?: {
+      onProgress?: (progress: { stage: string; completedChunks: number; totalChunks: number; message: string }) => void;
+      useExistingEvents?: boolean;
+    }
+  ): Promise<NarrativeGenerationResult> {
+    logger.info(`Generating incident narrative for case ${caseId} with local Gemma 2B`);
+
+    const events = await databaseService.getEventRecordsForCase(caseId);
+    if (!events.length && options?.useExistingEvents !== false) {
+      throw new Error('No clustered events found for this case. Run event clustering first.');
+    }
+
+    const result = await narrativeGenerator.generateIncidentNarrative(caseId, events, {
+      onProgress: options?.onProgress,
+    });
+
+    const eventsSnapshot = events.map(e => e.id);
+    await databaseService.saveNarrative(caseId, {
+      content: result.narrative,
+      eventsSnapshot,
+      disclaimer: result.disclaimer,
+      parseError: result.parseError,
+    });
+
+    return result;
+  }
+
+  async getLatestNarrative(caseId: string): Promise<NarrativeRecord | null> {
+    return databaseService.getLatestNarrativeForCase(caseId);
+  }
+
+  async getNarrativesForCase(caseId: string): Promise<NarrativeRecord[]> {
+    return databaseService.getNarrativesForCase(caseId);
   }
 }
 
