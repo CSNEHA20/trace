@@ -1,4 +1,5 @@
 import { logger } from './logger';
+import { cryptoService } from '../services/cryptoService';
 
 /** Lazy import for expo-file-system */
 let _expoFileSystem: typeof import('expo-file-system') | null = null;
@@ -243,7 +244,6 @@ export async function computeFileHash(fileUri: string): Promise<string | null> {
     const base64 = await fs.readAsStringAsync(fileUri, { encoding: fs.EncodingType.Base64 });
     
     // Use crypto service for hashing
-    const { cryptoService } = await import('./cryptoService');
     return await cryptoService.computeSHA256(base64);
   } catch (err) {
     logger.error(`Failed to compute hash for ${fileUri}`, err);

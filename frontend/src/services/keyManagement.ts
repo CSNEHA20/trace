@@ -58,8 +58,19 @@ async function generateRandomKey(lengthBytes: number): Promise<ArrayBuffer> {
   const crypto = getExpoCrypto();
   if (crypto && typeof crypto.getRandomBytesAsync === 'function') {
     try {
-      const base64 = await crypto.getRandomBytesAsync(lengthBytes);
-      return base64ToArrayBuffer(base64);
+      const randomBytes: unknown = await crypto.getRandomBytesAsync(lengthBytes);
+      // expo-crypto returns Uint8Array or ArrayBuffer
+      if (randomBytes instanceof Uint8Array) {
+        return randomBytes.buffer.slice(randomBytes.byteOffset, randomBytes.byteOffset + randomBytes.byteLength);
+      }
+      if (randomBytes instanceof ArrayBuffer) {
+        return randomBytes;
+      }
+      // If it's a base64 string (fallback)
+      if (typeof randomBytes === 'string') {
+        return base64ToArrayBuffer(randomBytes);
+      }
+      throw new Error('Unexpected random bytes format');
     } catch (err) {
       logger.warn('expo-crypto getRandomBytesAsync failed, using fallback', err);
     }
@@ -90,8 +101,7 @@ async function deriveKey(
   iterations: number,
   keyLength: number
 ): Promise<CryptoKey> {
-  const crypto = getExpoCrypto();
-  const subtle = crypto?.subtle ?? (globalThis as any).crypto?.subtle;
+  const subtle = (globalThis as any).crypto?.subtle;
   
   if (!subtle || typeof subtle.importKey !== 'function') {
     throw new Error('Web Crypto SubtleCrypto not available');
@@ -100,7 +110,7 @@ async function deriveKey(
   const baseKey = await subtle.importKey(
     'raw',
     password,
-    { name: 'PBKDF2' },
+    { name: 'PBKDF2' } as any,
     false,
     ['deriveBits', 'deriveKey']
   );
@@ -111,12 +121,12 @@ async function deriveKey(
       salt,
       iterations,
       hash: 'SHA-256',
-    },
+    } as any,
     baseKey,
     keyLength * 8
   );
 
-  return subtle.importKey('raw', derivedBits, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+  return subtle.importKey('raw', derivedBits, { name: 'AES-GCM' } as any, false, ['encrypt', 'decrypt']);
 }
 
 /**
@@ -127,15 +137,14 @@ async function aesGcmEncrypt(
   plaintext: ArrayBuffer,
   iv: Uint8Array
 ): Promise<{ ciphertext: ArrayBuffer; tag: ArrayBuffer }> {
-  const crypto = getExpoCrypto();
-  const subtle = crypto?.subtle ?? (globalThis as any).crypto?.subtle;
+  const subtle = (globalThis as any).crypto?.subtle;
   
   if (!subtle || typeof subtle.encrypt !== 'function') {
     throw new Error('Web Crypto SubtleCrypto not available');
   }
 
   const encrypted = await subtle.encrypt(
-    { name: 'AES-GCM', iv },
+    { name: 'AES-GCM', iv } as any,
     key,
     plaintext
   );
@@ -160,8 +169,7 @@ async function aesGcmDecrypt(
   iv: Uint8Array,
   tag: ArrayBuffer
 ): Promise<ArrayBuffer> {
-  const crypto = getExpoCrypto();
-  const subtle = crypto?.subtle ?? (globalThis as any).crypto?.subtle;
+  const subtle = (globalThis as any).crypto?.subtle;
   
   if (!subtle || typeof subtle.decrypt !== 'function') {
     throw new Error('Web Crypto SubtleCrypto not available');
@@ -173,7 +181,7 @@ async function aesGcmDecrypt(
   combined.set(new Uint8Array(tag), ciphertext.byteLength);
 
   const decrypted = await subtle.decrypt(
-    { name: 'AES-GCM', iv },
+    { name: 'AES-GCM', iv } as any,
     key,
     combined
   );
@@ -188,8 +196,7 @@ async function aesKeyWrap(
   wrappingKey: CryptoKey,
   keyToWrap: ArrayBuffer
 ): Promise<ArrayBuffer> {
-  const crypto = getExpoCrypto();
-  const subtle = crypto?.subtle ?? (globalThis as any).crypto?.subtle;
+  const subtle = (globalThis as any).crypto?.subtle;
   
   if (!subtle || typeof subtle.wrapKey !== 'function') {
     // Fallback: encrypt with AES-GCM using fixed IV
@@ -198,9 +205,9 @@ async function aesKeyWrap(
   }
 
   const wrapped = await subtle.wrapKey('raw', 
-    await subtle.importKey('raw', keyToWrap, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']),
+    await subtle.importKey('raw', keyToWrap, { name: 'AES-GCM' } as any, false, ['encrypt', 'decrypt']),
     wrappingKey,
-    { name: 'AES-KW' }
+    { name: 'AES-KW' } as any
   );
   
   return wrapped;
@@ -213,8 +220,7 @@ async function aesKeyUnwrap(
   wrappingKey: CryptoKey,
   wrappedKey: ArrayBuffer
 ): Promise<ArrayBuffer> {
-  const crypto = getExpoCrypto();
-  const subtle = crypto?.subtle ?? (globalThis as any).crypto?.subtle;
+  const subtle = (globalThis as any).crypto?.subtle;
   
   if (!subtle || typeof subtle.unwrapKey !== 'function') {
     // Fallback: decrypt with AES-GCM using fixed IV
@@ -226,8 +232,8 @@ async function aesKeyUnwrap(
     'raw',
     wrappedKey,
     wrappingKey,
-    { name: 'AES-KW' },
-    { name: 'AES-GCM', length: 256 },
+    { name: 'AES-KW' } as any,
+    { name: 'AES-GCM', length: 256 } as any,
     false,
     ['encrypt', 'decrypt']
   );
@@ -260,7 +266,7 @@ export async function getOrCreateMasterKey(): Promise<CryptoKey> {
       const keyData = base64ToArrayBuffer(storedKeyB64);
       const subtle = (globalThis as any).crypto?.subtle;
       if (subtle && typeof subtle.importKey === 'function') {
-        return await subtle.importKey('raw', keyData, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey']);
+        return await subtle.importKey('raw', keyData, { name: 'AES-GCM' } as any, false, ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey']);
       }
     }
   } catch (err) {
@@ -272,7 +278,7 @@ export async function getOrCreateMasterKey(): Promise<CryptoKey> {
   
   try {
     await store.setItemAsync(MASTER_KEY_ALIAS, arrayBufferToBase64(masterKeyBytes), {
-      keychainAccessible: 'whenUnlockedThisDeviceOnly', // iOS: only when device unlocked, no backup
+      keychainAccessible: 'whenUnlockedThisDeviceOnly' as any, // iOS: only when device unlocked, no backup
       keychainService: 'TRACE_SECURE_EXPORT', // Android: separate keystore entry
     });
     logger.info('New master key generated and stored in secure store');
@@ -286,7 +292,7 @@ export async function getOrCreateMasterKey(): Promise<CryptoKey> {
     throw new Error('Web Crypto SubtleCrypto not available');
   }
 
-  return await subtle.importKey('raw', masterKeyBytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey']);
+  return await subtle.importKey('raw', masterKeyBytes, { name: 'AES-GCM' } as any, false, ['encrypt', 'decrypt', 'wrapKey', 'unwrapKey']);
 }
 
 /**
@@ -302,7 +308,7 @@ export async function createWrappedDataEncryptionKey(
     throw new Error('Web Crypto SubtleCrypto not available');
   }
 
-  const dek = await subtle.importKey('raw', dekBytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+  const dek = await subtle.importKey('raw', dekBytes, { name: 'AES-GCM' } as any, false, ['encrypt', 'decrypt']);
   const wrappedDek = await aesKeyWrap(masterKey, dekBytes);
   
   return { dek, wrappedDek };
@@ -322,7 +328,7 @@ export async function unwrapDataEncryptionKey(
     throw new Error('Web Crypto SubtleCrypto not available');
   }
 
-  return await subtle.importKey('raw', dekBytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+  return await subtle.importKey('raw', dekBytes, { name: 'AES-GCM' } as any, false, ['encrypt', 'decrypt']);
 }
 
 /**
@@ -336,8 +342,14 @@ export async function encryptPackageData(
   const crypto = getExpoCrypto();
   if (crypto && typeof crypto.getRandomBytesAsync === 'function') {
     try {
-      const randomBytes = await crypto.getRandomBytesAsync(12);
-      iv.set(new Uint8Array(base64ToArrayBuffer(randomBytes)));
+      const randomBytes: unknown = await crypto.getRandomBytesAsync(12);
+      if (randomBytes instanceof Uint8Array) {
+        iv.set(randomBytes);
+      } else if (randomBytes instanceof ArrayBuffer) {
+        iv.set(new Uint8Array(randomBytes));
+      } else if (typeof randomBytes === 'string') {
+        iv.set(new Uint8Array(base64ToArrayBuffer(randomBytes)));
+      }
     } catch {
       // Use zero IV as fallback (not ideal but functional)
     }
