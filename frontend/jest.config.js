@@ -3,7 +3,7 @@ module.exports = {
   transformIgnorePatterns: [
     'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg)',
   ],
-  setupFilesAfterEnv: [],
+  setupFilesAfterEnv: ['<rootDir>/__tests__/setup.ts'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
   // Allow Jest to resolve and transform files outside the frontend root
   roots: ['<rootDir>', '<rootDir>/../database', '<rootDir>/../ai'],
@@ -18,4 +18,7 @@ module.exports = {
     '/node_modules/',
     '/__tests__/helpers/',
   ],
+  moduleNameMapper: {
+    '^react-native$': '<rootDir>/__tests__/helpers/reactNativeMock.js',
+  },
 };

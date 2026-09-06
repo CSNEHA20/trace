@@ -6,33 +6,63 @@ import {
   ForensicReportManifest,
   ReportExportStatus,
   ReportOptions,
+  IncidentReportOptions,
+  IncidentReportMetadata,
+  IncidentReportGenerationResult,
+  DEFAULT_INCIDENT_REPORT_OPTIONS,
 } from '../types';
 import { exportService, DEFAULT_REPORT_OPTIONS } from '../services/exportService';
+import { incidentReportGenerator } from '../report';
 import { logger } from '../utils/logger';
 
 interface ReportState {
+  // Forensic Report State
   options: ReportOptions;
   status: ReportExportStatus;
   lastManifest: ForensicReportManifest | null;
   lastExportResult: ExportPackageResult | null;
   generatedReports: ForensicReportManifest[];
+  
+  // Incident Report State
+  incidentOptions: IncidentReportOptions;
+  incidentStatus: ReportExportStatus;
+  lastIncidentReport: IncidentReportMetadata | null;
+  lastIncidentResult: IncidentReportGenerationResult | null;
+  generatedIncidentReports: IncidentReportMetadata[];
+  
   error: string | null;
 
-  // Actions
+  // Actions - Forensic Report
   updateOptions: (partial: Partial<ReportOptions>) => void;
   generateReport: (c: Case, evidenceList: EvidenceItem[]) => Promise<ExportPackageResult | null>;
   shareCurrentReport: () => Promise<boolean>;
   resetReportState: () => void;
+
+  // Actions - Incident Report
+  updateIncidentOptions: (partial: Partial<IncidentReportOptions>) => void;
+  generateIncidentReport: (caseId: string) => Promise<IncidentReportGenerationResult | null>;
+  shareIncidentReport: () => Promise<boolean>;
+  resetIncidentReportState: () => void;
 }
 
 export const useReportStore = create<ReportState>((set, get) => ({
+  // Forensic Report State
   options: { ...DEFAULT_REPORT_OPTIONS },
   status: 'IDLE',
   lastManifest: null,
   lastExportResult: null,
   generatedReports: [],
+  
+  // Incident Report State
+  incidentOptions: { ...DEFAULT_INCIDENT_REPORT_OPTIONS },
+  incidentStatus: 'IDLE',
+  lastIncidentReport: null,
+  lastIncidentResult: null,
+  generatedIncidentReports: [],
+  
   error: null,
 
+  // Actions - Forensic Report
   updateOptions: (partial) => {
     set((state) => ({
       options: { ...state.options, ...partial },
@@ -110,6 +140,63 @@ export const useReportStore = create<ReportState>((set, get) => ({
       status: 'IDLE',
       lastManifest: null,
       lastExportResult: null,
+      error: null,
+    });
+  },
+
+  // Actions - Incident Report
+  updateIncidentOptions: (partial) => {
+    set((state) => ({
+      incidentOptions: { ...state.incidentOptions, ...partial },
+    }));
+    incidentReportGenerator.updateOptions(partial);
+  },
+
+  generateIncidentReport: async (caseId) => {
+    try {
+      set({ incidentStatus: 'GENERATING_HTML', error: null });
+
+      const res = await incidentReportGenerator.generateReport(caseId);
+
+      set({ incidentStatus: 'SIGNING' });
+
+      if (res) {
+        const manifest: IncidentReportMetadata = {
+          ...res.metadata,
+          manifestHash: res.manifestHash,
+        };
+
+        set((state) => ({
+          incidentStatus: 'COMPLETE',
+          lastIncidentReport: manifest,
+          lastIncidentResult: res,
+          generatedIncidentReports: [manifest, ...state.generatedIncidentReports],
+        }));
+      }
+
+      return res;
+    } catch (err) {
+      const msg = (err as Error)?.message || 'Failed to generate incident report';
+      logger.error('Incident report generation error', err);
+      set({ incidentStatus: 'FAILED', error: msg });
+      return null;
+    }
+  },
+
+  shareIncidentReport: async () => {
+    const lastResult = get().lastIncidentResult;
+    if (!lastResult || !lastResult.pdfUri) {
+      set({ error: 'No generated incident report available to share' });
+      return false;
+    }
+    return incidentReportGenerator.shareReport(lastResult.pdfUri);
+  },
+
+  resetIncidentReportState: () => {
+    set({
+      incidentStatus: 'IDLE',
+      lastIncidentReport: null,
+      lastIncidentResult: null,
       error: null,
     });
   },

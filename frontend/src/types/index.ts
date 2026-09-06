@@ -401,3 +401,9 @@ export interface TranscriptionResult {
   errorCode?: TranscriptionErrorCode;
 }
 
+// --------------------------------------------------
+// STEP 15 — INCIDENT REPORT GENERATION TYPES
+// --------------------------------------------------
+
+export * from './report';
+
