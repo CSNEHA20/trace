@@ -15,11 +15,11 @@ import { useCaseStore } from '../store/caseStore';
 import { useEvidenceStore } from '../store/evidenceStore';
 import { useReportStore } from '../store/reportStore';
 import { ForensicReportPreviewModal } from '../components/ForensicReportPreviewModal';
-import { formatDate } from '../utils/cryptoUtils';
+import { formatDate } from '../utils/crypto';
 
 export const ForensicReportScreen: React.FC = () => {
-  const { cases, activeCaseId } = useCaseStore();
-  const { evidenceItems } = useEvidenceStore();
+  const { cases, activeCase } = useCaseStore();
+  const { evidenceList } = useEvidenceStore();
   const {
     options,
     status,
@@ -33,7 +33,7 @@ export const ForensicReportScreen: React.FC = () => {
   const [previewVisible, setPreviewVisible] = useState(false);
 
   // Active case selection
-  const activeCase = cases.find((c) => c.id === activeCaseId) || cases[0] || {
+  const selectedCase = activeCase || cases[0] || {
     id: 'CASE-001',
     caseNumber: 'TR-2026-001',
     title: 'Default Forensic Case',
@@ -44,7 +44,7 @@ export const ForensicReportScreen: React.FC = () => {
     evidenceIds: [],
   };
 
-  const caseEvidence = evidenceItems.filter((e) => !e.caseId || e.caseId === activeCase.id);
+  const caseEvidence = evidenceList.filter((e) => !e.caseId || e.caseId === selectedCase.id);
   const tamperedCount = caseEvidence.filter((e) => e.isTampered).length;
   const isGenerating = status === 'GENERATING_HTML' || status === 'SIGNING' || status === 'CREATING_PDF';
 
@@ -57,7 +57,7 @@ export const ForensicReportScreen: React.FC = () => {
       return;
     }
 
-    const result = await generateReport(activeCase, caseEvidence);
+    const result = await generateReport(selectedCase, caseEvidence);
     if (result) {
       setPreviewVisible(true);
     }
@@ -83,11 +83,11 @@ export const ForensicReportScreen: React.FC = () => {
           <Text style={styles.cardTitle}>Target Case Summary</Text>
           <View style={styles.caseRow}>
             <View>
-              <Text style={styles.caseNumber}>{activeCase.caseNumber}</Text>
-              <Text style={styles.caseTitleStr}>{activeCase.title}</Text>
+              <Text style={styles.caseNumber}>{selectedCase.caseNumber}</Text>
+              <Text style={styles.caseTitleStr}>{selectedCase.title}</Text>
             </View>
             <View style={styles.badgeContainer}>
-              <Text style={styles.badgeText}>{activeCase.status}</Text>
+              <Text style={styles.badgeText}>{selectedCase.status}</Text>
             </View>
           </View>
 
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: palette.textPrimary,
+    color: palette.text,
   },
   headerSubtitle: {
     fontSize: 12,
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
   caseNumber: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: palette.textPrimary,
+    color: palette.text,
   },
   caseTitleStr: {
     fontSize: 12,
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
   statVal: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: palette.textPrimary,
+    color: palette.text,
   },
   statLabel: {
     fontSize: 10,
@@ -333,7 +333,7 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: palette.textPrimary,
+    color: palette.text,
     marginBottom: 6,
   },
   input: {
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 10,
     fontSize: 13,
-    color: palette.textPrimary,
+    color: palette.text,
   },
   textArea: {
     height: 70,
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
   switchLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: palette.textPrimary,
+    color: palette.text,
   },
   switchSublabel: {
     fontSize: 11,
@@ -402,7 +402,7 @@ const styles = StyleSheet.create({
   historyTitle: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: palette.textPrimary,
+    color: palette.text,
   },
   historyMeta: {
     fontSize: 11,

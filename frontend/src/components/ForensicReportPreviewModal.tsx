@@ -7,10 +7,11 @@ import {
   TouchableOpacity,
   ScrollView,
   Share,
+  Platform,
 } from 'react-native';
 import { palette } from '../theme';
 import { ForensicReportManifest } from '../types';
-import { formatHashShort, formatDate } from '../utils/cryptoUtils';
+import { formatHashShort, formatDate } from '../utils/crypto';
 
 interface ForensicReportPreviewModalProps {
   visible: boolean;
@@ -152,7 +153,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: palette.textPrimary,
+    color: palette.text,
   },
   subtitle: {
     fontSize: 12,
@@ -226,11 +227,11 @@ const styles = StyleSheet.create({
   val: {
     fontSize: 12,
     fontWeight: '600',
-    color: palette.textPrimary,
+    color: palette.text,
   },
   notesText: {
     fontSize: 12,
-    color: palette.textPrimary,
+    color: palette.text,
     fontStyle: 'italic',
   },
   evidenceRow: {
@@ -245,7 +246,7 @@ const styles = StyleSheet.create({
   evidenceName: {
     fontSize: 12,
     fontWeight: '600',
-    color: palette.textPrimary,
+    color: palette.text,
   },
   evidenceType: {
     fontSize: 10,
@@ -294,7 +295,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   secondaryButtonText: {
-    color: palette.textPrimary,
+    color: palette.text,
     fontWeight: '600',
   },
   primaryButton: {

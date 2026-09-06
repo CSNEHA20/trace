@@ -8,6 +8,7 @@ import {
   Case,
   EvidenceItem,
   TimelineEvent,
+  ActorRole,
 } from '../types';
 import { databaseEngine } from '../../../database/services/databaseEngine';
 import { generateUUID } from '../utils/crypto';
@@ -223,8 +224,15 @@ class DatabaseService {
 
   // ---- ACTORS ----
 
-  async insertActor(caseId: string, name: string, role: string, contactInfo?: string): Promise<ActorRecord> {
-    return databaseEngine.insertActor({ case_id: caseId, name, role, contact_info: contactInfo });
+  async insertActor(caseId: string, name: string, role: ActorRole, contactInfo?: string): Promise<ActorRecord> {
+    return databaseEngine.insertActor({ 
+      case_id: caseId, 
+      name, 
+      role, 
+      contact_info: contactInfo,
+      identifiers: [],
+      confidence: 0,
+    });
   }
 
   async getActorsForCase(caseId: string): Promise<ActorRecord[]> {
@@ -246,6 +254,8 @@ class DatabaseService {
       events_snapshot: JSON.stringify(narrative.eventsSnapshot),
       disclaimer: narrative.disclaimer,
       parse_error: narrative.parseError,
+      user_reviewed: false,
+      user_edited: false,
     });
   }
 
