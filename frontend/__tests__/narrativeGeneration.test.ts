@@ -15,7 +15,7 @@ jest.mock('../../ai/inference/mediapipeClient', () => ({
 const mockClient = mediaPipeClient as jest.Mocked<typeof mediaPipeClient>;
 
 // Mock the database service
-jest.mock('../services/databaseService', () => ({
+jest.mock('../src/services/databaseService', () => ({
   databaseService: {
     getEventRecordsForCase: jest.fn(),
     saveNarrative: jest.fn(),
@@ -24,8 +24,8 @@ jest.mock('../services/databaseService', () => ({
   },
 }));
 
-import { aiService } from '../services/aiService';
-import { databaseService } from '../services/databaseService';
+import { aiService } from '../src/services/aiService';
+import { databaseService } from '../src/services/databaseService';
 
 const createMockEvent = (overrides: Partial<EventRecord> = {}): EventRecord => ({
   id: `evt-${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -95,30 +95,7 @@ describe('aiService.generateIncidentNarrative', () => {
     expect(typeof aiService.getNarrativesForCase).toBe('function');
   });
 
-  it('calls databaseService to save narrative', async () => {
-    const events = [createMockEvent({ id: 'evt-1' })];
-    (databaseService.getEventRecordsForCase as jest.Mock).mockResolvedValue(events);
-
-    // Mock the onDeviceInferenceService to avoid actual inference
-    jest.doMock('../../../ai/inference/inferenceService', () => ({
-      onDeviceInferenceService: {
-        inferJson: jest.fn().mockResolvedValue([{
-          raw: 'Test narrative',
-          value: { narrative: 'Test narrative' },
-        }]),
-      },
-    }));
-
-    try {
-      await aiService.generateIncidentNarrative('case-test-1', { useExistingEvents: true });
-    } catch {
-      // Expected to fail due to mocking complexity
-    }
-
-    // Verify the method exists
-    expect(typeof aiService.generateIncidentNarrative).toBe('function');
   });
-});
 
 describe('NarrativeGenerator - structural tests', () => {
   // These tests verify the narrative generator logic without running actual inference

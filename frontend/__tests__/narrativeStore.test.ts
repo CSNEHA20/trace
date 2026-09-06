@@ -1,8 +1,8 @@
-import { useNarrativeStore } from '../../src/store/narrativeStore';
-import { databaseService } from '../../src/services/databaseService';
-import { NarrativeRecord } from '../../src/types';
+import { useNarrativeStore } from '../src/store/narrativeStore';
+import { databaseService } from '../src/services/databaseService';
+import { NarrativeRecord } from '../src/types';
 
-jest.mock('../../src/services/databaseService');
+jest.mock('../src/services/databaseService');
 
 describe('useNarrativeStore', () => {
   beforeEach(() => {
