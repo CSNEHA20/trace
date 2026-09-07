@@ -359,45 +359,63 @@ export interface ExportPackageResult {
 }
 
 // --------------------------------------------------
-// STEP 7 — AUDIO TRANSCRIPTION TYPES
+// STEP 5 / 7 — AUDIO TRANSCRIPTION TYPES
 // --------------------------------------------------
 
 export type TranscriptionStatus =
   | 'IDLE'
+  | 'VALIDATING'
   | 'LOADING_MODEL'
   | 'PROCESSING'
   | 'COMPLETED'
   | 'FAILED'
-  | 'CANCELLED';
+  | 'CANCELLED'
+  | 'MODEL_UNAVAILABLE';
 
 export type TranscriptionErrorCode =
   | 'FILE_NOT_FOUND'
+  | 'FILE_UNREADABLE'
+  | 'NOT_AN_AUDIO'
   | 'UNSUPPORTED_CODEC'
+  | 'MODEL_UNAVAILABLE'
+  | 'MODEL_ERROR'
+  | 'DECODE_FAILED'
   | 'SILENCE_DETECTED'
   | 'POOR_QUALITY'
   | 'LONG_RECORDING'
-  | 'MODEL_ERROR'
   | 'TRANSCRIPTION_FAILED'
   | 'CANCELLED'
+  | 'ENGINE_UNAVAILABLE'
   | 'UNKNOWN';
 
-export type WhisperModelType = 'tiny' | 'base';
+export type WhisperModelType = 'tiny' | 'base' | 'multilingual' | 'tiny-multi';
+
+export interface TranscriptionSegment {
+  t0: number; // Start timestamp in ms or sec
+  t1: number; // End timestamp in ms or sec
+  text: string;
+  confidence?: number;
+}
 
 export interface TranscriptionOptions {
   model?: WhisperModelType;
   language?: string;
   onProgress?: (progress: number, statusText: string) => void;
+  onStatusUpdate?: (status: TranscriptionStatus) => void;
   cancellationSignal?: { isCancelled: boolean };
 }
 
 export interface TranscriptionResult {
   status: TranscriptionStatus;
   text?: string;
+  segments?: TranscriptionSegment[];
   language?: string;
   durationSeconds?: number;
   confidence?: number;
   processingHash?: string;
   chainNodeId?: string;
+  processingTimeMs?: number;
+  engine?: string;
   error?: string;
   errorCode?: TranscriptionErrorCode;
 }

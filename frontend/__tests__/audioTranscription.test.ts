@@ -2,180 +2,292 @@ import { whisperService } from '../src/services/whisperService';
 import { whisperBridge } from '../src/services/whisperBridge';
 import { databaseService } from '../src/services/databaseService';
 import { databaseEngine } from '../../database/services/databaseEngine';
-import { createAudioTestFixtures, AudioFixtureSet } from './helpers/audioFixtures';
-import { Case, EvidenceItem } from '../src/types';
+import { sandboxService } from '../src/services/sandboxService';
+import { NativeModules, Platform } from 'react-native';
+import fs from 'fs';
+import path from 'path';
 
-describe('TRACE Step 7 — Local Whisper.cpp Audio Transcription Engine', () => {
-  let testCase: Case;
-  let testAudioEvidence: EvidenceItem;
-  let fixtures: AudioFixtureSet;
+describe('TRACE Step 5: Real On-Device Whisper.cpp Audio Transcription Suite', () => {
+  let caseId: string;
 
   beforeAll(async () => {
-    await databaseService.initialize();
-    fixtures = await createAudioTestFixtures();
+    await databaseEngine.initialize('test_whisper.db');
+    const createdCase = await databaseEngine.createCase({
+      case_number: `TR-TEST-AUDIO-${Date.now()}`,
+      title: 'Audio Forensic Test Case',
+      investigator_name: 'Detective Jane Doe',
+      status: 'ACTIVE',
+    });
+    caseId = createdCase.id;
   });
 
-  beforeEach(async () => {
-    testCase = await databaseService.createCase(
-      'Audio Forensic Case',
-      'Testing local Whisper transcription pipeline',
-      'Investigator Jane Doe'
-    );
+  afterAll(async () => {
+    await databaseEngine.close();
+  });
 
-    testAudioEvidence = await databaseService.addEvidence({
-      caseId: testCase.id,
-      title: 'Audio Interview Recording',
-      type: 'AUDIO',
-      fileUri: fixtures.cleanSpeechUri,
-      fileName: 'sample_audio_1.wav',
-      fileSize: 1048576,
-      mimeType: 'audio/wav',
-      sha256Hash: 'a1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef0',
-      signature: 'SIG_TRACE_HARDWARE_a1b2c3d4e5f67890',
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('1. File & Format Validation', () => {
+    it('fails with FILE_NOT_FOUND when audio file does not exist in sandbox', async () => {
+      const result = await whisperService.transcribeAudio(
+        'missing-audio-1',
+        'file:///mock/sandbox/missing.wav'
+      );
+      expect(result.status).toBe('FAILED');
+      expect(result.errorCode).toBe('FILE_NOT_FOUND');
+      expect(result.error).toContain('does not exist');
+    });
+
+    it('fails with FILE_UNREADABLE when audio file is 0 bytes', async () => {
+      jest.spyOn(sandboxService, 'readFileInfo').mockResolvedValueOnce({
+        exists: true,
+        size: 0,
+        uri: 'file:///mock/sandbox/empty.mp3',
+      });
+
+      const result = await whisperService.transcribeAudio(
+        'empty-audio-1',
+        'file:///mock/sandbox/empty.mp3'
+      );
+      expect(result.status).toBe('FAILED');
+      expect(result.errorCode).toBe('FILE_UNREADABLE');
+      expect(result.error).toContain('0 bytes');
+    });
+
+    it('fails with UNSUPPORTED_CODEC for unsupported extensions', async () => {
+      const result = await whisperService.transcribeAudio(
+        'bad-format-1',
+        'file:///mock/sandbox/recording.wma'
+      );
+      expect(result.status).toBe('FAILED');
+      expect(result.errorCode).toBe('UNSUPPORTED_CODEC');
+      expect(result.error).toContain('Unsupported audio format');
     });
   });
 
-  test('1. Loads audio strictly from private sandbox and performs local transcription', async () => {
-    const res = await whisperService.transcribeAudio(
-      testAudioEvidence.id,
-      testAudioEvidence.fileUri,
-      { model: 'tiny', language: 'en' }
-    );
+  describe('2. Model Availability & Bridge Lifecycle', () => {
+    it('returns MODEL_UNAVAILABLE when Whisper model binary is missing', async () => {
+      jest.spyOn(sandboxService, 'readFileInfo').mockResolvedValueOnce({
+        exists: true,
+        size: 1048576,
+        uri: 'file:///mock/sandbox/speech.wav',
+      });
 
-    expect(res.status).toBe('COMPLETED');
-    expect(res.text).toBeDefined();
-    expect(res.text).toContain('Officer statement recorded at scene');
-    expect(res.confidence).toBeGreaterThan(0.9);
-    expect(res.processingHash).toBeDefined();
-    expect(res.processingHash?.length).toBe(64);
+      jest.spyOn(whisperBridge, 'loadModelAsync').mockRejectedValueOnce({
+        code: 'MODEL_UNAVAILABLE',
+        message: 'Whisper GGML model [ggml-tiny.en.bin] is not installed.',
+      });
+
+      const result = await whisperService.transcribeAudio(
+        'audio-no-model',
+        'file:///mock/sandbox/speech.wav',
+        { model: 'tiny' }
+      );
+
+      expect(result.status).toBe('MODEL_UNAVAILABLE');
+      expect(result.errorCode).toBe('MODEL_UNAVAILABLE');
+      expect(result.error).toContain('not installed');
+    });
+
+    it('reports truthful native bridge capabilities', async () => {
+      Platform.OS = 'android';
+      (NativeModules as any).TraceWhisper = {
+        getCapabilities: jest.fn().mockResolvedValue({
+          available: true,
+          engine: 'Whisper.cpp GGML On-Device',
+          modelName: 'ggml-tiny.en.bin',
+          modelSize: 39000000,
+          offline: true,
+          lifecycle: 'READY',
+        }),
+      };
+
+      const caps = await whisperBridge.isAvailable();
+      expect(caps.available).toBe(true);
+      expect(caps.engine).toBe('Whisper.cpp GGML On-Device');
+      expect(caps.model).toBe('ggml-tiny.en.bin');
+      expect(caps.offline).toBe(true);
+    });
+
+    it('reports truthful error when invoked on non-Android platform', async () => {
+      Platform.OS = 'ios';
+      const caps = await whisperBridge.isAvailable();
+      expect(caps.available).toBe(false);
+      expect(caps.error).toContain('only available on Android');
+    });
   });
 
-  test('2. Updates SQLite evidence record and persists transcription text', async () => {
-    await whisperService.transcribeAudio(
-      testAudioEvidence.id,
-      testAudioEvidence.fileUri
-    );
+  describe('3. End-to-End Transcription & SQLite Persistence', () => {
+    it('performs transcription, updates SQLite evidence, and appends hash chain', async () => {
+      const evidence = await databaseEngine.insertEvidence({
+        case_id: caseId,
+        file_path: 'file:///mock/sandbox/interview.wav',
+        media_type: 'AUDIO',
+        import_ts: Date.now(),
+        sha256_import: '1111111111111111111111111111111111111111111111111111111111111111',
+      });
 
-    const updated = await databaseService.getEvidenceById(testAudioEvidence.id);
-    expect(updated).not.toBeNull();
-    expect(updated?.aiAnalysis?.transcription).toContain('Officer statement recorded at scene');
+      jest.spyOn(sandboxService, 'readFileInfo').mockResolvedValueOnce({
+        exists: true,
+        size: 5242880,
+        uri: evidence.file_path,
+      });
+
+      jest.spyOn(whisperBridge, 'loadModelAsync').mockResolvedValueOnce(true);
+
+      const realSpeechTranscript = 'The suspect entered the premises through the rear gate at approximately nine thirty PM.';
+      jest.spyOn(whisperBridge, 'transcribeAudioFileAsync').mockResolvedValueOnce({
+        text: realSpeechTranscript,
+        language: 'en',
+        durationSeconds: 14.5,
+        processingTimeMs: 820.0,
+        engine: 'Whisper.cpp GGML (On-Device)',
+        segments: [
+          {
+            t0: 0,
+            t1: 7200,
+            text: 'The suspect entered the premises through the rear gate',
+          },
+          {
+            t0: 7200,
+            t1: 14500,
+            text: 'at approximately nine thirty PM.',
+          },
+        ],
+      });
+
+      const statusHistory: string[] = [];
+      const result = await whisperService.transcribeAudio(
+        evidence.id,
+        evidence.file_path,
+        {
+          onStatusUpdate: (s) => statusHistory.push(s),
+        }
+      );
+
+      // Verify status machine
+      expect(statusHistory).toEqual(['VALIDATING', 'LOADING_MODEL', 'PROCESSING', 'PROCESSING', 'COMPLETED']);
+      expect(result.status).toBe('COMPLETED');
+      expect(result.text).toBe(realSpeechTranscript);
+      expect(result.durationSeconds).toBe(14.5);
+      expect(result.segments).toHaveLength(2);
+      expect(result.processingHash).toBeDefined();
+      expect(result.chainNodeId).toBeDefined();
+
+      // Verify SQLite persistence
+      const updatedEvidence = await databaseEngine.getEvidenceById(evidence.id);
+      expect(updatedEvidence).not.toBeNull();
+      expect(updatedEvidence?.transcription).toBe(realSpeechTranscript);
+
+      // Verify immutable hash chain node
+      const chainNodes = await databaseEngine.getHashChainForEvidence(evidence.id);
+      const transcribeNode = chainNodes.find((n) => n.operation.startsWith('TRANSCRIBE'));
+      expect(transcribeNode).toBeDefined();
+      expect(transcribeNode?.payload_hash).toBeDefined();
+    });
+
+    it('handles cancellation gracefully without corrupting database', async () => {
+      const evidence = await databaseEngine.insertEvidence({
+        case_id: caseId,
+        file_path: 'file:///mock/sandbox/cancelled_recording.mp3',
+        media_type: 'AUDIO',
+        import_ts: Date.now(),
+        sha256_import: '2222222222222222222222222222222222222222222222222222222222222222',
+      });
+
+      jest.spyOn(sandboxService, 'readFileInfo').mockResolvedValueOnce({
+        exists: true,
+        size: 1048576,
+        uri: evidence.file_path,
+      });
+
+      jest.spyOn(whisperBridge, 'loadModelAsync').mockResolvedValueOnce(true);
+      const freeModelSpy = jest.spyOn(whisperBridge, 'freeModelAsync').mockResolvedValueOnce();
+
+      const cancelSignal = { isCancelled: true };
+      const result = await whisperService.transcribeAudio(
+        evidence.id,
+        evidence.file_path,
+        { cancellationSignal: cancelSignal }
+      );
+
+      expect(result.status).toBe('CANCELLED');
+      expect(result.errorCode).toBe('CANCELLED');
+    });
+
+    it('preserves original evidence and hash when transcription fails', async () => {
+      const originalHash = '3333333333333333333333333333333333333333333333333333333333333333';
+      const evidence = await databaseEngine.insertEvidence({
+        case_id: caseId,
+        file_path: 'file:///mock/sandbox/corrupt_audio.wav',
+        media_type: 'AUDIO',
+        import_ts: Date.now(),
+        sha256_import: originalHash,
+      });
+
+      jest.spyOn(sandboxService, 'readFileInfo').mockResolvedValueOnce({
+        exists: true,
+        size: 2048,
+        uri: evidence.file_path,
+      });
+
+      jest.spyOn(whisperBridge, 'loadModelAsync').mockResolvedValueOnce(true);
+      jest.spyOn(whisperBridge, 'transcribeAudioFileAsync').mockRejectedValueOnce({
+        code: 'DECODE_FAILED',
+        message: 'MediaCodec could not decode corrupted audio stream',
+      });
+
+      const result = await whisperService.transcribeAudio(
+        evidence.id,
+        evidence.file_path
+      );
+
+      expect(result.status).toBe('FAILED');
+      expect(result.errorCode).toBe('DECODE_FAILED');
+
+      // Verify original evidence is still intact
+      const evidenceAfterFail = await databaseEngine.getEvidenceById(evidence.id);
+      expect(evidenceAfterFail).not.toBeNull();
+      expect(evidenceAfterFail?.sha256_import).toBe(originalHash);
+      expect(evidenceAfterFail?.file_path).toBe('file:///mock/sandbox/corrupt_audio.wav');
+    });
   });
 
-  test('3. Generates processing hash and appends EXTRACT node to cryptographic hash chain', async () => {
-    const res = await whisperService.transcribeAudio(
-      testAudioEvidence.id,
-      testAudioEvidence.fileUri
-    );
+  describe('4. Zero-Mock Production Code Verification', () => {
+    it('verifies that whisperService and whisperBridge contain zero mock transcripts or fake timers', () => {
+      const serviceSource = fs.readFileSync(
+        path.resolve(__dirname, '../src/services/whisperService.ts'),
+        'utf8'
+      );
+      const bridgeSource = fs.readFileSync(
+        path.resolve(__dirname, '../src/services/whisperBridge.ts'),
+        'utf8'
+      );
+      const nativeModuleSource = fs.readFileSync(
+        path.resolve(
+          __dirname,
+          '../modules/trace-whisper/android/src/main/java/com/trace/whisper/TraceWhisperModule.kt'
+        ),
+        'utf8'
+      );
 
-    expect(res.chainNodeId).toBeDefined();
+      // Verify no hardcoded transcripts in production code
+      expect(serviceSource).not.toContain('Officer statement recorded at scene');
+      expect(bridgeSource).not.toContain('Officer statement recorded at scene');
+      expect(serviceSource).not.toContain('sample_audio_1');
+      expect(serviceSource).not.toContain('sample_audio_2');
 
-    const chain = await databaseService.getHashChainForEvidence(testAudioEvidence.id);
-    expect(chain.length).toBeGreaterThanOrEqual(2); // IMPORT node + EXTRACT node
+      // Verify no fake timers
+      expect(serviceSource).not.toContain('setTimeout');
+      expect(bridgeSource).not.toContain('setTimeout');
 
-    const extractNode = chain.find((n) => n.operation === 'EXTRACT');
-    expect(extractNode).toBeDefined();
-    expect(extractNode?.payload_hash).toBeDefined();
-    expect(extractNode?.payload_hash?.length).toBe(64);
-    expect(extractNode?.chain_hash).toBeDefined();
-    expect(extractNode?.chain_hash?.length).toBe(64);
-  });
+      // Verify no fake confidence constants
+      expect(bridgeSource).not.toContain('0.985');
 
-  test('4. Emits status and progress callbacks from 0% to 100%', async () => {
-    const progressLogs: { pct: number; msg: string }[] = [];
-
-    await whisperService.transcribeAudio(
-      testAudioEvidence.id,
-      testAudioEvidence.fileUri,
-      {
-        onProgress: (pct, msg) => progressLogs.push({ pct, msg }),
-      }
-    );
-
-    expect(progressLogs.length).toBeGreaterThan(0);
-    expect(progressLogs[0].pct).toBe(5);
-    expect(progressLogs[progressLogs.length - 1].pct).toBe(100);
-  });
-
-  test('5. Edge Case: Handles silence gracefully with SILENCE_DETECTED error', async () => {
-    const res = await whisperService.transcribeAudio(
-      testAudioEvidence.id,
-      fixtures.silenceUri
-    );
-
-    expect(res.status).toBe('FAILED');
-    expect(res.errorCode).toBe('SILENCE_DETECTED');
-    expect(res.error).toContain('amplitude fell below silence threshold');
-  });
-
-  test('6. Edge Case: Handles poor-quality audio with POOR_QUALITY error', async () => {
-    const res = await whisperService.transcribeAudio(
-      testAudioEvidence.id,
-      fixtures.poorQualityUri
-    );
-
-    expect(res.status).toBe('FAILED');
-    expect(res.errorCode).toBe('POOR_QUALITY');
-    expect(res.error).toContain('Audio quality is too low');
-  });
-
-  test('7. Edge Case: Handles unsupported codec with UNSUPPORTED_CODEC error', async () => {
-    const res = await whisperService.transcribeAudio(
-      testAudioEvidence.id,
-      fixtures.unsupportedCodecUri
-    );
-
-    expect(res.status).toBe('FAILED');
-    expect(res.errorCode).toBe('UNSUPPORTED_CODEC');
-    expect(res.error).toContain('Unsupported audio codec extension');
-  });
-
-  test('8. Edge Case: Handles long recording with progress segmenting', async () => {
-    const progressLogs: string[] = [];
-
-    const res = await whisperService.transcribeAudio(
-      testAudioEvidence.id,
-      fixtures.longRecordingUri,
-      {
-        onProgress: (_, msg) => progressLogs.push(msg),
-      }
-    );
-
-    expect(res.status).toBe('COMPLETED');
-    expect(res.durationSeconds).toBe(1200); // 20 mins
-    expect(progressLogs.some((m) => m.includes('Segmenting long audio recording'))).toBe(true);
-  });
-
-  test('9. Edge Case: Handles engine failure with TRANSCRIPTION_FAILED error', async () => {
-    const res = await whisperService.transcribeAudio(
-      testAudioEvidence.id,
-      fixtures.failureUri
-    );
-
-    expect(res.status).toBe('FAILED');
-    expect(res.errorCode).toBe('TRANSCRIPTION_FAILED');
-    expect(res.error).toContain('Whisper C++ decoding engine encountered an unrecoverable processing error');
-  });
-
-  test('10. Edge Case: Handles cancellation during transcription', async () => {
-    const cancelSignal = { isCancelled: true };
-
-    const res = await whisperService.transcribeAudio(
-      testAudioEvidence.id,
-      testAudioEvidence.fileUri,
-      { cancellationSignal: cancelSignal }
-    );
-
-    expect(res.status).toBe('CANCELLED');
-    expect(res.errorCode).toBe('CANCELLED');
-  });
-
-  test('11. Security Guarantee: Operates strictly on-device without network calls', async () => {
-    // Verify whisperBridge and whisperService operate locally without external imports
-    expect(whisperBridge.isAvailable()).toBe(true);
-    const result = await whisperService.transcribeAudio(
-      testAudioEvidence.id,
-      testAudioEvidence.fileUri
-    );
-    expect(result.status).toBe('COMPLETED');
+      // Verify Kotlin uses real AudioDecoder
+      expect(nativeModuleSource).toContain('AudioDecoder.decodeToPcmF32(file)');
+    });
   });
 });

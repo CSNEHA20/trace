@@ -1,111 +1,153 @@
+import { NativeModules, Platform } from 'react-native';
 import { logger } from '../utils/logger';
-import { WhisperModelType } from '../types';
-
-/**
- Native / JNI Bridge Specification for Whisper.cpp
- *
- * Bridge interface connecting React Native / Expo engine to native Whisper.cpp compiled binaries.
- * Uses whisper.cpp C/C++ engine via JNI (Android) / Native C-Bridge (iOS).
- *
- * Model Specifications:
- * - `tiny` GGML quantized model (~39MB): Lightweight on-device model for low memory footprints.
- * - `base` GGML quantized model (~142MB): Higher accuracy option.
- */
+import { WhisperModelType, TranscriptionSegment } from '../types';
 
 export interface NativeWhisperParams {
-  modelType: WhisperModelType;
+  modelType?: WhisperModelType;
   modelPath?: string;
   language?: string;
   nThreads?: number;
   translate?: boolean;
 }
 
-export interface NativeWhisperSegment {
-  t0: number; // Start timestamp in ms
-  t1: number; // End timestamp in ms
-  text: string;
-  confidence: number;
-}
-
 export interface NativeWhisperResult {
   text: string;
   language: string;
-  confidence: number;
-  segments: NativeWhisperSegment[];
+  durationSeconds?: number;
+  confidence?: number;
+  processingTimeMs?: number;
+  engine?: string;
+  segments?: TranscriptionSegment[];
 }
 
-export interface WhisperBridgeNativeModule {
-  isAvailable(): boolean;
-  loadModelAsync(params: NativeWhisperParams): Promise<boolean>;
-  transcribeAudioFileAsync(
-    audioFilePath: string,
-    params: NativeWhisperParams,
-    onProgress?: (progress: number) => void
-  ): Promise<NativeWhisperResult>;
-  freeModelAsync(): Promise<void>;
+export interface NativeWhisperAvailability {
+  available: boolean;
+  engine?: string;
+  model?: string;
+  modelSize?: number;
+  modelPath?: string;
+  offline?: boolean;
+  lifecycle?: string;
+  error?: string;
 }
 
-class WhisperBridge implements WhisperBridgeNativeModule {
-  private _modelLoaded = false;
-  private _currentModel: WhisperModelType | null = null;
+/**
+ * TRACE Whisper.cpp Native Bridge
+ *
+ * Connects the TypeScript layer to the on-device Whisper.cpp Android native module (`TraceWhisper`).
+ * 
+ * Rules:
+ * - 100% On-Device & Offline: No cloud endpoints or external APIs.
+ * - ZERO Mock: Never generates synthetic transcripts, predetermined text, or fake progress.
+ */
+class WhisperBridge {
+  private get _nativeModule() {
+    return NativeModules.TraceWhisper;
+  }
 
-  isAvailable(): boolean {
-    // Returns true when running on supported native device or fallback runtime
-    return true;
+  async isAvailable(): Promise<NativeWhisperAvailability> {
+    if (Platform.OS !== 'android') {
+      return {
+        available: false,
+        error: `Whisper.cpp native runtime is only available on Android (current OS: ${Platform.OS})`,
+      };
+    }
+
+    const traceWhisper = this._nativeModule;
+    if (!traceWhisper || typeof traceWhisper.getCapabilities !== 'function') {
+      return {
+        available: false,
+        error: 'TraceWhisper native module is not registered in NativeModules',
+      };
+    }
+
+    try {
+      const caps = await traceWhisper.getCapabilities();
+      return {
+        available: caps.available === true,
+        engine: caps.engine,
+        model: caps.modelName,
+        modelSize: caps.modelSize,
+        modelPath: caps.modelPath,
+        offline: caps.offline,
+        lifecycle: caps.lifecycle,
+      };
+    } catch (err) {
+      logger.warn('[WhisperBridge] Availability check failed', err);
+      return {
+        available: false,
+        error: (err as Error)?.message || 'Availability check failed',
+      };
+    }
   }
 
   async loadModelAsync(params: NativeWhisperParams): Promise<boolean> {
-    const model = params.modelType || 'tiny';
-    logger.info(`WhisperBridge: Loading GGML model [${model}] (~39MB tiny option)`);
-    this._modelLoaded = true;
-    this._currentModel = model;
-    return true;
+    const traceWhisper = this._nativeModule;
+    if (!traceWhisper || typeof traceWhisper.loadModel !== 'function') {
+      throw new Error('TraceWhisper native module is not linked or registered.');
+    }
+
+    const modelType = params.modelType || 'tiny';
+    logger.info(`[WhisperBridge] Loading on-device GGML Whisper model: ${modelType}`);
+
+    try {
+      const res = await traceWhisper.loadModel({
+        modelType,
+        language: params.language || 'en',
+      });
+      return res?.success === true;
+    } catch (err: any) {
+      logger.error(`[WhisperBridge] Model load error: ${err.message}`);
+      throw err;
+    }
   }
 
   async transcribeAudioFileAsync(
     audioFilePath: string,
-    params: NativeWhisperParams,
-    onProgress?: (progress: number) => void
+    params: NativeWhisperParams = {}
   ): Promise<NativeWhisperResult> {
-    if (!this._modelLoaded) {
-      await this.loadModelAsync(params);
+    if (Platform.OS !== 'android') {
+      throw new Error(`Whisper.cpp on-device transcription is only supported on Android. Current platform is ${Platform.OS}.`);
     }
 
-    logger.info(`WhisperBridge: Processing native local transcription for audio: ${audioFilePath}`);
-
-    // Report simulated progress ticks if requested
-    if (onProgress) {
-      onProgress(25);
-      onProgress(50);
-      onProgress(75);
-      onProgress(100);
+    const traceWhisper = this._nativeModule;
+    if (!traceWhisper || typeof traceWhisper.transcribe !== 'function') {
+      throw new Error('TraceWhisper native module is not linked or registered.');
     }
+
+    logger.info(`[WhisperBridge] Executing on-device Whisper inference on: ${audioFilePath}`);
+    const rawResult = await traceWhisper.transcribe(audioFilePath, {
+      modelType: params.modelType || 'tiny',
+      language: params.language || 'en',
+    });
+
+    const segments: TranscriptionSegment[] = (rawResult.segments || []).map((s: any) => ({
+      t0: s.t0 ?? 0,
+      t1: s.t1 ?? 0,
+      text: s.text ?? '',
+      confidence: s.confidence,
+    }));
 
     return {
-      text: 'On-device Whisper.cpp transcription complete. Local audio audio evidence verified and transcribed successfully.',
-      language: params.language || 'en',
-      confidence: 0.985,
-      segments: [
-        {
-          t0: 0,
-          t1: 4500,
-          text: 'On-device Whisper.cpp transcription complete.',
-          confidence: 0.99,
-        },
-        {
-          t0: 4500,
-          t1: 9000,
-          text: 'Local audio audio evidence verified and transcribed successfully.',
-          confidence: 0.98,
-        },
-      ],
+      text: rawResult.text ?? '',
+      language: rawResult.language ?? (params.language || 'en'),
+      durationSeconds: rawResult.durationSeconds,
+      confidence: rawResult.confidence,
+      processingTimeMs: rawResult.processingTimeMs,
+      engine: rawResult.engine || 'Whisper.cpp GGML (On-Device)',
+      segments,
     };
   }
 
   async freeModelAsync(): Promise<void> {
-    logger.info('WhisperBridge: Freeing GGML Whisper model context from device RAM.');
-    this._modelLoaded = false;
-    this._currentModel = null;
+    const traceWhisper = this._nativeModule;
+    if (traceWhisper && typeof traceWhisper.unloadModel === 'function') {
+      try {
+        await traceWhisper.unloadModel();
+      } catch (err) {
+        logger.warn('[WhisperBridge] Error unloading model', err);
+      }
+    }
   }
 }
 

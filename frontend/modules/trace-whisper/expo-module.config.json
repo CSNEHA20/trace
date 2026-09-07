@@ -1,0 +1,7 @@
+{
+  "name": "trace-whisper",
+  "platforms": ["android", "ios"],
+  "android": {
+    "package": "com.trace.whisper.TraceWhisperPackage"
+  }
+}
