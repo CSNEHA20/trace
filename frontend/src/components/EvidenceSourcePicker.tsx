@@ -7,14 +7,14 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 import { palette } from '../theme';
 import { IngestionSource } from '../types';
 
-// Lazy-load native modules for testability
+// Lazy-load native modules for runtime safety and testability
 function getDocumentPicker() {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     return require('expo-document-picker');
   } catch {
     return null;
@@ -23,15 +23,8 @@ function getDocumentPicker() {
 
 function getImagePicker() {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     return require('expo-image-picker');
-  } catch {
-    return null;
-  }
-}
-
-function getCamera() {
-  try {
-    return require('expo-camera');
   } catch {
     return null;
   }
@@ -39,7 +32,17 @@ function getCamera() {
 
 function getClipboard() {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     return require('expo-clipboard');
+  } catch {
+    return null;
+  }
+}
+
+function getFileSystem() {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    return require('expo-file-system');
   } catch {
     return null;
   }
@@ -64,10 +67,11 @@ interface EvidenceSourcePickerProps {
 }
 
 /**
- * Bottom-sheet UI that lets the investigator pick an evidence source:
+ * Bottom-sheet UI that lets the investigator pick a real evidence source:
  * Camera | Gallery | Files | Clipboard
  *
- * Handles permission requests, cancellation, and unsupported source gracefully.
+ * ZERO mock fallback behavior:
+ * Handles real permission requests, genuine cancellation, and surfaces real errors.
  */
 export function EvidenceSourcePicker({
   visible,
@@ -87,24 +91,36 @@ export function EvidenceSourcePicker({
   const handleCamera = async () => {
     setPicking(true);
     try {
-      const CameraModule = getCamera();
-      if (!CameraModule) {
-        return _mockSource('CAMERA');
-      }
-
-      const { status } = await CameraModule.Camera.requestCameraPermissionsAsync();
-      if (status !== 'granted') {
+      const ImagePicker = getImagePicker();
+      if (!ImagePicker) {
         onSourceSelected({
-          uri: '', filename: '', source: 'CAMERA', cancelled: false,
-          permissionDenied: true, error: 'Camera permission denied',
+          uri: '',
+          filename: '',
+          source: 'CAMERA',
+          cancelled: false,
+          error: 'Image picker native module is not available on this device.',
         });
         return;
       }
 
-      const result = await CameraModule.launchCameraAsync({
-        mediaTypes: CameraModule.MediaTypeOptions?.Images ?? 'Images',
-        quality: 0.92,
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        onSourceSelected({
+          uri: '',
+          filename: '',
+          source: 'CAMERA',
+          cancelled: false,
+          permissionDenied: true,
+          error: 'Camera permission denied',
+        });
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions?.Images ?? 'Images',
+        quality: 1,
         allowsEditing: false,
+        exif: true,
       });
 
       if (result.canceled) {
@@ -113,12 +129,12 @@ export function EvidenceSourcePicker({
       }
 
       const asset = result.assets?.[0];
-      if (!asset) {
+      if (!asset || !asset.uri) {
         onSourceSelected({ uri: '', filename: '', source: 'CAMERA', cancelled: true });
         return;
       }
 
-      const filename = asset.fileName || `capture_${Date.now()}.jpg`;
+      const filename = asset.fileName || `camera_${Date.now()}.jpg`;
       onSourceSelected({
         uri: asset.uri,
         filename,
@@ -129,8 +145,11 @@ export function EvidenceSourcePicker({
       });
     } catch (err: unknown) {
       onSourceSelected({
-        uri: '', filename: '', source: 'CAMERA', cancelled: false,
-        error: (err as Error)?.message || 'Camera error',
+        uri: '',
+        filename: '',
+        source: 'CAMERA',
+        cancelled: false,
+        error: (err as Error)?.message || 'Camera capture failed',
       });
     } finally {
       setPicking(false);
@@ -142,25 +161,37 @@ export function EvidenceSourcePicker({
   const handleGallery = async () => {
     setPicking(true);
     try {
-      const Picker = getImagePicker();
-      if (!Picker) {
-        return _mockSource('GALLERY');
-      }
-
-      const { status } = await Picker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
+      const ImagePicker = getImagePicker();
+      if (!ImagePicker) {
         onSourceSelected({
-          uri: '', filename: '', source: 'GALLERY', cancelled: false,
-          permissionDenied: true, error: 'Gallery permission denied',
+          uri: '',
+          filename: '',
+          source: 'GALLERY',
+          cancelled: false,
+          error: 'Image picker native module is not available on this device.',
         });
         return;
       }
 
-      const result = await Picker.launchImageLibraryAsync({
-        mediaTypes: Picker.MediaTypeOptions?.All ?? 'All',
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        onSourceSelected({
+          uri: '',
+          filename: '',
+          source: 'GALLERY',
+          cancelled: false,
+          permissionDenied: true,
+          error: 'Gallery permission denied',
+        });
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions?.All ?? 'All',
         quality: 1,
         allowsEditing: false,
         allowsMultipleSelection: false,
+        exif: true,
       });
 
       if (result.canceled) {
@@ -169,24 +200,29 @@ export function EvidenceSourcePicker({
       }
 
       const asset = result.assets?.[0];
-      if (!asset) {
+      if (!asset || !asset.uri) {
         onSourceSelected({ uri: '', filename: '', source: 'GALLERY', cancelled: true });
         return;
       }
 
-      const filename = asset.fileName || `gallery_${Date.now()}.jpg`;
+      const isVideo = asset.type === 'video' || (asset.mimeType && asset.mimeType.startsWith('video/'));
+      const defaultExt = isVideo ? 'mp4' : 'jpg';
+      const filename = asset.fileName || `gallery_${Date.now()}.${defaultExt}`;
       onSourceSelected({
         uri: asset.uri,
         filename,
-        mimeType: asset.mimeType || 'image/jpeg',
+        mimeType: asset.mimeType || (isVideo ? 'video/mp4' : 'image/jpeg'),
         fileSize: asset.fileSize,
         source: 'GALLERY',
         cancelled: false,
       });
     } catch (err: unknown) {
       onSourceSelected({
-        uri: '', filename: '', source: 'GALLERY', cancelled: false,
-        error: (err as Error)?.message || 'Gallery error',
+        uri: '',
+        filename: '',
+        source: 'GALLERY',
+        cancelled: false,
+        error: (err as Error)?.message || 'Gallery picker failed',
       });
     } finally {
       setPicking(false);
@@ -200,12 +236,19 @@ export function EvidenceSourcePicker({
     try {
       const DocPicker = getDocumentPicker();
       if (!DocPicker) {
-        return _mockSource('FILES');
+        onSourceSelected({
+          uri: '',
+          filename: '',
+          source: 'FILES',
+          cancelled: false,
+          error: 'Document picker native module is not available on this device.',
+        });
+        return;
       }
 
       const result = await DocPicker.getDocumentAsync({
         type: '*/*',
-        copyToCacheDirectory: false,
+        copyToCacheDirectory: true,
         multiple: false,
       });
 
@@ -230,8 +273,11 @@ export function EvidenceSourcePicker({
       });
     } catch (err: unknown) {
       onSourceSelected({
-        uri: '', filename: '', source: 'FILES', cancelled: false,
-        error: (err as Error)?.message || 'File picker error',
+        uri: '',
+        filename: '',
+        source: 'FILES',
+        cancelled: false,
+        error: (err as Error)?.message || 'File picker failed',
       });
     } finally {
       setPicking(false);
@@ -244,55 +290,62 @@ export function EvidenceSourcePicker({
     setPicking(true);
     try {
       const Clipboard = getClipboard();
-      let text: string | null = null;
-
-      if (Clipboard) {
-        text = await Clipboard.getStringAsync();
+      if (!Clipboard) {
+        onSourceSelected({
+          uri: '',
+          filename: '',
+          source: 'CLIPBOARD',
+          cancelled: false,
+          error: 'Clipboard native module is not available on this device.',
+        });
+        return;
       }
 
+      const text = await Clipboard.getStringAsync();
       if (!text || text.trim().length === 0) {
         Alert.alert('Clipboard Empty', 'No text found in clipboard to import.');
         onSourceSelected({ uri: '', filename: '', source: 'CLIPBOARD', cancelled: true });
         return;
       }
 
-      // Clipboard text → write to a temp URI representation
-      // The ingestion service will receive the text as the URI and handle it as a .txt doc
+      const FileSystem = getFileSystem();
       const clipFilename = `clipboard_${Date.now()}.txt`;
+      let fileUri: string;
 
-      // Write clipboard content to sandbox via a data URI convention
+      if (FileSystem && FileSystem.cacheDirectory) {
+        fileUri = `${FileSystem.cacheDirectory}${clipFilename}`;
+        await FileSystem.writeAsStringAsync(fileUri, text, { encoding: 'utf8' });
+      } else {
+        onSourceSelected({
+          uri: '',
+          filename: '',
+          source: 'CLIPBOARD',
+          cancelled: false,
+          error: 'Cannot save clipboard evidence: File system is not available.',
+        });
+        return;
+      }
+
       onSourceSelected({
-        uri: `clipboard://text?data=${encodeURIComponent(text)}`,
+        uri: fileUri,
         filename: clipFilename,
         mimeType: 'text/plain',
-        fileSize: text.length,
+        fileSize: Buffer.byteLength(text, 'utf8'),
         source: 'CLIPBOARD',
         cancelled: false,
       });
     } catch (err: unknown) {
       onSourceSelected({
-        uri: '', filename: '', source: 'CLIPBOARD', cancelled: false,
-        error: (err as Error)?.message || 'Clipboard error',
+        uri: '',
+        filename: '',
+        source: 'CLIPBOARD',
+        cancelled: false,
+        error: (err as Error)?.message || 'Clipboard extraction failed',
       });
     } finally {
       setPicking(false);
       onClose();
     }
-  };
-
-  // ── Mock (test / Expo Go fallback) ────────────────────────────────────
-  const _mockSource = (src: IngestionSource) => {
-    const ext = src === 'CAMERA' ? 'jpg' : src === 'GALLERY' ? 'jpg' : 'pdf';
-    onSourceSelected({
-      uri: `file:///mock/${src.toLowerCase()}_${Date.now()}.${ext}`,
-      filename: `${src.toLowerCase()}_${Date.now()}.${ext}`,
-      mimeType: src === 'CAMERA' || src === 'GALLERY' ? 'image/jpeg' : 'application/pdf',
-      fileSize: 1024 * 1024,
-      source: src,
-      cancelled: false,
-    });
-    setPicking(false);
-    onClose();
   };
 
   // ── Render ────────────────────────────────────────────────────────────
@@ -307,12 +360,12 @@ export function EvidenceSourcePicker({
       <View style={styles.sheet}>
         <View style={styles.handle} />
         <Text style={styles.title}>Add Evidence</Text>
-        <Text style={styles.subtitle}>Select a source to import evidence</Text>
+        <Text style={styles.subtitle}>Select a source to import genuine evidence</Text>
 
         {(isLoading || picking) ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator color={palette.primary} size="large" />
-            <Text style={styles.loadingText}>Processing...</Text>
+            <Text style={styles.loadingText}>Opening source...</Text>
           </View>
         ) : (
           <View style={styles.optionGrid}>

@@ -6,7 +6,8 @@
     "moduleResolution": "bundler",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "expo-sqlite": ["./node_modules/expo-sqlite"]
     }
   },
   "include": [

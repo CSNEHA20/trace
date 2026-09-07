@@ -137,7 +137,6 @@ class DatabaseService {
       fileSize: 0,
       mimeType: rec.media_type === 'IMAGE' ? 'image/jpeg' : rec.media_type === 'AUDIO' ? 'audio/wav' : 'application/octet-stream',
       sha256Hash: rec.sha256_import,
-      signature: `SIG_TRACE_HARDWARE_${rec.sha256_import.substring(0, 16)}`,
       timestamp: rec.import_ts,
       aiAnalysis: rec.ocr_text || rec.transcription ? {
         detectedText: rec.ocr_text ? rec.ocr_text.split('\n') : undefined,

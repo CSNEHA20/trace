@@ -12,7 +12,7 @@ import { generateUUID } from '../utils/crypto';
  *
  * Security guarantees:
  * - Files are written to app-private DocumentDirectory (not accessible to other apps)
- * - No cloud sync exposure — expo-file-system DocumentDirectory is excluded from iCloud/GDrive backups on most platforms
+ * - No cloud sync exposure
  * - No raw binary evidence data is ever logged
  * - Original URI is used only once for the copy operation
  */
@@ -52,13 +52,17 @@ class SandboxService {
   async getSandboxDirectory(): Promise<string> {
     const fs = getFS();
     if (!fs) {
-      // Test environment — return a mock path
-      return 'file:///mock_doc_dir/trace_vault/';
+      throw new Error('expo-file-system is not available on this platform.');
     }
 
     if (this._sandboxDir) return this._sandboxDir;
 
-    const dir = `${fs.documentDirectory}${SANDBOX_DIR}/`;
+    const baseDir = fs.documentDirectory || fs.cacheDirectory;
+    if (!baseDir) {
+      throw new Error('Application document/cache directory is unavailable.');
+    }
+
+    const dir = `${baseDir}${SANDBOX_DIR}/`;
     const info = await fs.getInfoAsync(dir);
     if (!info.exists) {
       await fs.makeDirectoryAsync(dir, { intermediates: true });
@@ -80,11 +84,7 @@ class SandboxService {
   ): Promise<SandboxCopyResult> {
     const fs = getFS();
     if (!fs) {
-      // Test environment mock
-      const sandboxUri = `file:///mock_doc_dir/trace_vault/${generateUUID()}.${extension}`;
-      // Return a deterministic base64 stub derived from sourceUri
-      const stubBase64 = Buffer.from(sourceUri).toString('base64');
-      return { success: true, sandboxUri, fileSize: sourceUri.length * 2, base64Data: stubBase64 };
+      return { success: false, error: 'expo-file-system is not available' };
     }
 
     try {
@@ -105,19 +105,33 @@ class SandboxService {
 
       // 3. Build destination path in sandbox
       const sandboxDir = await this.getSandboxDirectory();
-      const destFilename = `${generateUUID()}.${extension}`;
+      const cleanExt = (extension || 'bin').replace(/^\.+/, '');
+      const destFilename = `${generateUUID()}.${cleanExt}`;
       const sandboxUri = `${sandboxDir}${destFilename}`;
 
       // 4. Copy — source is accessed only this one time
       await fs.copyAsync({ from: sourceUri, to: sandboxUri });
 
-      // 5. Read as base64 for hashing
+      // 5. Verify copied file exists
+      const destInfo = await fs.getInfoAsync(sandboxUri);
+      if (!destInfo.exists) {
+        return { success: false, error: 'Failed to verify copied file in sandbox' };
+      }
+
+      const copiedSize = (destInfo as any).size ?? fileSize;
+
+      // 6. Read as base64 for hashing
       const base64Data = await fs.readAsStringAsync(sandboxUri, {
         encoding: 'base64',
       });
 
-      logger.debug(`Evidence copied to sandbox: [.../${destFilename}]`);
-      return { success: true, sandboxUri, fileSize, base64Data };
+      if (!base64Data || base64Data.length === 0) {
+        await fs.deleteAsync(sandboxUri, { idempotent: true });
+        return { success: false, error: 'Evidence file is empty (0 bytes) or could not be read' };
+      }
+
+      logger.debug(`Evidence copied to sandbox: [.../${destFilename}] (${copiedSize} bytes)`);
+      return { success: true, sandboxUri, fileSize: copiedSize, base64Data };
     } catch (err: unknown) {
       const msg = (err as Error)?.message || 'Unknown copy error';
       logger.error('Sandbox copy failed', msg);
@@ -132,15 +146,11 @@ class SandboxService {
   async readSandboxFileBase64(sandboxUri: string): Promise<string | null> {
     const fs = getFS();
     if (!fs) {
-      return Buffer.from(sandboxUri).toString('base64');
+      return null;
     }
     try {
       const sandboxDir = await this.getSandboxDirectory();
-      if (
-        !sandboxUri.startsWith(sandboxDir) &&
-        !sandboxUri.startsWith('file:///mock_doc_dir/trace_vault/') &&
-        !sandboxUri.startsWith('file:///mock_sandbox/')
-      ) {
+      if (!sandboxUri.startsWith(sandboxDir)) {
         logger.warn('Attempted to read file outside sandbox — blocked');
         return null;
       }
@@ -148,18 +158,10 @@ class SandboxService {
         encoding: 'base64',
       });
     } catch (err) {
-      if (
-        sandboxUri.includes('mock') ||
-        sandboxUri.includes('trace_vault') ||
-        sandboxUri.includes('sample_audio')
-      ) {
-        return Buffer.from(sandboxUri).toString('base64');
-      }
       logger.error('Failed to read sandbox file', err);
       return null;
     }
   }
-
 
   /**
    * Checks available free storage.
@@ -168,12 +170,11 @@ class SandboxService {
   async checkStorageAvailability(requiredBytes: number): Promise<StorageCheckResult> {
     const fs = getFS();
     if (!fs) {
-      return { available: true, freeBytes: 10 * 1024 * 1024 * 1024, requiredBytes };
+      return { available: false, error: 'expo-file-system is not available' };
     }
     try {
-      // getFreeDiskStorageAsync is not available in expo-file-system
-      // Use getInfoAsync on the document directory as a fallback
-      const info = await fs.getInfoAsync(fs.documentDirectory || '');
+      const dir = fs.documentDirectory || fs.cacheDirectory || '';
+      const info = await fs.getInfoAsync(dir);
       const freeBytes = (info as any).freeSpace || 10 * 1024 * 1024 * 1024;
       return {
         available: freeBytes >= requiredBytes,
@@ -181,7 +182,6 @@ class SandboxService {
         requiredBytes,
       };
     } catch {
-      // Cannot determine — allow and let the copy fail naturally
       return { available: true, requiredBytes };
     }
   }

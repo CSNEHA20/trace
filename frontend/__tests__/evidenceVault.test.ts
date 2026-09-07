@@ -84,15 +84,8 @@ function makeInput(overrides: Partial<Parameters<typeof ingestionService['ingest
 // ─────────────────────────────────────────────────────────────────────────────
 
 beforeEach(async () => {
-  // Fresh DB for each test
-  (databaseEngine as any).isInitialized = false;
-  (databaseEngine as any).migrationsStore = new Map();
-  (databaseEngine as any).casesStore = new Map();
-  (databaseEngine as any).evidenceStore = new Map();
-  (databaseEngine as any).eventsStore = new Map();
-  (databaseEngine as any).actorsStore = new Map();
-  (databaseEngine as any).hashChainStore = new Map();
-  await databaseEngine.initialize();
+  // Fresh SQLite DB for each test
+  await databaseEngine.resetDatabase();
 
   // Reset sandbox mocks
   const { sandboxService } = require('../src/services/sandboxService');
@@ -596,3 +589,91 @@ describe('Sandbox Isolation', () => {
     expect(sandboxService.copyIntoSandbox).toHaveBeenCalledTimes(1);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 10. ZERO-MOCK AND REAL INTAKE VERIFICATION
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Zero-Mock & Real Intake Integrity', () => {
+  it('production EvidenceSourcePicker source code contains no mockSource or fake file URIs', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const pickerPath = path.resolve(__dirname, '../src/components/EvidenceSourcePicker.tsx');
+    const content = fs.readFileSync(pickerPath, 'utf8');
+
+    expect(content).not.toContain('_mockSource');
+    expect(content).not.toContain('file:///mock/');
+    expect(content).not.toContain('fakeEvidence');
+  });
+
+  it('missing source file does not create a database record', async () => {
+    const { sandboxService } = require('../src/services/sandboxService');
+    sandboxService.copyIntoSandbox.mockResolvedValueOnce({
+      success: false,
+      error: 'Source file does not exist or is inaccessible',
+    });
+
+    const caseId = await makeCase(undefined, Date.now() + 52);
+    const result = await ingestionService.ingest(makeInput({
+      caseId,
+      sourceUri: 'file:///nonexistent/missing.jpg',
+      originalFilename: 'missing.jpg',
+    }));
+
+    expect(result.status).toBe('FAILED');
+    expect(result.errorCode).toBe('COPY_FAILED');
+    expect(result.evidenceId).toBeUndefined();
+
+    const evidenceInDb = await databaseEngine.getEvidenceForCase(caseId);
+    expect(evidenceInDb.length).toBe(0);
+  });
+
+  it('empty base64 file is rejected and leaves no database record', async () => {
+    const { sandboxService } = require('../src/services/sandboxService');
+    sandboxService.copyIntoSandbox.mockResolvedValueOnce({
+      success: true,
+      sandboxUri: 'file:///mock_sandbox/empty.jpg',
+      fileSize: 0,
+      base64Data: '',
+    });
+
+    const caseId = await makeCase(undefined, Date.now() + 53);
+    const result = await ingestionService.ingest(makeInput({
+      caseId,
+      sourceUri: 'file:///empty/zero_byte.jpg',
+      originalFilename: 'zero_byte.jpg',
+    }));
+
+    expect(result.status).toBe('FAILED');
+    expect(result.errorCode).toBe('HASH_FAILED');
+
+    const evidenceInDb = await databaseEngine.getEvidenceForCase(caseId);
+    expect(evidenceInDb.length).toBe(0);
+  });
+
+  it('successful ingestion creates a SQLite record with identical SHA-256 and chain node', async () => {
+    const caseId = await makeCase(undefined, Date.now() + 54);
+    const result = await ingestionService.ingest(makeInput({
+      caseId,
+      sourceUri: 'file:///real/camera_photo.jpg',
+      originalFilename: 'camera_photo.jpg',
+      mimeType: 'image/jpeg',
+      source: 'CAMERA',
+    }));
+
+    expect(result.status).toBe('COMPLETE');
+    expect(result.evidenceId).toBeDefined();
+
+    const rec = await databaseEngine.getEvidenceById(result.evidenceId!);
+    expect(rec).not.toBeNull();
+    expect(rec!.sha256_import).toBe(result.sha256);
+    expect(rec!.media_type).toBe('IMAGE');
+
+    const chain = await databaseEngine.getHashChainForEvidence(result.evidenceId!);
+    expect(chain.length).toBeGreaterThanOrEqual(1);
+    expect(chain[0].operation).toContain('IMPORT');
+    expect(chain[0].payload_hash).toHaveLength(64);
+    expect(chain[0].chain_hash).toHaveLength(64);
+  });
+});
+

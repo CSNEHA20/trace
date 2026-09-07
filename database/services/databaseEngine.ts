@@ -123,6 +123,12 @@ export class DatabaseEngine {
     }
   }
 
+  async resetDatabase(): Promise<void> {
+    await this.close();
+    (SQLite as any).__resetMockDatabase?.();
+    await this.initialize();
+  }
+
   async runMigrations(): Promise<number> {
     const db = this.getDatabase();
     
@@ -138,7 +144,7 @@ export class DatabaseEngine {
     const appliedRows = await db.getAllAsync<{ version: number }>(
       'SELECT version FROM schema_migrations ORDER BY version ASC;'
     );
-    const appliedVersions = new Set(appliedRows.map((r) => r.version));
+    const appliedVersions = new Set(appliedRows.map((r: { version: number }) => r.version));
 
     let appliedCount = 0;
     for (const m of MIGRATIONS) {
@@ -583,7 +589,7 @@ export class DatabaseEngine {
       'SELECT id, case_id, event_type, severity, timestamp, timestamp_hint, ai_summary, evidence_ids, actor_ids, source, user_annotation, user_edited, timestamp_conflict, timestamp_unresolved FROM events WHERE case_id = ? ORDER BY timestamp DESC;',
       [caseId]
     );
-    return rows.map((r) => this.mapRawEvent(r));
+    return rows.map((r: RawEventRow) => this.mapRawEvent(r));
   }
 
   async deleteEvent(id: string): Promise<boolean> {
@@ -736,7 +742,7 @@ export class DatabaseEngine {
       'SELECT id, case_id, name, role, contact_info, identifiers, confidence, uncertainty_notes, created_at, updated_at FROM actors WHERE case_id = ? ORDER BY created_at ASC;',
       [caseId]
     );
-    return rows.map((r) => this.mapRawActor(r));
+    return rows.map((r: RawActorRow) => this.mapRawActor(r));
   }
 
   async deleteActor(id: string): Promise<boolean> {
@@ -956,8 +962,8 @@ export class DatabaseEngine {
       'SELECT id, case_id, name, role, contact_info, identifiers, confidence, uncertainty_notes, created_at, updated_at FROM actors;'
     );
     return all
-      .map((r) => this.mapRawActor(r))
-      .filter((actor) => actor.identifiers.some((id) => id.evidence_ids.includes(evidenceId)));
+      .map((r: RawActorRow) => this.mapRawActor(r))
+      .filter((actor: ActorRecord) => actor.identifiers.some((id: ActorIdentifier) => id.evidence_ids.includes(evidenceId)));
   }
 
   async linkActorToEvidence(actorId: string, evidenceId: string): Promise<void> {
@@ -1135,7 +1141,7 @@ export class DatabaseEngine {
       'SELECT id, case_id, content, generated_at, events_snapshot, disclaimer, parse_error, user_reviewed, user_edited FROM narratives WHERE case_id = ? ORDER BY generated_at DESC;',
       [caseId]
     );
-    return rows.map((r) => this.mapRawNarrative(r));
+    return rows.map((r: RawNarrativeRow) => this.mapRawNarrative(r));
   }
 
   async getLatestNarrativeForCase(caseId: string): Promise<NarrativeRecord | null> {

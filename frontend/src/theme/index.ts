@@ -41,7 +41,7 @@ const { DarkTheme } = adaptNavigationTheme({
 export const navigationTheme = {
   ...DarkTheme,
   colors: {
-    ...DarkTheme.colors,
+    ...DarkTheme?.colors,
     background: palette.background,
     card: palette.surface,
     text: palette.text,

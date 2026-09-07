@@ -232,7 +232,7 @@ export interface EvidenceItem {
   fileSize: number;
   mimeType: string;
   sha256Hash: string;
-  signature: string;
+  signature?: string;
   timestamp: number;
   exifData?: ExifMetadata;
   aiAnalysis?: AiAnalysisResult;
@@ -321,7 +321,7 @@ export interface ReportEvidenceSummary {
   mediaType: MediaCategory;
   fileSize: number;
   sha256Hash: string;
-  signature: string;
+  signature?: string;
   importTs: number;
   isTampered: boolean;
   tamperReason?: string;
