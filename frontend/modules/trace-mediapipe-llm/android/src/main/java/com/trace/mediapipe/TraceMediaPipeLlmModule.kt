@@ -7,7 +7,7 @@ import java.io.File
 /**
  * Android bridge for MediaPipe's local Gemma LLM runtime.
  * Executes on-device offline inference without any network or cloud fallbacks.
- * The .task model is loaded strictly from TRACE's private files directory.
+ * The model (.bin or .task) is loaded strictly from TRACE's private files directory.
  */
 class TraceMediaPipeLlmModule(context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
   private var inference: LlmInference? = null
@@ -15,22 +15,39 @@ class TraceMediaPipeLlmModule(context: ReactApplicationContext) : ReactContextBa
 
   override fun getName() = "TraceMediaPipeLlm"
 
+  private fun resolveModelFile(configuredPath: String?): File {
+    if (!configuredPath.isNullOrBlank()) {
+      val clean = configuredPath.removePrefix("files/").removePrefix("/")
+      val customFile = if (clean.startsWith("/")) File(clean) else File(reactApplicationContext.filesDir, clean)
+      if (customFile.isFile && customFile.length() > 0L) return customFile
+    }
+    // Check candidate official filenames in order of preference
+    val candidate1 = File(reactApplicationContext.filesDir, "trace-models/gemma-2b-it-cpu-int4.bin")
+    if (candidate1.isFile && candidate1.length() > 0L) return candidate1
+    val candidate2 = File(reactApplicationContext.filesDir, "trace-models/gemma-2b-it-int4.task")
+    if (candidate2.isFile && candidate2.length() > 0L) return candidate2
+    val candidate3 = File(reactApplicationContext.filesDir, "trace-models/gemma-2b-it-gpu-int4.bin")
+    if (candidate3.isFile && candidate3.length() > 0L) return candidate3
+
+    return candidate1
+  }
+
   @ReactMethod
   fun getCapabilities(promise: Promise) {
     try {
-      val defaultModelFile = File(reactApplicationContext.filesDir, "trace-models/gemma-2b-it-int4.task")
+      val modelFile = resolveModelFile(null)
       val map = Arguments.createMap()
-      val exists = defaultModelFile.isFile && defaultModelFile.length() > 0L
+      val exists = modelFile.isFile && modelFile.length() > 0L
 
       map.putString("availability", if (exists) "AVAILABLE" else "MODEL_MISSING")
       map.putString("lifecycle", if (inference == null) "UNLOADED" else "READY")
-      map.putString("modelPath", defaultModelFile.absolutePath)
-      map.putString("accelerator", "MediaPipe Android On-Device Runtime")
-      map.putDouble("modelSizeBytes", if (exists) defaultModelFile.length().toDouble() else 0.0)
+      map.putString("modelPath", modelFile.absolutePath)
+      map.putString("accelerator", "MediaPipe Android On-Device Runtime (CPU / XNNPACK)")
+      map.putDouble("modelSizeBytes", if (exists) modelFile.length().toDouble() else 0.0)
       map.putString(
         "detail",
-        if (exists) "Local Gemma 2B INT4 model found (${defaultModelFile.length() / (1024 * 1024)} MB). Inference runs strictly on-device."
-        else "Place the compatible Gemma 2B INT4 .task model in trace-models/ within TRACE private storage."
+        if (exists) "Local Gemma 2B INT4 model found (${modelFile.length() / (1024 * 1024)} MB). Inference runs strictly on-device."
+        else "Place gemma-2b-it-cpu-int4.bin or gemma-2b-it-int4.task in trace-models/ within TRACE private storage."
       )
       promise.resolve(map)
     } catch (error: Exception) {
@@ -41,14 +58,8 @@ class TraceMediaPipeLlmModule(context: ReactApplicationContext) : ReactContextBa
   @ReactMethod
   fun loadModel(config: ReadableMap, promise: Promise) {
     try {
-      val rawPath = if (config.hasKey("modelPath")) config.getString("modelPath") else "trace-models/gemma-2b-it-int4.task"
-      val cleanPath = (rawPath ?: "trace-models/gemma-2b-it-int4.task").removePrefix("files/").removePrefix("/")
-
-      val modelFile = if (cleanPath.startsWith("/")) {
-        File(cleanPath)
-      } else {
-        File(reactApplicationContext.filesDir, cleanPath)
-      }
+      val rawPath = if (config.hasKey("modelPath")) config.getString("modelPath") else null
+      val modelFile = resolveModelFile(rawPath)
 
       if (!modelFile.exists()) {
         throw IllegalStateException("Model file not found at: ${modelFile.absolutePath}")
