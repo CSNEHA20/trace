@@ -1,17 +1,12 @@
+import * as SQLite from 'expo-sqlite';
 import { databaseEngine, DatabaseEngine } from '../../database/services/databaseEngine';
 import { databaseService } from './helpers/dbServiceHelper';
 
 describe('TRACE SQLite Database Engine — Step 3 Full Test Suite', () => {
   beforeEach(async () => {
-    // Fresh engine for isolation
-    (databaseEngine as any).isInitialized = false;
-    (databaseEngine as any).migrationsStore = new Map();
-    (databaseEngine as any).casesStore = new Map();
-    (databaseEngine as any).evidenceStore = new Map();
-    (databaseEngine as any).eventsStore = new Map();
-    (databaseEngine as any).actorsStore = new Map();
-    (databaseEngine as any).hashChainStore = new Map();
-
+    // Fresh SQLite database for test isolation
+    (SQLite as any).__resetMockDatabase?.();
+    await databaseEngine.close();
     await databaseEngine.initialize();
   });
 
@@ -21,6 +16,16 @@ describe('TRACE SQLite Database Engine — Step 3 Full Test Suite', () => {
   describe('Database Initialization & Migrations', () => {
     it('initializes without errors', async () => {
       expect(databaseEngine).toBeDefined();
+    });
+
+    it('verifies zero Map stores exist on DatabaseEngine', () => {
+      expect((databaseEngine as any).casesStore).toBeUndefined();
+      expect((databaseEngine as any).evidenceStore).toBeUndefined();
+      expect((databaseEngine as any).eventsStore).toBeUndefined();
+      expect((databaseEngine as any).actorsStore).toBeUndefined();
+      expect((databaseEngine as any).hashChainStore).toBeUndefined();
+      expect((databaseEngine as any).narrativesStore).toBeUndefined();
+      expect((databaseEngine as any).migrationsStore).toBeUndefined();
     });
 
     it('applies initial migration v1 on fresh start', async () => {

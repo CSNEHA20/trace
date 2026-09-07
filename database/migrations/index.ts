@@ -65,11 +65,7 @@ export const MIGRATIONS: Migration[] = [
         name TEXT NOT NULL,
         role TEXT NOT NULL,
         contact_info TEXT,
-        identifiers TEXT NOT NULL DEFAULT '[]',
-        confidence REAL NOT NULL DEFAULT 0,
-        uncertainty_notes TEXT,
         created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL,
         FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE
       );`,
       `CREATE TABLE IF NOT EXISTS hash_chain (

@@ -224,11 +224,11 @@ describe('VerificationService — Tamper Detection', () => {
     const recs = await databaseEngine.getHashChainForEvidence(evidenceId);
     expect(recs.length).toBe(1);
     const rec = recs[0];
-    // Overwrite with a corrupted hash
-    (databaseEngine as any).hashChainStore.set(rec.id, {
-      ...rec,
-      chain_hash: 'f'.repeat(64), // corrupted
-    });
+    // Overwrite with a corrupted hash via SQL
+    await databaseEngine.getDatabase().runAsync('UPDATE hash_chain SET chain_hash = ? WHERE id = ?;', [
+      'f'.repeat(64),
+      rec.id,
+    ]);
 
     const result = await verificationService.verifyChain(evidenceId);
     expect(result.isValid).toBe(false);
@@ -243,8 +243,8 @@ describe('VerificationService — Tamper Detection', () => {
 
     // Simulate deleted middle node by corrupting position
     const recs = await databaseEngine.getHashChainForEvidence(evidenceId);
-    // Remove the second record from the store
-    (databaseEngine as any).hashChainStore.delete(recs[1].id);
+    // Remove the second record from the store via SQL
+    await databaseEngine.getDatabase().runAsync('DELETE FROM hash_chain WHERE id = ?;', [recs[1].id]);
 
     const result = await verificationService.verifyChain(evidenceId);
     expect(result.isValid).toBe(false);
@@ -259,10 +259,10 @@ describe('VerificationService — Tamper Detection', () => {
     const recs = await databaseEngine.getHashChainForEvidence(evidenceId);
     const n1 = recs[0];
     const n2 = recs[1];
-    (databaseEngine as any).hashChainStore.set(n2.id, {
-      ...n2,
-      timestamp: n1.timestamp - 1000, // in the past
-    });
+    await databaseEngine.getDatabase().runAsync('UPDATE hash_chain SET timestamp = ? WHERE id = ?;', [
+      n1.timestamp - 1000,
+      n2.id,
+    ]);
 
     const result = await verificationService.verifyChain(evidenceId);
     expect(result.isValid).toBe(false);
@@ -279,10 +279,10 @@ describe('VerificationService — Tamper Detection', () => {
     // Build and corrupt chain for ev2
     await chainService.appendNode({ evidenceId: ev2, operation: 'IMPORT', data: {} });
     const recs2 = await databaseEngine.getHashChainForEvidence(ev2);
-    (databaseEngine as any).hashChainStore.set(recs2[0].id, {
-      ...recs2[0],
-      chain_hash: '0'.repeat(64),
-    });
+    await databaseEngine.getDatabase().runAsync('UPDATE hash_chain SET chain_hash = ? WHERE id = ?;', [
+      '0'.repeat(64),
+      recs2[0].id,
+    ]);
 
     const r1 = await verificationService.verifyChain(evidenceId);
     const r2 = await verificationService.verifyChain(ev2);
