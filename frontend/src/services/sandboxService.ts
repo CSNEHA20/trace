@@ -187,6 +187,26 @@ class SandboxService {
   }
 
   /**
+   * Returns basic file info (exists, size) for a file in the sandbox or valid URI.
+   */
+  async readFileInfo(sandboxUri: string): Promise<{ exists: boolean; size?: number; uri?: string }> {
+    const fs = getFS();
+    if (!fs) {
+      return { exists: false };
+    }
+    try {
+      const info = await fs.getInfoAsync(sandboxUri);
+      return {
+        exists: info.exists,
+        size: (info as any).size ?? 0,
+        uri: sandboxUri,
+      };
+    } catch {
+      return { exists: false };
+    }
+  }
+
+  /**
    * Deletes a file from the sandbox (e.g., on import cancellation after copy).
    */
   async deleteSandboxFile(sandboxUri: string): Promise<void> {

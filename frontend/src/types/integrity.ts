@@ -5,7 +5,7 @@
  * The chain is a SHA-256 linked chain (Merkle-tree-inspired), stored in SQLite.
  */
 
-export type ChainOperation = 'IMPORT' | 'EXTRACT' | 'CLUSTER' | 'EXPORT';
+export type ChainOperation = 'IMPORT' | 'EXTRACT' | 'CLUSTER' | 'EXPORT' | 'OCR' | 'TRANSCRIBE';
 
 export type TamperDetectionReason =
   | 'MODIFIED_FILE'         // Import hash mismatch

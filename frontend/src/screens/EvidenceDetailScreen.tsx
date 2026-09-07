@@ -3,11 +3,13 @@ import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useEvidenceStore } from '../store/evidenceStore';
 import { AppHeader } from '../components/AppHeader';
 import { AudioTranscriptionCard } from '../components/AudioTranscriptionCard';
+import { ImageOcrCard } from '../components/ImageOcrCard';
 import { whisperService } from '../services/whisperService';
+import { ocrService } from '../services/ocrService';
 import { palette } from '../theme';
 import { useLocalSearchParams } from 'expo-router';
 import { formatDate, formatFileSize } from '../utils/crypto';
-import { TranscriptionStatus, TranscriptionResult } from '../types';
+import { TranscriptionStatus, TranscriptionResult, OcrStatus, OcrResult } from '../types';
 
 export function EvidenceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -20,6 +22,10 @@ export function EvidenceDetailScreen() {
   const [transcribeResult, setTranscribeResult] = useState<TranscriptionResult | null>(null);
   const [cancelSignal, setCancelSignal] = useState<{ isCancelled: boolean }>({ isCancelled: false });
 
+  // Step 4 OCR State
+  const [ocrStatus, setOcrStatus] = useState<OcrStatus>('IDLE');
+  const [ocrResult, setOcrResult] = useState<OcrResult | null>(null);
+
   if (!item) {
     return (
       <View style={styles.container}>
@@ -28,6 +34,32 @@ export function EvidenceDetailScreen() {
       </View>
     );
   }
+
+  const handleStartOcr = async () => {
+    setOcrStatus('VALIDATING');
+    try {
+      const res = await ocrService.processEvidenceOcr(
+        item.id,
+        item.fileUri,
+        item.type,
+        {
+          onStatusUpdate: (s) => setOcrStatus(s),
+        }
+      );
+      setOcrResult(res);
+      setOcrStatus(res.status);
+      if (res.status === 'COMPLETED') {
+        await fetchEvidence(item.caseId);
+      }
+    } catch (err: unknown) {
+      setOcrStatus('FAILED');
+      setOcrResult({
+        status: 'FAILED',
+        error: (err as Error)?.message || 'OCR extraction failed',
+        errorCode: 'UNKNOWN',
+      });
+    }
+  };
 
   const handleStartTranscription = async () => {
     setTranscribeStatus('LOADING_MODEL');
@@ -90,6 +122,17 @@ export function EvidenceDetailScreen() {
           <Text style={styles.monoLabel}>Hardware Signature:</Text>
           <Text style={styles.monoVal}>{item.signature}</Text>
         </View>
+
+        {item.type === 'IMAGE' && (
+          <ImageOcrCard
+            evidenceId={item.id}
+            fileUri={item.fileUri}
+            existingOcrText={item.aiAnalysis?.detectedText?.join('\n')}
+            status={ocrStatus}
+            result={ocrResult}
+            onStartOcr={handleStartOcr}
+          />
+        )}
 
         {item.type === 'AUDIO' && (
           <AudioTranscriptionCard

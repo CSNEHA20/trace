@@ -125,6 +125,22 @@ class DatabaseService {
     return this.mapEvidenceRecordToItem(updated);
   }
 
+  async updateEvidenceOcr(
+    evidenceId: string,
+    ocrText: string,
+    processingHash?: string
+  ): Promise<EvidenceItem | null> {
+    const current = await databaseEngine.getEvidenceById(evidenceId);
+    if (!current) return null;
+
+    const updated = await databaseEngine.updateEvidence(evidenceId, {
+      ocr_text: ocrText,
+      sha256_processed: processingHash ?? current.sha256_processed ?? current.sha256_import,
+    });
+    if (!updated) return null;
+    return this.mapEvidenceRecordToItem(updated);
+  }
+
 
   private mapEvidenceRecordToItem(rec: EvidenceRecord): EvidenceItem {
     return {

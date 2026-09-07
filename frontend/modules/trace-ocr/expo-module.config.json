@@ -1,0 +1,7 @@
+{
+  "name": "trace-ocr",
+  "platforms": ["android", "ios"],
+  "android": {
+    "package": "com.trace.ocr.TraceOcrPackage"
+  }
+}

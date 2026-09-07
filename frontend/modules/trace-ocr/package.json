@@ -1,0 +1,11 @@
+{
+  "name": "trace-ocr",
+  "version": "1.0.0",
+  "description": "On-Device Google ML Kit Text Recognition native module for TRACE",
+  "main": "index.ts",
+  "types": "index.ts",
+  "scripts": {},
+  "keywords": ["react-native", "expo", "mlkit", "ocr", "trace"],
+  "author": "TRACE Forensic Team",
+  "license": "UNLICENSED"
+}

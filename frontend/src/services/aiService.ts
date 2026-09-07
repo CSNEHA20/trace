@@ -4,6 +4,7 @@ import { timelineClusterer, ClusterOptions } from '../../../ai/clustering/timeli
 import { ClusterOperationResult } from '../../../ai/clustering/clusterTypes';
 import { narrativeGenerator, NarrativeGenerationResult } from '../../../ai/narrative/narrativeGenerator';
 import { databaseService } from './databaseService';
+import { ocrService } from './ocrService';
 
 class AiService {
   async analyzeEvidence(
@@ -13,9 +14,16 @@ class AiService {
   ): Promise<AiAnalysisResult> {
     logger.info(`Running on-device AI inference pipeline for ${type} at ${fileUri}`);
 
-    // This legacy method has no extracted text input. Do not fabricate a model
-    // response; callers must invoke the on-device inference service with real
-    // OCR/transcription text once the local model status is AVAILABLE.
+    if (type === 'IMAGE' && evidenceId) {
+      const ocrResult = await ocrService.processEvidenceOcr(evidenceId, fileUri, type);
+      if (ocrResult.status === 'COMPLETED' && ocrResult.text) {
+        return {
+          detectedText: ocrResult.text.split('\n'),
+          processedAt: ocrResult.processedAt,
+        };
+      }
+    }
+
     return { processedAt: Date.now() };
   }
 

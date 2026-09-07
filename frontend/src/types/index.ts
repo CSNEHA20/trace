@@ -403,6 +403,63 @@ export interface TranscriptionResult {
 }
 
 // --------------------------------------------------
+// STEP 4 — ON-DEVICE OCR TYPES
+// --------------------------------------------------
+
+export type OcrStatus =
+  | 'IDLE'
+  | 'VALIDATING'
+  | 'PROCESSING'
+  | 'COMPLETED'
+  | 'FAILED';
+
+export type OcrErrorCode =
+  | 'FILE_NOT_FOUND'
+  | 'FILE_UNREADABLE'
+  | 'NOT_AN_IMAGE'
+  | 'UNSUPPORTED_FORMAT'
+  | 'DECODE_FAILED'
+  | 'OCR_ENGINE_ERROR'
+  | 'ENGINE_UNAVAILABLE'
+  | 'UNKNOWN';
+
+export interface OcrBoundingBox {
+  left: number;
+  top: number;
+  right?: number;
+  bottom?: number;
+  width: number;
+  height: number;
+}
+
+export interface OcrBlock {
+  text: string;
+  boundingBox?: OcrBoundingBox;
+  language?: string;
+  lines?: string[];
+}
+
+export interface OcrResult {
+  status: OcrStatus;
+  text?: string;
+  blocks?: OcrBlock[];
+  engine?: string;
+  processedAt?: number;
+  processingTimeMs?: number;
+  imageWidth?: number;
+  imageHeight?: number;
+  mimeType?: string;
+  error?: string;
+  errorCode?: OcrErrorCode;
+  chainNodeId?: string;
+}
+
+export interface OcrOptions {
+  language?: string;
+  onStatusUpdate?: (status: OcrStatus) => void;
+}
+
+// --------------------------------------------------
 // STEP 15 — INCIDENT REPORT GENERATION TYPES
 // --------------------------------------------------
 
