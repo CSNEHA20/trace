@@ -219,7 +219,15 @@ class DatabaseService {
   }
 
   async getHashChainForEvidence(evidenceId: string): Promise<HashChainRecord[]> {
-    return databaseEngine.getHashChainForEvidence(evidenceId);
+    const recs = await databaseEngine.getHashChainForEvidence(evidenceId);
+    return recs.map(rec => ({
+      ...rec,
+      operation: rec.operation.split(':')[0],
+    }));
+  }
+
+  async getEventsForCase(caseId: string): Promise<EventRecord[]> {
+    return databaseEngine.getEventsForCase(caseId);
   }
 
   // ---- ACTORS ----

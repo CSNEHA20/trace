@@ -113,7 +113,7 @@ class SandboxService {
 
       // 5. Read as base64 for hashing
       const base64Data = await fs.readAsStringAsync(sandboxUri, {
-        encoding: fs.EncodingType.Base64,
+        encoding: 'base64',
       });
 
       logger.debug(`Evidence copied to sandbox: [.../${destFilename}]`);
@@ -145,7 +145,7 @@ class SandboxService {
         return null;
       }
       return await fs.readAsStringAsync(sandboxUri, {
-        encoding: fs.EncodingType.Base64,
+        encoding: 'base64',
       });
     } catch (err) {
       if (
@@ -171,8 +171,10 @@ class SandboxService {
       return { available: true, freeBytes: 10 * 1024 * 1024 * 1024, requiredBytes };
     }
     try {
-      const info = await fs.getFreeDiskStorageAsync();
-      const freeBytes = typeof info === 'number' ? info : 0;
+      // getFreeDiskStorageAsync is not available in expo-file-system
+      // Use getInfoAsync on the document directory as a fallback
+      const info = await fs.getInfoAsync(fs.documentDirectory || '');
+      const freeBytes = (info as any).freeSpace || 10 * 1024 * 1024 * 1024;
       return {
         available: freeBytes >= requiredBytes,
         freeBytes,

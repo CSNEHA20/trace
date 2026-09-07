@@ -47,7 +47,7 @@ export class GenericParser implements IChatParser {
         currentMessage = {
           id: Crypto.randomUUID(),
           sender: sender.trim(),
-          text: text.trim(),
+          text: (text || '').trim(),
           timestamp: this.normalizeDate(dateStr),
           mediaReferences: []
         };

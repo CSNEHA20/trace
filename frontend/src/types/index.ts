@@ -238,6 +238,7 @@ export interface EvidenceItem {
   aiAnalysis?: AiAnalysisResult;
   isTampered?: boolean;
   tamperReason?: string;
+  originalFilename?: string;
 }
 
 export interface Case {

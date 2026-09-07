@@ -348,22 +348,24 @@ describe('TRACE SQLite Database Engine — Step 3 Full Test Suite', () => {
       const a = await databaseEngine.insertActor({
         case_id: caseId,
         name: 'Witness 1',
-        role: 'WITNESS',
+        role: 'other',
         contact_info: 'witness1@trace.com',
+        identifiers: [],
+        confidence: 0,
       });
       expect(a.id).toBeTruthy();
       expect(a.name).toBe('Witness 1');
     });
 
     it('retrieves actors for a case', async () => {
-      await databaseEngine.insertActor({ case_id: caseId, name: 'Actor A', role: 'SUSPECT' });
-      await databaseEngine.insertActor({ case_id: caseId, name: 'Actor B', role: 'WITNESS' });
+      await databaseEngine.insertActor({ case_id: caseId, name: 'Actor A', role: 'other', identifiers: [], confidence: 0 });
+      await databaseEngine.insertActor({ case_id: caseId, name: 'Actor B', role: 'other', identifiers: [], confidence: 0 });
       const actors = await databaseEngine.getActorsForCase(caseId);
       expect(actors.length).toBe(2);
     });
 
     it('deletes an actor', async () => {
-      const a = await databaseEngine.insertActor({ case_id: caseId, name: 'Delete Me', role: 'BYSTANDER' });
+      const a = await databaseEngine.insertActor({ case_id: caseId, name: 'Delete Me', role: 'bystander', identifiers: [], confidence: 0 });
       const deleted = await databaseEngine.deleteActor(a.id);
       expect(deleted).toBe(true);
       const found = await databaseEngine.getActorById(a.id);
@@ -372,7 +374,7 @@ describe('TRACE SQLite Database Engine — Step 3 Full Test Suite', () => {
 
     it('enforces FOREIGN KEY — rejects actor with invalid case_id', async () => {
       await expect(
-        databaseEngine.insertActor({ case_id: 'bad-id', name: 'Invalid', role: 'UNKNOWN' })
+        databaseEngine.insertActor({ case_id: 'bad-id', name: 'Invalid', role: 'unknown', identifiers: [], confidence: 0 })
       ).rejects.toThrow('FOREIGN KEY constraint failed');
     });
   });
@@ -537,7 +539,7 @@ describe('TRACE SQLite Database Engine — Step 3 Full Test Suite', () => {
       });
 
       const actor = await databaseEngine.insertActor({
-        case_id: c.id, name: 'Witness Rel', role: 'WITNESS',
+        case_id: c.id, name: 'Witness Rel', role: 'other', identifiers: [], confidence: 0,
       });
 
       const event = await databaseEngine.insertEvent({

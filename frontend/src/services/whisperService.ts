@@ -156,7 +156,7 @@ class WhisperService {
     // Append extraction operation node to SQLite hash chain
     const chainNode = await databaseService.appendHashChain(
       evidenceId,
-      'TRANSCRIPTION_EXTRACT',
+      'EXTRACT',
       processingHash
     );
 

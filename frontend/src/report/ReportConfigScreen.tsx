@@ -9,8 +9,8 @@ import {
   Switch,
   Alert,
   ActivityIndicator,
-  Picker,
 } from 'react-native';
+import { Picker, PickerItem } from '@react-native-picker/picker';
 import { palette } from '../theme';
 import { useCaseStore } from '../store/caseStore';
 import { useEvidenceStore } from '../store/evidenceStore';
@@ -21,8 +21,8 @@ import { databaseService } from '../services/databaseService';
 import { EventRecord } from '../types';
 
 export const IncidentReportConfigScreen: React.FC = () => {
-  const { cases, activeCaseId } = useCaseStore();
-  const { evidenceItems } = useEvidenceStore();
+  const { cases, activeCase } = useCaseStore();
+  const { evidenceList } = useEvidenceStore();
   
   const [options, setOptions] = useState<IncidentReportOptions>(DEFAULT_INCIDENT_REPORT_OPTIONS);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -36,9 +36,8 @@ export const IncidentReportConfigScreen: React.FC = () => {
   const [caseEvents, setCaseEvents] = useState<EventRecord[]>([]);
 
   // Active case selection
-  const activeCase = cases.find((c) => c.id === activeCaseId) || cases[0] || null;
   const caseEvidence = activeCase 
-    ? evidenceItems.filter((e) => e.caseId === activeCase.id)
+    ? evidenceList.filter((e) => e.caseId === activeCase.id)
     : [];
 
   // Load events when active case changes
@@ -102,7 +101,7 @@ export const IncidentReportConfigScreen: React.FC = () => {
     try {
       // We need to get the manifest URI from the generator
       // For now, just share the PDF
-      const { Sharing } = await import('expo-sharing');
+      const Sharing = (await import('expo-sharing')) as typeof import('expo-sharing');
       const isAvailable = await Sharing.isAvailableAsync();
       
       if (isAvailable) {
@@ -299,12 +298,12 @@ export const IncidentReportConfigScreen: React.FC = () => {
             <Text style={styles.fieldLabel}>Victim Display Mode</Text>
             <Picker
               selectedValue={options.victimDisplayMode}
-              onValueChange={(val) => handleOptionChange('victimDisplayMode', val)}
+              onValueChange={(val: 'anonymized' | 'named') => handleOptionChange('victimDisplayMode', val)}
               style={styles.picker}
               mode="dialog"
             >
-              <Picker.Item label="Anonymized (VICTIM [REDACTED])" value="anonymized" />
-              <Picker.Item label="Named (Full Identity)" value="named" />
+              <PickerItem label="Anonymized (VICTIM [REDACTED])" value="anonymized" />
+              <PickerItem label="Named (Full Identity)" value="named" />
             </Picker>
           </View>
         </View>
@@ -341,13 +340,13 @@ export const IncidentReportConfigScreen: React.FC = () => {
             <Text style={styles.fieldLabel}>Report Format</Text>
             <Picker
               selectedValue={options.reportFormat}
-              onValueChange={(val) => handleOptionChange('reportFormat', val)}
+              onValueChange={(val: 'PDF' | 'HTML' | 'TXT') => handleOptionChange('reportFormat', val)}
               style={styles.picker}
               mode="dialog"
             >
-              <Picker.Item label="PDF (Portable Document Format)" value="PDF" />
-              <Picker.Item label="HTML (Web Archive)" value="HTML" />
-              <Picker.Item label="TXT (Plain Text Manifest)" value="TXT" />
+              <PickerItem label="PDF (Portable Document Format)" value="PDF" />
+              <PickerItem label="HTML (Web Archive)" value="HTML" />
+              <PickerItem label="TXT (Plain Text Manifest)" value="TXT" />
             </Picker>
           </View>
         </View>

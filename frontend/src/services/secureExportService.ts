@@ -628,7 +628,7 @@ class SecureExportService {
 
     try {
       // Read the package file
-      const base64 = await fs.readAsStringAsync(packageUri, { encoding: fs.EncodingType.Base64 });
+      const base64 = await fs.readAsStringAsync(packageUri, { encoding: 'base64' });
       const binary = atob(base64);
       const packageData = new Uint8Array(binary.length);
       for (let i = 0; i < binary.length; i++) {

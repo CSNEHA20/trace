@@ -1,4 +1,4 @@
-import { EventRecord } from '../types';
+import { EventRecord } from '../src/types';
 import { mediaPipeClient, AiAvailability, ModelLifecycle } from '../../ai/inference/mediapipeClient';
 
 jest.mock('../../ai/inference/mediapipeClient', () => ({

@@ -74,7 +74,7 @@ export class TimelineClusterer {
       corpus.catalogText,
     ].join('\n\n');
 
-    const inferencer = options.inferencer ?? (await import('../inference/inferenceService')).onDeviceInferenceService;
+    const inferencer = options.inferencer ?? (await import('../inference/inferenceService') as { onDeviceInferenceService: ClusterInferencer }).onDeviceInferenceService;
     const chunkResults = await inferencer.inferJson(
       instruction,
       corpus.combinedText,

@@ -1,7 +1,7 @@
 import RNHTMLtoPDF from 'react-native-html-to-pdf';
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
-import { Sharing } from 'expo-sharing';
+import * as Sharing from 'expo-sharing';
 import {
   CaseRecord,
   EvidenceRecord,
@@ -9,6 +9,8 @@ import {
   ActorRecord,
   HashChainRecord,
   NarrativeRecord,
+  Case,
+  EvidenceItem,
 } from '../types';
 import {
   IncidentReportOptions,
@@ -81,19 +83,20 @@ class IncidentReportGenerator {
       const digitalSignature = await cryptoService.signPayload(manifestHash);
 
       // 7. Generate PDF using react-native-html-to-pdf
-      const pdfUri = await this.generatePdf(htmlContent, caseData.case_number);
+      const caseNumber = ('case_number' in caseData ? caseData.case_number : caseData.caseNumber) as string;
+      const pdfUri = await this.generatePdf(htmlContent, caseNumber);
 
       // 8. Save manifest.txt to file system
-      const manifestUri = await this.saveManifestTxt(manifestTxt, caseData.case_number);
+      const manifestUri = await this.saveManifestTxt(manifestTxt, caseNumber);
 
       // 9. Create metadata
       const metadata: IncidentReportMetadata = {
         reportId: `IR-${Date.now()}-${this.generateShortId()}`,
         caseId: caseData.id,
-        caseNumber: caseData.case_number,
-        caseTitle: caseData.title,
+        caseNumber: reportData.metadata.caseNumber,
+        caseTitle: reportData.metadata.caseTitle,
         generatedAt: Date.now(),
-        generatedBy: caseData.investigator_name,
+        generatedBy: reportData.metadata.generatedBy,
         victimIdentifier: this.getVictimIdentifier(actors),
         incidentDateRange: this.getIncidentDateRange(events),
         evidenceCount: evidenceItems.length,
@@ -122,8 +125,8 @@ class IncidentReportGenerator {
   }
 
   private async buildReportData(
-    caseData: CaseRecord,
-    evidenceItems: EvidenceRecord[],
+    caseData: CaseRecord | Case,
+    evidenceItems: EvidenceItem[],
     events: EventRecord[],
     actors: ActorRecord[],
     hashChains: HashChainRecord[],
@@ -141,14 +144,18 @@ class IncidentReportGenerator {
       };
     }
 
-    // Build cover page data
+    // Build cover page data - use correct property names for Case type
+    const caseNumber = 'case_number' in caseData ? caseData.case_number : caseData.caseNumber;
+    const investigatorName = 'investigator_name' in caseData ? caseData.investigator_name : caseData.investigatorName;
+    const caseTitle = caseData.title;
+    
     const coverPage = {
       victimIdentifier,
       victimDisplayMode: this.options.anonymizeVictim ? 'anonymized' as const : 'named' as const,
       incidentDateRange,
-      caseReference: caseData.case_number,
+      caseReference: caseNumber,
       agencyName: this.options.agencyName,
-      investigatorName: caseData.investigator_name,
+      investigatorName,
       generatedAt: Date.now(),
     };
 
@@ -178,15 +185,15 @@ class IncidentReportGenerator {
 
     // Build evidence inventory
     const evidenceInventory = evidenceItems.map((item) => ({
-      filename: item.original_filename || item.file_name,
-      type: item.media_type,
-      importDate: item.import_ts,
-      sha256: item.sha256_import,
-      fileSize: item.file_size || 0,
-      mimeType: item.media_type,
-      originalFilename: item.original_filename,
-      ocrText: item.ocr_text,
-      transcription: item.transcription,
+      filename: item.originalFilename || item.fileName || item.fileUri.split('/').pop() || item.id,
+      type: item.type,
+      importDate: item.timestamp,
+      sha256: item.sha256Hash,
+      fileSize: item.fileSize,
+      mimeType: item.mimeType,
+      originalFilename: item.originalFilename,
+      ocrText: item.aiAnalysis?.detectedText?.join('\n'),
+      transcription: item.aiAnalysis?.transcription,
     }));
 
     // Build hash chain
@@ -200,11 +207,11 @@ class IncidentReportGenerator {
     }));
 
     // Build appendix
-    const imageEvidence = evidenceItems.filter((e) => e.media_type === 'IMAGE');
+    const imageEvidence = evidenceItems.filter((e) => e.type === 'IMAGE');
     const appendix = imageEvidence.map((item) => ({
       evidenceId: item.id,
-      filename: item.file_name,
-      type: item.media_type,
+      filename: item.originalFilename || item.fileName || item.fileUri.split('/').pop() || item.id,
+      type: item.type,
       isRedacted: this.options.anonymizeVictim,
       redactionReason: this.options.anonymizeVictim ? 'Victim anonymization policy' : undefined,
     }));
@@ -213,10 +220,10 @@ class IncidentReportGenerator {
     const metadata: IncidentReportMetadata = {
       reportId: `IR-${Date.now()}-${this.generateShortId()}`,
       caseId: caseData.id,
-      caseNumber: caseData.case_number,
-      caseTitle: caseData.title,
+      caseNumber: caseNumber,
+      caseTitle: caseTitle,
       generatedAt: Date.now(),
-      generatedBy: caseData.investigator_name,
+      generatedBy: investigatorName,
       victimIdentifier,
       incidentDateRange,
       evidenceCount: evidenceItems.length,
@@ -995,7 +1002,7 @@ class IncidentReportGenerator {
       
       // Fallback to expo-print
       try {
-        const { printToFileAsync } = await import('expo-print');
+        const { printToFileAsync } = await import('expo-print') as { printToFileAsync: (options: { html: string; base64: boolean }) => Promise<{ uri: string }> };
         const file = await printToFileAsync({
           html: htmlContent,
           base64: false,

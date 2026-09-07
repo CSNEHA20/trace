@@ -4,12 +4,12 @@ import { sandboxService } from './sandboxService';
 import { logger } from '../utils/logger';
 
 // Lazy imports for native modules
-let _expoPrint: typeof import('expo-print') | null = null;
-function getExpoPrint(): typeof import('expo-print') | null {
+let _expoPrint: { printToFileAsync: (options: { html: string; base64: boolean }) => Promise<{ uri: string }> } | null = null;
+function getExpoPrint(): { printToFileAsync: (options: { html: string; base64: boolean }) => Promise<{ uri: string }> } | null {
   if (_expoPrint) return _expoPrint;
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    _expoPrint = require('expo-print');
+    _expoPrint = require('expo-print') as { printToFileAsync: (options: { html: string; base64: boolean }) => Promise<{ uri: string }> };
     return _expoPrint;
   } catch {
     return null;

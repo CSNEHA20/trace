@@ -59,7 +59,7 @@ export async function secureDeleteFile(fileUri: string, passes: number = 3): Pro
         const base64 = btoa(binary);
         
         await fs.writeAsStringAsync(fileUri, base64, {
-          encoding: fs.EncodingType.Base64,
+          encoding: 'base64',
         });
         offset += chunkSize;
       }
@@ -141,7 +141,7 @@ export async function createTempFile(extension: string = 'tmp'): Promise<string 
     const fileUri = `${tempDir}${filename}`;
 
     // Create empty file
-    await fs.writeAsStringAsync(fileUri, '', { encoding: fs.EncodingType.UTF8 });
+    await fs.writeAsStringAsync(fileUri, '', { encoding: 'utf8' });
     
     return fileUri;
   } catch (err) {
@@ -173,10 +173,10 @@ export async function atomicWriteFile(
         binary += String.fromCharCode(bytes[i]);
       }
       const base64 = btoa(binary);
-      await fs.writeAsStringAsync(tempUri, base64, { encoding: fs.EncodingType.Base64 });
+      await fs.writeAsStringAsync(tempUri, base64, { encoding: 'base64' });
     } else {
       await fs.writeAsStringAsync(tempUri, data, { 
-        encoding: options?.encoding === 'base64' ? fs.EncodingType.Base64 : fs.EncodingType.UTF8 
+        encoding: options?.encoding === 'base64' ? 'base64' : 'utf8' 
       });
     }
 
@@ -241,7 +241,7 @@ export async function computeFileHash(fileUri: string): Promise<string | null> {
   if (!fs) return null;
 
   try {
-    const base64 = await fs.readAsStringAsync(fileUri, { encoding: fs.EncodingType.Base64 });
+    const base64 = await fs.readAsStringAsync(fileUri, { encoding: 'base64' });
     
     // Use crypto service for hashing
     return await cryptoService.computeSHA256(base64);

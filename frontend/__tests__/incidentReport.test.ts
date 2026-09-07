@@ -42,7 +42,7 @@ jest.mock('expo-constants', () => ({ manifest: {} }));
 import { incidentReportGenerator } from '../src/report/IncidentReportGenerator';
 import { useReportStore } from '../src/store/reportStore';
 import { databaseService } from '../src/services/databaseService';
-import { CaseRecord, EvidenceRecord, EventRecord, ActorRecord, HashChainRecord, NarrativeRecord } from '../src/types';
+import { CaseRecord, EvidenceItem, EventRecord, ActorRecord, HashChainRecord, NarrativeRecord } from '../src/types';
 
 // Mock databaseService
 jest.mock('../src/services/databaseService', () => ({
@@ -119,60 +119,66 @@ const mockCase: CaseRecord = {
   updated_at: 1772640000000,
 };
 
-const mockEvidenceItems: EvidenceRecord[] = [
+const mockEvidenceItems: EvidenceItem[] = [
   {
     id: 'EV-1',
-    case_id: 'CASE-TEST-001',
-    file_path: 'file:///mock_sandbox/scene.jpg',
-    media_type: 'IMAGE',
-    import_ts: 1772641000000,
-    exif_ts: 1772641000000,
-    user_ts: 1772641000000,
-    ocr_text: 'ROOM 302\nNO ENTRY',
-    transcription: undefined,
-    sha256_import: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-    sha256_processed: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-    original_filename: 'scene.jpg',
-    file_size: 2048500,
-    ingestion_status: 'COMPLETE',
-    processing_note: '',
-    ingestion_source: 'CAMERA',
+    caseId: 'CASE-TEST-001',
+    title: 'Scene Photo',
+    description: 'Photo of the scene',
+    type: 'IMAGE',
+    fileUri: 'file:///mock_sandbox/scene.jpg',
+    fileName: 'scene.jpg',
+    fileSize: 2048500,
+    mimeType: 'image/jpeg',
+    sha256Hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    signature: 'SIG_TEST',
+    timestamp: 1772641000000,
+    originalFilename: 'scene.jpg',
+    aiAnalysis: {
+      detectedText: ['ROOM 302', 'NO ENTRY'],
+      transcription: undefined,
+    },
+    isTampered: false,
   },
   {
     id: 'EV-2',
-    case_id: 'CASE-TEST-001',
-    file_path: 'file:///mock_sandbox/interview.m4a',
-    media_type: 'AUDIO',
-    import_ts: 1772642000000,
-    exif_ts: undefined,
-    user_ts: 1772642000000,
-    ocr_text: undefined,
-    transcription: 'Subject stated that they saw a black sedan leave at 22:15.',
-    sha256_import: 'a8f0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b899',
-    sha256_processed: 'a8f0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b899',
-    original_filename: 'interview.m4a',
-    file_size: 5242880,
-    ingestion_status: 'COMPLETE',
-    processing_note: '',
-    ingestion_source: 'FILES',
+    caseId: 'CASE-TEST-001',
+    title: 'Audio Interview',
+    description: 'Interview recording',
+    type: 'AUDIO',
+    fileUri: 'file:///mock_sandbox/interview.m4a',
+    fileName: 'interview.m4a',
+    fileSize: 5242880,
+    mimeType: 'audio/m4a',
+    sha256Hash: 'a8f0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b899',
+    signature: 'SIG_TEST',
+    timestamp: 1772642000000,
+    originalFilename: 'interview.m4a',
+    aiAnalysis: {
+      detectedText: undefined,
+      transcription: 'Subject stated that they saw a black sedan leave at 22:15.',
+    },
+    isTampered: false,
   },
   {
     id: 'EV-3',
-    case_id: 'CASE-TEST-001',
-    file_path: 'file:///mock_sandbox/document.pdf',
-    media_type: 'DOCUMENT',
-    import_ts: 1772643000000,
-    exif_ts: undefined,
-    user_ts: 1772643000000,
-    ocr_text: 'CONFIDENTIAL\nCASE FILE',
-    transcription: undefined,
-    sha256_import: 'b8f0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b888',
-    sha256_processed: 'b8f0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b888',
-    original_filename: 'document.pdf',
-    file_size: 1024000,
-    ingestion_status: 'COMPLETE',
-    processing_note: '',
-    ingestion_source: 'GALLERY',
+    caseId: 'CASE-TEST-001',
+    title: 'Document',
+    description: 'Confidential document',
+    type: 'DOCUMENT',
+    fileUri: 'file:///mock_sandbox/document.pdf',
+    fileName: 'document.pdf',
+    fileSize: 1024000,
+    mimeType: 'application/pdf',
+    sha256Hash: 'b8f0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b888',
+    signature: 'SIG_TEST',
+    timestamp: 1772643000000,
+    originalFilename: 'document.pdf',
+    aiAnalysis: {
+      detectedText: ['CONFIDENTIAL', 'CASE FILE'],
+      transcription: undefined,
+    },
+    isTampered: false,
   },
 ];
 
@@ -405,7 +411,7 @@ describe('Step 15 — Incident Report Generation', () => {
     });
 
     it('excludes evidence inventory when option disabled', async () => {
-      incidentReportGenerator.updateOptions({ includeEvidenceInventory: false });
+      incidentReportGenerator.updateOptions({ includeEvidenceInventory: false, includeAppendix: false });
       
       const result = await incidentReportGenerator.generateReport('CASE-TEST-001');
       

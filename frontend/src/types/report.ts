@@ -77,6 +77,7 @@ export interface EvidenceInventoryItem {
   originalFilename?: string;
   thumbnailUri?: string;
   ocrText?: string;
+  transcription?: string;
 }
 
 export interface HashChainEntry {
@@ -108,12 +109,12 @@ export interface CompleteIncidentReport {
 }
 
 export interface IncidentReportGenerationResult {
-  success: boolean;
-  reportId?: string;
-  pdfUri?: string;
-  htmlContent?: string;
-  metadata?: IncidentReportMetadata;
-  error?: string;
+  pdfUri: string;
+  htmlContent: string;
+  manifestTxt: string;
+  metadata: IncidentReportMetadata;
+  manifestHash: string;
+  digitalSignature: string;
 }
 
 export const DEFAULT_INCIDENT_REPORT_OPTIONS: IncidentReportOptions = {

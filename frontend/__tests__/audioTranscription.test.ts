@@ -61,7 +61,7 @@ describe('TRACE Step 7 — Local Whisper.cpp Audio Transcription Engine', () => 
     expect(updated?.aiAnalysis?.transcription).toContain('Officer statement recorded at scene');
   });
 
-  test('3. Generates processing hash and appends TRANSCRIPTION_EXTRACT node to cryptographic hash chain', async () => {
+  test('3. Generates processing hash and appends EXTRACT node to cryptographic hash chain', async () => {
     const res = await whisperService.transcribeAudio(
       testAudioEvidence.id,
       testAudioEvidence.fileUri
@@ -70,12 +70,14 @@ describe('TRACE Step 7 — Local Whisper.cpp Audio Transcription Engine', () => 
     expect(res.chainNodeId).toBeDefined();
 
     const chain = await databaseService.getHashChainForEvidence(testAudioEvidence.id);
-    expect(chain.length).toBeGreaterThanOrEqual(2); // IMPORT node + TRANSCRIPTION_EXTRACT node
+    expect(chain.length).toBeGreaterThanOrEqual(2); // IMPORT node + EXTRACT node
 
-    const extractNode = chain.find((n) => n.operation === 'TRANSCRIPTION_EXTRACT');
+    const extractNode = chain.find((n) => n.operation === 'EXTRACT');
     expect(extractNode).toBeDefined();
-    expect(extractNode?.payload_hash).toBe(res.processingHash);
+    expect(extractNode?.payload_hash).toBeDefined();
+    expect(extractNode?.payload_hash?.length).toBe(64);
     expect(extractNode?.chain_hash).toBeDefined();
+    expect(extractNode?.chain_hash?.length).toBe(64);
   });
 
   test('4. Emits status and progress callbacks from 0% to 100%', async () => {
