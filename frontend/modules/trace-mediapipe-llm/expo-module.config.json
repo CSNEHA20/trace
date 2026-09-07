@@ -1,0 +1,7 @@
+{
+  "name": "trace-mediapipe-llm",
+  "platforms": ["android", "ios"],
+  "android": {
+    "package": "com.trace.mediapipe.TraceMediaPipeLlmPackage"
+  }
+}

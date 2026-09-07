@@ -1,0 +1,11 @@
+{
+  "name": "trace-mediapipe-llm",
+  "version": "1.0.0",
+  "description": "On-Device MediaPipe LLM native module for TRACE",
+  "main": "index.ts",
+  "types": "index.ts",
+  "scripts": {},
+  "keywords": ["react-native", "expo", "mediapipe", "llm", "trace"],
+  "author": "TRACE Forensic Team",
+  "license": "UNLICENSED"
+}
