@@ -2,7 +2,6 @@ import { NativeModules, Platform } from 'react-native';
 import { OcrResult } from '../types';
 import { logger } from '../utils/logger';
 
-const { TraceOcr } = NativeModules;
 
 export interface NativeOcrAvailability {
   available: boolean;

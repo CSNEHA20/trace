@@ -4,6 +4,7 @@ import { useEvidenceStore } from '../store/evidenceStore';
 import { AppHeader } from '../components/AppHeader';
 import { AudioTranscriptionCard } from '../components/AudioTranscriptionCard';
 import { ImageOcrCard } from '../components/ImageOcrCard';
+import { ForensicAnalysisCard } from '../components/ForensicAnalysisCard';
 import { whisperService } from '../services/whisperService';
 import { ocrService } from '../services/ocrService';
 import { palette } from '../theme';
@@ -147,6 +148,12 @@ export function EvidenceDetailScreen() {
             onCancelTranscription={handleCancelTranscription}
           />
         )}
+
+        <ForensicAnalysisCard
+          caseId={item.caseId}
+          evidenceId={item.id}
+          onAnalysisCompleted={() => fetchEvidence(item.caseId)}
+        />
 
         {item.exifData ? (
           <View style={styles.card}>

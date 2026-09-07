@@ -5,49 +5,126 @@ import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import java.io.File
 
 /**
- * Android bridge for MediaPipe's local LLM runtime. No network client is
- * created here; the .task model is loaded only from TRACE's private files dir.
+ * Android bridge for MediaPipe's local Gemma LLM runtime.
+ * Executes on-device offline inference without any network or cloud fallbacks.
+ * The .task model is loaded strictly from TRACE's private files directory.
  */
 class TraceMediaPipeLlmModule(context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
   private var inference: LlmInference? = null
+  private var loadedModelPath: String? = null
+
   override fun getName() = "TraceMediaPipeLlm"
 
-  @ReactMethod fun getCapabilities(promise: Promise) {
-    val model = File(reactApplicationContext.filesDir, "trace-models/gemma-2b-it-int4.task")
+  @ReactMethod
+  fun getCapabilities(promise: Promise) {
+    try {
+      val defaultModelFile = File(reactApplicationContext.filesDir, "trace-models/gemma-2b-it-int4.task")
+      val map = Arguments.createMap()
+      val exists = defaultModelFile.isFile && defaultModelFile.length() > 0L
+
+      map.putString("availability", if (exists) "AVAILABLE" else "MODEL_MISSING")
+      map.putString("lifecycle", if (inference == null) "UNLOADED" else "READY")
+      map.putString("modelPath", defaultModelFile.absolutePath)
+      map.putString("accelerator", "MediaPipe Android On-Device Runtime")
+      map.putDouble("modelSizeBytes", if (exists) defaultModelFile.length().toDouble() else 0.0)
+      map.putString(
+        "detail",
+        if (exists) "Local Gemma 2B INT4 model found (${defaultModelFile.length() / (1024 * 1024)} MB). Inference runs strictly on-device."
+        else "Place the compatible Gemma 2B INT4 .task model in trace-models/ within TRACE private storage."
+      )
+      promise.resolve(map)
+    } catch (error: Exception) {
+      promise.reject("CAPABILITIES_ERROR", error.message, error)
+    }
+  }
+
+  @ReactMethod
+  fun loadModel(config: ReadableMap, promise: Promise) {
+    try {
+      val rawPath = if (config.hasKey("modelPath")) config.getString("modelPath") else "trace-models/gemma-2b-it-int4.task"
+      val cleanPath = (rawPath ?: "trace-models/gemma-2b-it-int4.task").removePrefix("files/").removePrefix("/")
+
+      val modelFile = if (cleanPath.startsWith("/")) {
+        File(cleanPath)
+      } else {
+        File(reactApplicationContext.filesDir, cleanPath)
+      }
+
+      if (!modelFile.exists()) {
+        throw IllegalStateException("Model file not found at: ${modelFile.absolutePath}")
+      }
+      if (!modelFile.isFile || modelFile.length() == 0L) {
+        throw IllegalStateException("Model file is empty (0 bytes) or not a regular file: ${modelFile.absolutePath}")
+      }
+
+      // Unload any existing active inference instance
+      inference?.close()
+      inference = null
+      loadedModelPath = null
+
+      val maxTokens = if (config.hasKey("maxTokens")) config.getInt("maxTokens") else 512
+      val topK = if (config.hasKey("topK")) config.getInt("topK") else 40
+      val temperature = if (config.hasKey("temperature")) config.getDouble("temperature").toFloat() else 0.2f
+
+      val options = LlmInference.LlmInferenceOptions.builder()
+        .setModelPath(modelFile.absolutePath)
+        .setMaxTokens(maxTokens)
+        .setTopK(topK)
+        .setTemperature(temperature)
+        .build()
+
+      inference = LlmInference.createFromOptions(reactApplicationContext, options)
+      loadedModelPath = modelFile.absolutePath
+
+      val resultMap = Arguments.createMap()
+      resultMap.putBoolean("loaded", true)
+      resultMap.putString("modelPath", modelFile.absolutePath)
+      resultMap.putDouble("modelSizeBytes", modelFile.length().toDouble())
+      promise.resolve(resultMap)
+    } catch (error: Exception) {
+      inference = null
+      loadedModelPath = null
+      promise.reject("MODEL_LOAD_FAILED", error.message, error)
+    }
+  }
+
+  @ReactMethod
+  fun generate(prompt: String, promise: Promise) {
+    val runtime = inference ?: run {
+      promise.reject("MODEL_NOT_LOADED", "Gemma on-device model is not loaded. Load model before running inference.")
+      return
+    }
+
+    if (prompt.isBlank()) {
+      promise.reject("EMPTY_PROMPT", "Input prompt cannot be empty.")
+      return
+    }
+
+    try {
+      val response = runtime.generateResponse(prompt)
+      promise.resolve(response)
+    } catch (error: Exception) {
+      promise.reject("INFERENCE_FAILED", error.message ?: "Native MediaPipe LLM generation failed.", error)
+    }
+  }
+
+  @ReactMethod
+  fun isModelLoaded(promise: Promise) {
     val map = Arguments.createMap()
-    map.putString("availability", if (model.isFile && model.length() > 0) "AVAILABLE" else "MODEL_MISSING")
-    map.putString("lifecycle", if (inference == null) "UNLOADED" else "READY")
-    map.putString("modelPath", model.absolutePath)
-    map.putString("accelerator", "MediaPipe Android local runtime")
-    map.putString("detail", if (model.isFile) "Local Gemma model found. Inference remains offline." else "Place the licensed Gemma .task model in the TRACE private model directory.")
+    map.putBoolean("isLoaded", inference != null)
+    map.putString("loadedModelPath", loadedModelPath)
     promise.resolve(map)
   }
 
-  @ReactMethod fun loadModel(config: ReadableMap, promise: Promise) {
+  @ReactMethod
+  fun unloadModel(promise: Promise) {
     try {
-      val relative = config.getString("modelPath")?.removePrefix("files/") ?: throw IllegalArgumentException("Missing model path")
-      val model = File(reactApplicationContext.filesDir, relative)
-      if (!model.isFile || model.length() == 0L) throw IllegalStateException("Gemma .task model is not available locally.")
       inference?.close()
-      val options = LlmInference.LlmInferenceOptions.builder()
-        .setModelPath(model.absolutePath)
-        .setMaxTokens(config.getInt("maxTokens"))
-        .setTopK(40)
-        .setTemperature(0.2f)
-        .build()
-      inference = LlmInference.createFromOptions(reactApplicationContext, options)
+      inference = null
+      loadedModelPath = null
       promise.resolve(null)
-    } catch (error: Exception) { promise.reject("MODEL_LOAD_FAILED", error.message, error) }
-  }
-
-  @ReactMethod fun generate(prompt: String, promise: Promise) {
-    val runtime = inference ?: run { promise.reject("MODEL_NOT_LOADED", "Load the local Gemma model before inference."); return }
-    try { promise.resolve(runtime.generateResponse(prompt)) }
-    catch (error: Exception) { promise.reject("INFERENCE_FAILED", error.message, error) }
-  }
-
-  @ReactMethod fun unloadModel(promise: Promise) {
-    try { inference?.close(); inference = null; promise.resolve(null) }
-    catch (error: Exception) { promise.reject("MODEL_UNLOAD_FAILED", error.message, error) }
+    } catch (error: Exception) {
+      promise.reject("MODEL_UNLOAD_FAILED", error.message, error)
+    }
   }
 }

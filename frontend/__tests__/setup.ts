@@ -1,3 +1,13 @@
+jest.mock('expo-crypto', () => ({
+  CryptoDigestAlgorithm: { SHA256: 'SHA-256' },
+  CryptoEncoding: { HEX: 'HEX', BASE64: 'BASE64' },
+  digestStringAsync: jest.fn().mockImplementation(async (algo, str) => {
+    const crypto = require('crypto');
+    return crypto.createHash('sha256').update(str).digest('hex');
+  }),
+  randomUUID: jest.fn().mockReturnValue('mock-uuid-1234'),
+}));
+
 jest.mock('expo-sharing', () => ({
   isAvailableAsync: jest.fn().mockResolvedValue(true),
   shareAsync: jest.fn().mockResolvedValue(undefined),

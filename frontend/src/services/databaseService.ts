@@ -109,7 +109,11 @@ class DatabaseService {
     // Append hash chain entry for the imported evidence
     await this.appendHashChain(rec.id, 'IMPORT', rec.sha256_import);
 
-    return this.mapEvidenceRecordToItem(rec);
+    const mapped = this.mapEvidenceRecordToItem(rec);
+    if (item.signature) {
+      mapped.signature = item.signature;
+    }
+    return mapped;
   }
 
   async updateEvidenceTranscription(

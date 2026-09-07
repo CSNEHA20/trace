@@ -17,6 +17,11 @@ module.exports = {
   testPathIgnorePatterns: [
     '/node_modules/',
     '/__tests__/helpers/',
+    '/__tests__/setup.ts',
+  ],
+  testMatch: [
+    '**/__tests__/**/*.test.[jt]s?(x)',
+    '**/?(*.)+(spec|test).[jt]s?(x)',
   ],
   moduleNameMapper: {
     '^react-native$': '<rootDir>/__tests__/helpers/reactNativeMock.js',
