@@ -154,7 +154,7 @@ export class ForensicAnalysisService {
         timestamp: ev.timestamp ? (Date.parse(ev.timestamp) || Date.now()) : Date.now(),
         timestamp_hint: ev.timestamp ?? undefined,
         ai_summary: `[${ev.certainty.toUpperCase()}] ${ev.description}`,
-        evidence_ids: ev.sourceEvidenceId ? [ev.sourceEvidenceId] : [targetEvidence[0].id],
+        evidence_ids: [ev.sourceEvidenceId],
         actor_ids: [],
         source: 'system',
       });

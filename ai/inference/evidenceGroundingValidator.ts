@@ -99,13 +99,14 @@ export function extractAndParseJson<T = any>(raw: string): { value?: T; error?: 
 /**
  * Deterministic Evidence-Grounding Validator.
  * 
- * Rules:
- * 1. sourceEvidenceId MUST exist in the case's evidence list.
- * 2. Quoted statements MUST exist in the evidence OCR or transcription.
- * 3. Phone numbers MUST appear in evidence text.
- * 4. URLs / Domains MUST appear in evidence text.
- * 5. Explicit actors MUST have their name or identifier in evidence text; otherwise demoted to inferred or uncertainty.
- * 6. Hallucinated or unsupported items are rejected or reclassified to prevent fabricated findings.
+ * Strict Forensic Provenance Rules:
+ * 1. sourceEvidenceId MUST exist in the current case's evidence list (case isolation).
+ * 2. If sourceEvidenceId is missing or invalid: REJECT the claim from verified persistence. NEVER remap or guess.
+ * 3. Quoted statements MUST exist verbatim in evidence OCR or transcription.
+ * 4. Phone numbers and URLs/Domains MUST appear in evidence text.
+ * 5. Explicit actors MUST have their identifier in evidence text; otherwise reclassified to inferred.
+ * 6. Certainty="inferred" is NOT used to rescue invalid provenance. Invalid provenance is strictly rejected.
+ * 7. Safe, deterministic aliases ("fact", "facts", "events", "timeline", "entities", "quotes") are normalized prior to validation.
  */
 export function validateAndGroundForensicExtraction(
   rawModelOutput: string,
@@ -115,20 +116,20 @@ export function validateAndGroundForensicExtraction(
   const rejectedClaims: RejectedClaim[] = [];
 
   const parsed = extractAndParseJson<any>(rawModelOutput);
-  if (parsed.error || !parsed.value || typeof parsed.value !== 'object') {
+  if (parsed.error || !parsed.value || typeof parsed.value !== 'object' || Array.isArray(parsed.value)) {
     return {
       isValid: false,
       status: 'INVALID_MODEL_OUTPUT',
       rawOutput: rawModelOutput,
-      parseError: parsed.error || 'Model output is not a JSON object.',
+      parseError: parsed.error || 'Model output is not a valid JSON object.',
       warnings: ['Raw model output did not contain parseable JSON conforming to schema.'],
       rejectedClaims: [],
     };
   }
 
   const data = parsed.value;
+  // Strict case-scoped valid evidence IDs
   const validEvidenceIds = new Set(evidenceItems.map((e) => e.id));
-  const defaultEvidenceId = evidenceItems[0]?.id || 'UNKNOWN';
 
   // Build searchable text maps
   const evidenceTextMap = new Map<string, string>();
@@ -165,135 +166,167 @@ export function validateAndGroundForensicExtraction(
     ? data.incidentSummary.trim()
     : 'Incident analysis generated from local evidence.';
 
-  // 3. Extracted Facts
+  // Helper to normalize array or single object from deterministic aliases
+  const toObjectArray = (val: any): any[] => {
+    if (Array.isArray(val)) return val;
+    if (val && typeof val === 'object') return [val];
+    return [];
+  };
+
+  // 3. Extracted Facts (Deterministic Aliases: extractedFacts, facts, fact)
+  const rawFactsSource = data.extractedFacts !== undefined
+    ? data.extractedFacts
+    : (data.facts !== undefined ? data.facts : data.fact);
+
   const validatedFacts: ForensicFact[] = [];
-  if (Array.isArray(data.extractedFacts)) {
-    for (const f of data.extractedFacts) {
-      if (!f || typeof f !== 'object') continue;
-      const factText = String(f.fact ?? f.summary ?? f.text ?? '').trim();
-      if (!factText) continue;
+  const rawFactsList = toObjectArray(rawFactsSource);
 
-      let sourceId = String(f.sourceEvidenceId || defaultEvidenceId).trim();
-      if (!validEvidenceIds.has(sourceId)) {
-        warnings.push(`Fact references unknown evidence ID "${sourceId}". Re-mapped to primary evidence "${defaultEvidenceId}".`);
-        rejectedClaims.push({
-          field: 'extractedFacts.sourceEvidenceId',
-          value: sourceId,
-          reason: `Evidence ID "${sourceId}" does not exist in current case.`,
-        });
-        sourceId = defaultEvidenceId;
-      }
+  for (const f of rawFactsList) {
+    if (!f || typeof f !== 'object') continue;
+    const factText = String(f.fact ?? f.summary ?? f.text ?? '').trim();
+    if (!factText) continue;
 
-      let certainty: 'explicit' | 'inferred' = f.certainty === 'inferred' ? 'inferred' : 'explicit';
-      const sourceSpan = f.sourceSpan ? String(f.sourceSpan).trim() : undefined;
+    const sourceIdRaw = f.sourceEvidenceId !== undefined && f.sourceEvidenceId !== null ? String(f.sourceEvidenceId).trim() : '';
 
-      // If marked explicit with a sourceSpan, verify sourceSpan actually appears in evidence text
-      if (certainty === 'explicit' && sourceSpan) {
-        const itemText = evidenceTextMap.get(sourceId) || fullCorpusNormalized;
-        if (!itemText.includes(normalizeForMatching(sourceSpan))) {
-          certainty = 'inferred';
-          warnings.push(`Fact quote "${sourceSpan.slice(0, 30)}…" not found verbatim in evidence ${sourceId}; reclassified as inferred.`);
-        }
-      }
-
-      validatedFacts.push({
-        fact: factText,
-        type: String(f.type || 'statement'),
-        sourceEvidenceId: sourceId,
-        sourceSpan,
-        certainty,
+    // STRICT PROVENANCE RULE:
+    // If sourceEvidenceId is missing or does not match an evidence record in the current case, REJECT IT.
+    // NEVER remap to default/primary evidence.
+    if (!sourceIdRaw || !validEvidenceIds.has(sourceIdRaw)) {
+      warnings.push(`Fact "${factText.slice(0, 30)}…" references invalid or missing evidence ID "${sourceIdRaw || 'MISSING'}". Claim rejected.`);
+      rejectedClaims.push({
+        field: 'extractedFacts',
+        value: factText,
+        reason: 'INVALID_SOURCE_EVIDENCE_ID',
+        sourceEvidenceId: sourceIdRaw || undefined,
       });
+      continue; // Strictly skip persistence
     }
-  }
 
-  // 4. Actors
-  const validatedActors: ForensicActor[] = [];
-  if (Array.isArray(data.actors)) {
-    for (const a of data.actors) {
-      if (!a) continue;
-      const name = typeof a === 'string' ? a.trim() : String(a.name ?? '').trim();
-      if (!name) continue;
+    let certainty: 'explicit' | 'inferred' = f.certainty === 'inferred' ? 'inferred' : 'explicit';
+    const sourceSpan = f.sourceSpan ? String(f.sourceSpan).trim() : undefined;
 
-      const role = ['perpetrator', 'victim', 'witness', 'unknown'].includes(a.role) ? a.role : 'unknown';
-      const identifiers = Array.isArray(a.identifiers) ? a.identifiers.map(String).map(s => s.trim()).filter(Boolean) : [];
-      let certainty: 'explicit' | 'inferred' = a.certainty === 'inferred' ? 'inferred' : 'explicit';
-
-      // Verify if actor name occurs in evidence text
-      const nameNormalized = normalizeForMatching(name);
-      const nameInEvidence = nameNormalized.length > 1 && fullCorpusNormalized.includes(nameNormalized);
-
-      if (certainty === 'explicit' && !nameInEvidence && !['unknown', 'victim', 'perpetrator', 'suspect', 'sender', 'caller'].includes(nameNormalized)) {
+    // If marked explicit with a sourceSpan, verify sourceSpan actually appears in the referenced evidence text
+    if (certainty === 'explicit' && sourceSpan) {
+      const itemText = evidenceTextMap.get(sourceIdRaw) || '';
+      if (!itemText.includes(normalizeForMatching(sourceSpan))) {
         certainty = 'inferred';
-        warnings.push(`Actor name "${name}" does not appear explicitly in evidence text; reclassified to inferred.`);
-        rejectedClaims.push({
-          field: 'actors.name',
-          value: name,
-          reason: `Actor name "${name}" was not found in supplied evidence OCR or transcripts.`,
-        });
+        warnings.push(`Fact quote "${sourceSpan.slice(0, 30)}…" not found verbatim in evidence ${sourceIdRaw}; reclassified as inferred.`);
       }
-
-      validatedActors.push({
-        name,
-        role,
-        identifiers,
-        certainty,
-      });
     }
+
+    validatedFacts.push({
+      fact: factText,
+      type: String(f.type || 'statement'),
+      sourceEvidenceId: sourceIdRaw,
+      sourceSpan,
+      certainty,
+    });
   }
 
-  // 5. Temporal Events
+  // 4. Actors (Deterministic Aliases: actors, entities, people)
+  const rawActorsSource = data.actors !== undefined
+    ? data.actors
+    : (data.entities !== undefined ? data.entities : data.people);
+
+  const validatedActors: ForensicActor[] = [];
+  const rawActorsList = toObjectArray(rawActorsSource);
+
+  for (const a of rawActorsList) {
+    if (!a) continue;
+    const name = typeof a === 'string' ? a.trim() : String(a.name ?? '').trim();
+    if (!name) continue;
+
+    const role = ['perpetrator', 'victim', 'witness', 'unknown'].includes(a.role) ? a.role : 'unknown';
+    const identifiers = Array.isArray(a.identifiers) ? a.identifiers.map(String).map(s => s.trim()).filter(Boolean) : [];
+    let certainty: 'explicit' | 'inferred' = a.certainty === 'inferred' ? 'inferred' : 'explicit';
+
+    // Verify if actor name occurs in evidence text
+    const nameNormalized = normalizeForMatching(name);
+    const nameInEvidence = nameNormalized.length > 1 && fullCorpusNormalized.includes(nameNormalized);
+
+    if (certainty === 'explicit' && !nameInEvidence && !['unknown', 'victim', 'perpetrator', 'suspect', 'sender', 'caller'].includes(nameNormalized)) {
+      certainty = 'inferred';
+      warnings.push(`Actor name "${name}" does not appear explicitly in evidence text; reclassified to inferred.`);
+      rejectedClaims.push({
+        field: 'actors.name',
+        value: name,
+        reason: `Actor name "${name}" was not found in supplied evidence OCR or transcripts.`,
+      });
+    }
+
+    validatedActors.push({
+      name,
+      role,
+      identifiers,
+      certainty,
+    });
+  }
+
+  // 5. Temporal Events (Deterministic Aliases: temporalEvents, events, timeline)
+  const rawEventsSource = data.temporalEvents !== undefined
+    ? data.temporalEvents
+    : (data.events !== undefined ? data.events : data.timeline);
+
   const validatedEvents: ForensicEvent[] = [];
-  if (Array.isArray(data.temporalEvents)) {
-    for (const e of data.temporalEvents) {
-      if (!e || typeof e !== 'object') continue;
-      const desc = String(e.description ?? e.summary ?? '').trim();
-      if (!desc) continue;
+  const rawEventsList = toObjectArray(rawEventsSource);
 
-      let sourceId = String(e.sourceEvidenceId || defaultEvidenceId).trim();
-      if (!validEvidenceIds.has(sourceId)) {
-        warnings.push(`Event references unknown evidence ID "${sourceId}". Re-mapped to "${defaultEvidenceId}".`);
-        rejectedClaims.push({
-          field: 'temporalEvents.sourceEvidenceId',
-          value: sourceId,
-          reason: `Evidence ID "${sourceId}" does not exist in current case.`,
-        });
-        sourceId = defaultEvidenceId;
-      }
+  for (const e of rawEventsList) {
+    if (!e || typeof e !== 'object') continue;
+    const desc = String(e.description ?? e.summary ?? '').trim();
+    if (!desc) continue;
 
-      const eventType = [
-        'initial_contact',
-        'threat',
-        'demand',
-        'escalation',
-        'evidence_sharing',
-        'impersonation',
-        'other',
-      ].includes(e.eventType) ? e.eventType : 'other';
+    const sourceIdRaw = e.sourceEvidenceId !== undefined && e.sourceEvidenceId !== null ? String(e.sourceEvidenceId).trim() : '';
 
-      const severity = typeof e.severity === 'number' && e.severity >= 1 && e.severity <= 5
-        ? Math.round(e.severity)
-        : 3;
-
-      validatedEvents.push({
-        timestamp: e.timestamp ? String(e.timestamp) : null,
-        description: desc,
-        eventType,
-        severity,
-        sourceEvidenceId: sourceId,
-        certainty: e.certainty === 'inferred' ? 'inferred' : 'explicit',
+    // STRICT PROVENANCE RULE:
+    // If sourceEvidenceId is missing or does not match an evidence record in the current case, REJECT IT.
+    // NEVER remap to default/primary evidence.
+    if (!sourceIdRaw || !validEvidenceIds.has(sourceIdRaw)) {
+      warnings.push(`Temporal event "${desc.slice(0, 30)}…" references invalid or missing evidence ID "${sourceIdRaw || 'MISSING'}". Claim rejected.`);
+      rejectedClaims.push({
+        field: 'temporalEvents',
+        value: desc,
+        reason: 'INVALID_SOURCE_EVIDENCE_ID',
+        sourceEvidenceId: sourceIdRaw || undefined,
       });
+      continue; // Strictly skip persistence
     }
+
+    const eventType = [
+      'initial_contact',
+      'threat',
+      'demand',
+      'escalation',
+      'evidence_sharing',
+      'impersonation',
+      'other',
+    ].includes(e.eventType) ? e.eventType : 'other';
+
+    const severity = typeof e.severity === 'number' && e.severity >= 1 && e.severity <= 5
+      ? Math.round(e.severity)
+      : 3;
+
+    validatedEvents.push({
+      timestamp: e.timestamp ? String(e.timestamp) : null,
+      description: desc,
+      eventType,
+      severity,
+      sourceEvidenceId: sourceIdRaw,
+      certainty: e.certainty === 'inferred' ? 'inferred' : 'explicit',
+    });
   }
 
-  // Helper string array extractor
+  // Helper string array extractor supporting aliases
   const toStringArray = (val: any): string[] => {
-    if (!Array.isArray(val)) return [];
+    if (!Array.isArray(val)) {
+      if (typeof val === 'string' && val.trim().length > 0) return [val.trim()];
+      return [];
+    }
     return val.map(String).map(s => s.trim()).filter(s => s.length > 0);
   };
 
-  // 6. Quoted Statements (Must exist in evidence text)
+  // 6. Quoted Statements (Deterministic Aliases: quotedStatements, quotes)
   const validatedQuotes: string[] = [];
-  const rawQuotes = toStringArray(data.quotedStatements);
+  const rawQuotes = toStringArray(data.quotedStatements !== undefined ? data.quotedStatements : data.quotes);
   for (const quote of rawQuotes) {
     const normQuote = normalizeForMatching(quote);
     if (normQuote.length >= 4 && fullCorpusNormalized.includes(normQuote)) {
@@ -308,9 +341,9 @@ export function validateAndGroundForensicExtraction(
     }
   }
 
-  // 7. Phone Numbers (Must exist in evidence text)
+  // 7. Phone Numbers (Deterministic Aliases: phoneNumbers, phones)
   const validatedPhones: string[] = [];
-  const rawPhones = toStringArray(data.phoneNumbers);
+  const rawPhones = toStringArray(data.phoneNumbers !== undefined ? data.phoneNumbers : data.phones);
   const corpusDigits = extractDigits(fullCorpusNormalized);
 
   for (const phone of rawPhones) {
@@ -327,9 +360,9 @@ export function validateAndGroundForensicExtraction(
     }
   }
 
-  // 8. URLs and Domains (Must exist in evidence text)
+  // 8. URLs and Domains (Deterministic Aliases: urlsAndDomains, urlsOrDomains, urls)
   const validatedUrls: string[] = [];
-  const rawUrls = toStringArray(data.urlsAndDomains || data.urlsOrDomains);
+  const rawUrls = toStringArray(data.urlsAndDomains !== undefined ? data.urlsAndDomains : (data.urlsOrDomains !== undefined ? data.urlsOrDomains : data.urls));
   for (const url of rawUrls) {
     const normUrl = normalizeForMatching(url).replace(/^https?:\/\//, '');
     if (normUrl.length >= 3 && fullCorpusNormalized.includes(normUrl)) {
@@ -356,7 +389,8 @@ export function validateAndGroundForensicExtraction(
   // Add rejected items to uncertainties for forensic auditability
   if (rejectedClaims.length > 0) {
     for (const rej of rejectedClaims) {
-      uncertainties.push(`[VALIDATION REJECTION] ${rej.field}: "${rej.value}" - ${rej.reason}`);
+      const srcInfo = rej.sourceEvidenceId ? ` [Evidence ID: ${rej.sourceEvidenceId}]` : '';
+      uncertainties.push(`[VALIDATION REJECTION] ${rej.field}${srcInfo}: "${rej.value}" - ${rej.reason}`);
     }
   }
 

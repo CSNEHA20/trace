@@ -105,12 +105,34 @@ export function ForensicAnalysisCard({
                       styles.certaintyBadge,
                       fact.certainty === 'explicit' ? styles.explicitBadge : styles.inferredBadge
                     ]}>
-                      {fact.certainty.toUpperCase()}
+                      {fact.certainty === 'explicit' ? 'VERIFIED' : 'INFERRED'}
                     </Text>
                     <Text style={styles.typeBadge}>[{fact.type}]</Text>
                     <Text style={styles.refText}>Ref: {fact.sourceEvidenceId.slice(0, 8)}</Text>
                   </View>
                   <Text style={styles.factText}>{fact.fact}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {result.schema.temporalEvents.length > 0 && (
+            <View style={styles.subSection}>
+              <Text style={styles.subHeader}>Timeline Events ({result.schema.temporalEvents.length})</Text>
+              {result.schema.temporalEvents.map((ev, idx) => (
+                <View key={idx} style={styles.factItem}>
+                  <View style={styles.factMetaRow}>
+                    <Text style={[
+                      styles.certaintyBadge,
+                      ev.certainty === 'explicit' ? styles.explicitBadge : styles.inferredBadge
+                    ]}>
+                      {ev.certainty === 'explicit' ? 'VERIFIED' : 'INFERRED'}
+                    </Text>
+                    <Text style={styles.typeBadge}>[{ev.eventType}]</Text>
+                    <Text style={styles.refText}>Ref: {ev.sourceEvidenceId.slice(0, 8)}</Text>
+                  </View>
+                  <Text style={styles.factText}>{ev.description}</Text>
+                  {ev.timestamp && <Text style={styles.timestampText}>Timestamp: {ev.timestamp}</Text>}
                 </View>
               ))}
             </View>
@@ -130,9 +152,14 @@ export function ForensicAnalysisCard({
               <Text style={styles.subHeader}>Identified Actors ({result.schema.actors.length})</Text>
               {result.schema.actors.map((actor, idx) => (
                 <View key={idx} style={styles.actorRow}>
+                  <Text style={[
+                    styles.certaintyBadge,
+                    actor.certainty === 'explicit' ? styles.explicitBadge : styles.inferredBadge
+                  ]}>
+                    {actor.certainty === 'explicit' ? 'VERIFIED' : 'INFERRED'}
+                  </Text>
                   <Text style={styles.actorName}>{actor.name}</Text>
                   <Text style={styles.actorRole}>Role: {actor.role}</Text>
-                  <Text style={styles.certaintyTag}>({actor.certainty})</Text>
                 </View>
               ))}
             </View>
@@ -149,7 +176,7 @@ export function ForensicAnalysisCard({
 
           {result.schema.quotedStatements.length > 0 && (
             <View style={styles.subSection}>
-              <Text style={styles.subHeader}>Verified Quotes ({result.schema.quotedStatements.length})</Text>
+              <Text style={styles.subHeader}>Verified Verbatim Quotes ({result.schema.quotedStatements.length})</Text>
               {result.schema.quotedStatements.map((quote, idx) => (
                 <Text key={idx} style={styles.quoteText}>"{quote}"</Text>
               ))}
@@ -167,11 +194,30 @@ export function ForensicAnalysisCard({
 
           {result.rejectedClaims.length > 0 && (
             <View style={styles.subSection}>
-              <Text style={styles.rejectedHeader}>Rejected Unsupported Claims ({result.rejectedClaims.length})</Text>
+              <Text style={styles.rejectedHeader}>Rejected Claims — Provenance / Grounding Failure ({result.rejectedClaims.length})</Text>
               {result.rejectedClaims.map((rej, idx) => (
                 <View key={idx} style={styles.rejectedItem}>
-                  <Text style={styles.rejectedField}>[{rej.field}]: "{String(rej.value)}"</Text>
+                  <View style={styles.rejectedBadgeRow}>
+                    <Text style={styles.rejectedBadge}>REJECTED</Text>
+                    <Text style={styles.rejectedField}>[{rej.field}]</Text>
+                    {rej.sourceEvidenceId && (
+                      <Text style={styles.rejectedSrc}>Ref: {rej.sourceEvidenceId}</Text>
+                    )}
+                  </View>
+                  <Text style={styles.rejectedValue}>"{String(rej.value)}"</Text>
                   <Text style={styles.rejectedReason}>{rej.reason}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {result.schema.uncertainties.length > 0 && (
+            <View style={styles.subSection}>
+              <Text style={styles.uncertaintyHeader}>Forensic Uncertainties ({result.schema.uncertainties.length})</Text>
+              {result.schema.uncertainties.map((unc, idx) => (
+                <View key={idx} style={styles.uncertaintyItem}>
+                  <Text style={styles.uncertaintyBadge}>UNCERTAIN</Text>
+                  <Text style={styles.uncertaintyText}>{unc}</Text>
                 </View>
               ))}
             </View>
@@ -375,18 +421,83 @@ const styles = StyleSheet.create({
   },
   rejectedItem: {
     backgroundColor: '#3E1F1F',
-    padding: 6,
-    borderRadius: 4,
-    marginBottom: 4,
+    padding: 8,
+    borderRadius: 6,
+    marginBottom: 6,
+    borderLeftWidth: 3,
+    borderLeftColor: '#EF4444',
+  },
+  rejectedBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  rejectedBadge: {
+    backgroundColor: '#7F1D1D',
+    color: '#F87171',
+    fontSize: 9,
+    fontWeight: 'bold',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 3,
   },
   rejectedField: {
     fontSize: 11,
     fontWeight: 'bold',
     color: '#FCA5A5',
   },
+  rejectedSrc: {
+    fontSize: 9,
+    fontFamily: 'monospace',
+    color: '#F87171',
+    marginLeft: 'auto',
+  },
+  rejectedValue: {
+    fontSize: 11,
+    color: '#FECACA',
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
   rejectedReason: {
     fontSize: 10,
     color: '#F87171',
+    marginTop: 2,
+  },
+  uncertaintyHeader: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#9CA3AF',
+    marginBottom: 6,
+  },
+  uncertaintyItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    backgroundColor: '#1F2937',
+    padding: 6,
+    borderRadius: 4,
+    marginBottom: 4,
+  },
+  uncertaintyBadge: {
+    backgroundColor: '#374151',
+    color: '#D1D5DB',
+    fontSize: 9,
+    fontWeight: 'bold',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 3,
+  },
+  uncertaintyText: {
+    fontSize: 11,
+    color: '#E5E7EB',
+    flex: 1,
+    lineHeight: 16,
+  },
+  timestampText: {
+    fontSize: 10,
+    fontFamily: 'monospace',
+    color: palette.textSecondary,
     marginTop: 2,
   },
   factItem: {

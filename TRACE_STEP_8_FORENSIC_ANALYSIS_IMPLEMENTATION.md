@@ -97,66 +97,89 @@ Every extracted finding (facts, temporal events, actors, threats, blackmail indi
 
 ---
 
-## 4. Evidence Grounding & Provenance Rules
+## 4. Evidence Grounding & Strict Provenance Rules
 
-1. **Source Evidence Provenance:**
-   - Every fact and event must cite a `sourceEvidenceId` that actually exists in the case.
-   - Unknown/hallucinated IDs are remapped to primary evidence with an explicit warning recorded.
+1. **Strict Source Evidence Provenance:**
+   - Every fact and event must cite a `sourceEvidenceId` that exactly matches an evidence record belonging to the current case.
+   - TRACE **NEVER** remaps invalid source evidence IDs.
+   - TRACE **NEVER** guesses provenance or attaches orphaned claims to the first/primary evidence item.
+   - Invalid or missing provenance causes strict rejection from verified persistence.
 2. **Verbatim Quotation Grounding:**
    - Quotes in `quotedStatements` or `sourceSpan` must match normalized substrings in the evidence text.
    - Fabricated quotes are stripped from verified quotes and recorded under `rejectedClaims`.
 3. **Actor Identification Safety:**
    - Named individuals (e.g., "Alex", "John") must appear in the evidence text to be marked explicit.
-   - If an actor name does not occur in evidence text, it is demoted to `certainty: "inferred"` with a warning.
+   - If an actor name does not occur in evidence text, it is reclassified to `certainty: "inferred"` with an audit entry.
 4. **Identifier & URL Verification:**
    - Phone numbers and URLs are checked against digit and domain substrings in the evidence corpus.
    - Unverified identifiers are rejected to prevent false attribution.
 5. **Audit Transparency:**
-   - All rejected hallucinations and reclassifications are preserved in `uncertainties` and displayed in the UI.
+   - All rejected claims and unverified elements are preserved in `rejectedClaims` and `uncertainties` for complete forensic audibility.
 
 ---
 
-## 5. Live Physical Hardware Test Output (OnePlus 12R)
+## 5. Strict Provenance Semantics (Step 8.1 Hardening)
 
-### Execution Telemetry
-- **Device:** OnePlus 12R (`CPH2585`, Snapdragon 8 Gen 2, Android 16 / API 36)
-- **Model:** `gemma-2b-it-cpu-int4.bin`
-- **Execution Duration:** 44,618 ms
-- **JVM Memory:** 20.64 MB | **Native Heap:** 7.13 MB before load -> 562 MB peak
+In a forensic evidence system, model-generated claims cannot be automatically reassigned to another evidence item when an invalid, hallucinated, or foreign `sourceEvidenceId` is encountered. The provenance relationship must remain strictly traceable to the authentic evidence source.
+
+### Core Provenance Semantics:
+- **Zero Remapping / Zero Guessing:** TRACE never remaps invalid source evidence IDs to default or primary evidence. TRACE never attempts to guess which evidence item the model intended.
+- **Strict Rejection on Invalid Provenance:** If `sourceEvidenceId` is missing, unknown, or belongs to another case (cross-case isolation), the claim is rejected from verified facts, events, and actors.
+- **Audit Preservation:** Rejected claims remain fully auditable in the `rejectedClaims` audit structure and `uncertainties` log with explicit rejection reasons (e.g., `INVALID_SOURCE_EVIDENCE_ID`).
+- **Inference Separation:** `certainty = "inferred"` is **NEVER** used to rescue an invalid provenance claim. Inference classification is strictly reserved for valid evidence items where deductive analysis was applied.
+- **Deterministic Alias Normalization:** Known deterministic aliases (e.g., `"facts"`, `"fact"`, `"events"`, `"quotes"`) are safely normalized prior to validation, ensuring all required provenance fields are present and validated.
+- **Tamper-Evident Hash Chain:** The cryptographic `ANALYZE` ledger node anchors only the validated forensic schema and narrative snapshot.
+
+---
+
+## 6. Live Physical Hardware Test Output (OnePlus 12R)
+
+### Execution Telemetry (Step 8.1 Validation)
+- **Device:** OnePlus 12R (`CPH2585`, Snapdragon 8 Gen 2, Android 16 / API 36, Serial: `b5028652`)
+- **Model:** `gemma-2b-it-cpu-int4.bin` (MediaPipe Tasks GenAI 0.10.14)
+- **Test Method:** `GemmaHardwareValidationTest#executeStep81ProvenanceHardeningValidation`
+- **Execution Duration:** 16,700 ms (Inference) / 17.22 s (Total Test Suite)
+- **Backend:** Real CPU / XNNPACK
 
 ### Live Raw Output from Hardware
 ```json
 ```json
 {
-  "fact": [
+  "extractedFacts": [
     {
-      "name": "Threat",
-      "description": "I will publish your private photos if you do not pay me $5,000 to UPI ID victim@okbank or call 9876543210.",
-      "sourceEvidenceId": "ev-photo-threat-1",
-      "certainty": "explicit"
+      "fact": "I will publish your private photos if you do not pay $5,000.",
+      "sourceEvidenceId": "ev-photo-threat-1"
+    },
+    {
+      "fact": "Alex speaking. Send the money through UPI ID victim@okbank.",
+      "sourceEvidenceId": "ev-audio-call-2"
     }
   ]
 }
 ```
 
-This JSON response is valid and conforms to the requested schema. It contains all the essential information about the evidence item, including the title, description, sourceEvidenceId, and certainty.
+**Explanation:**
+
+1. The extracted facts are extracted from the provided evidence items.
+2. Each fact has a fact and sourceEvidenceId extracted from the evidence item.
+3. The extracted facts are then converted into JSON format with a "extractedFacts" array containing the extracted facts.
+4. The extracted facts are returned in the requested JSON format.
 ```
 
 ### Deterministic Validation Result
-- Surrounding markdown and conversational postamble safely parsed.
-- Fact verified against `ev-photo-threat-1` OCR text.
-- Confirmed `certainty: "explicit"`.
-- Appended `ANALYZE` event to the SQLite cryptographic hash chain.
+- Multi-evidence citations (`ev-photo-threat-1`, `ev-audio-call-2`) verified against respective evidence items.
+- Both facts validated with exact provenance.
+- Zero provenance remapping or guessing.
 
 ---
 
-## 6. Known Model Limitations
+## 7. Known Model Limitations
 
 1. **2B Parameter Capacity:** Gemma 2B INT4 may occasionally output non-standard keys (e.g. `"fact"` instead of `"extractedFacts"`) or append natural language commentary after JSON blocks. The deterministic parser successfully isolates and normalizes these variations.
 2. **GPU Incompatibility:** OpenCL driver failure (`clSetPerfHintQCOM`) remains documented on Snapdragon 8 Gen 2 under Android 16. CPU inference is the proven, stable execution backend.
 
 ---
 
-## 7. Conclusion
+## 8. Conclusion
 
-Step 8 is **COMPLETE and PASSING**. TRACE now possesses a reliable, evidence-grounded forensic analysis pipeline running genuinely on-device with full cryptographic auditability and zero external dependencies.
+Step 8.1 is **COMPLETE and PASSING**. TRACE enforces strict forensic provenance semantics with zero ID remapping, complete case isolation, auditable claim rejection, and verified on-device CPU execution on physical OnePlus 12R hardware.

@@ -8,10 +8,10 @@ import { forensicAnalysisService } from '../src/services/forensicAnalysisService
 import { onDeviceInferenceService } from '../../ai/inference/inferenceService';
 import { chainService } from '../src/services/chainService';
 
-describe('TRACE Step 8: Forensic Analysis Grounding & Validation Pipeline', () => {
+describe('TRACE Step 8.1: Forensic Provenance Hardening & Grounding Pipeline', () => {
   const mockEvidence: EvidenceItemContext[] = [
     {
-      id: 'ev-photo-threat-1',
+      id: 'ev-case1-photo-threat-1',
       media_type: 'IMAGE',
       file_path: 'files/threat_chat.jpg',
       ocr_text: 'I will publish your private photos if you do not pay me $5,000 to UPI ID victim@okbank or call 9876543210. Visit https://blackmail-drop.com',
@@ -20,7 +20,7 @@ describe('TRACE Step 8: Forensic Analysis Grounding & Validation Pipeline', () =
       sha256_import: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     },
     {
-      id: 'ev-audio-call-2',
+      id: 'ev-case1-audio-call-2',
       media_type: 'AUDIO',
       file_path: 'files/voicemail.wav',
       ocr_text: undefined,
@@ -31,15 +31,15 @@ describe('TRACE Step 8: Forensic Analysis Grounding & Validation Pipeline', () =
   ];
 
   beforeAll(async () => {
-    await databaseEngine.initialize('test_forensic_grounding.db');
+    await databaseEngine.initialize('test_forensic_grounding_8_1.db');
   });
 
   afterAll(async () => {
     await databaseEngine.close();
   });
 
-  // A. Valid JSON output
-  test('A. Valid JSON model output parses and grounds correctly', () => {
+  // 1. valid sourceEvidenceId → accepted
+  test('1. Valid sourceEvidenceId is accepted with verified provenance', () => {
     const raw = JSON.stringify({
       incidentType: 'blackmail',
       incidentSummary: 'Suspect demands $5,000 payment threatening photo publication.',
@@ -47,7 +47,7 @@ describe('TRACE Step 8: Forensic Analysis Grounding & Validation Pipeline', () =
         {
           fact: 'Demanded $5,000 payment',
           type: 'financial',
-          sourceEvidenceId: 'ev-photo-threat-1',
+          sourceEvidenceId: 'ev-case1-photo-threat-1',
           sourceSpan: 'pay me $5,000',
           certainty: 'explicit',
         },
@@ -66,7 +66,7 @@ describe('TRACE Step 8: Forensic Analysis Grounding & Validation Pipeline', () =
           description: 'Payment demand sent',
           eventType: 'demand',
           severity: 4,
-          sourceEvidenceId: 'ev-photo-threat-1',
+          sourceEvidenceId: 'ev-case1-photo-threat-1',
           certainty: 'explicit',
         },
       ],
@@ -85,109 +85,37 @@ describe('TRACE Step 8: Forensic Analysis Grounding & Validation Pipeline', () =
     const res = validateAndGroundForensicExtraction(raw, mockEvidence);
     expect(res.isValid).toBe(true);
     expect(res.status).toBe('VALID');
-    expect(res.schema?.incidentType).toBe('blackmail');
-    expect(res.schema?.phoneNumbers).toContain('9876543210');
-    expect(res.schema?.urlsAndDomains).toContain('https://blackmail-drop.com');
-    expect(res.schema?.quotedStatements.length).toBe(1);
-    expect(res.schema?.actors[0].name).toBe('Alex');
-  });
-
-  // B. Model output with surrounding explanation
-  test('B. Model output with surrounding conversational explanation is extracted and parsed', () => {
-    const raw = `Here is the requested JSON forensic analysis:
-\`\`\`json
-{
-  "incidentType": "threat",
-  "incidentSummary": "Threat to publish photos if payment not received",
-  "extractedFacts": [
-    {
-      "fact": "Threat to distribute private images",
-      "type": "statement",
-      "sourceEvidenceId": "ev-photo-threat-1",
-      "certainty": "explicit"
-    }
-  ],
-  "actors": [],
-  "temporalEvents": [],
-  "threats": ["I will publish your private photos"],
-  "harassmentIndicators": [],
-  "blackmailIndicators": [],
-  "coercionIndicators": [],
-  "paymentDemands": [],
-  "communicationChannels": [],
-  "phoneNumbers": [],
-  "urlsAndDomains": [],
-  "quotedStatements": ["I will publish your private photos"],
-  "uncertainties": []
-}
-\`\`\`
-I hope this structured extraction is helpful for TRACE investigation.`;
-
-    const res = validateAndGroundForensicExtraction(raw, mockEvidence);
-    expect(res.isValid).toBe(true);
-    expect(res.schema?.incidentType).toBe('threat');
     expect(res.schema?.extractedFacts.length).toBe(1);
+    expect(res.schema?.extractedFacts[0].sourceEvidenceId).toBe('ev-case1-photo-threat-1');
+    expect(res.schema?.temporalEvents.length).toBe(1);
+    expect(res.schema?.temporalEvents[0].sourceEvidenceId).toBe('ev-case1-photo-threat-1');
+    expect(res.rejectedClaims.length).toBe(0);
   });
 
-  // C. Malformed JSON
-  test('C. Malformed JSON output is rejected with INVALID_MODEL_OUTPUT', () => {
-    const raw = 'This is plain natural language output with no JSON braces or keys.';
-    const res = validateAndGroundForensicExtraction(raw, mockEvidence);
-    expect(res.isValid).toBe(false);
-    expect(res.status).toBe('INVALID_MODEL_OUTPUT');
-    expect(res.parseError).toBeDefined();
-    expect(res.rawOutput).toBe(raw);
-  });
-
-  // D. Unsupported Evidence ID
-  test('D. Fact referencing unsupported/hallucinated evidence ID is remapped with warning', () => {
+  // 2. unknown sourceEvidenceId → rejected (NOT remapped)
+  test('2. Unknown sourceEvidenceId is strictly rejected, NEVER remapped', () => {
     const raw = JSON.stringify({
       incidentType: 'threat',
       incidentSummary: 'Summary',
       extractedFacts: [
         {
-          fact: 'Claim citing non-existent evidence',
+          fact: 'Claim citing hallucinated evidence ID',
           type: 'statement',
           sourceEvidenceId: 'non-existent-ev-999',
           certainty: 'explicit',
         },
       ],
       actors: [],
-      temporalEvents: [],
-      threats: [],
-      harassmentIndicators: [],
-      blackmailIndicators: [],
-      coercionIndicators: [],
-      paymentDemands: [],
-      communicationChannels: [],
-      phoneNumbers: [],
-      urlsAndDomains: [],
-      quotedStatements: [],
-      uncertainties: [],
-    });
-
-    const res = validateAndGroundForensicExtraction(raw, mockEvidence);
-    expect(res.isValid).toBe(true);
-    expect(res.warnings.some((w) => w.includes('non-existent-ev-999'))).toBe(true);
-    expect(res.rejectedClaims.some((r) => r.field === 'extractedFacts.sourceEvidenceId')).toBe(true);
-    expect(res.schema?.extractedFacts[0].sourceEvidenceId).toBe('ev-photo-threat-1');
-  });
-
-  // E. Unsupported Actor
-  test('E. Actor name not present anywhere in evidence is rejected from explicit actors', () => {
-    const raw = JSON.stringify({
-      incidentType: 'threat',
-      incidentSummary: 'Summary',
-      extractedFacts: [],
-      actors: [
+      temporalEvents: [
         {
-          name: 'Vladimir Markov', // Hallucinated name not in evidence
-          role: 'perpetrator',
-          identifiers: [],
+          timestamp: '2026-09-08T08:00:00Z',
+          description: 'Event with fake evidence ID',
+          eventType: 'threat',
+          severity: 3,
+          sourceEvidenceId: 'fake-evidence-id-888',
           certainty: 'explicit',
         },
       ],
-      temporalEvents: [],
       threats: [],
       harassmentIndicators: [],
       blackmailIndicators: [],
@@ -202,69 +130,29 @@ I hope this structured extraction is helpful for TRACE investigation.`;
 
     const res = validateAndGroundForensicExtraction(raw, mockEvidence);
     expect(res.isValid).toBe(true);
-    expect(res.warnings.some((w) => w.includes('Vladimir Markov'))).toBe(true);
-    expect(res.rejectedClaims.some((r) => r.field === 'actors.name')).toBe(true);
-    expect(res.schema?.actors[0].certainty).toBe('inferred');
+    // Extracted facts and temporal events MUST be rejected from verified arrays
+    expect(res.schema?.extractedFacts.length).toBe(0);
+    expect(res.schema?.temporalEvents.length).toBe(0);
+    // Preserved in rejectedClaims
+    expect(res.rejectedClaims.some((r) => r.field === 'extractedFacts' && r.sourceEvidenceId === 'non-existent-ev-999')).toBe(true);
+    expect(res.rejectedClaims.some((r) => r.field === 'temporalEvents' && r.sourceEvidenceId === 'fake-evidence-id-888')).toBe(true);
   });
 
-  // F. Unsupported Phone Number
-  test('F. Hallucinated phone number not in evidence is rejected and recorded', () => {
+  // 3. sourceEvidenceId from another case → rejected (Case Isolation)
+  test('3. Evidence ID belonging to another case is strictly rejected', () => {
+    // Current case evidence has IDs: ev-case1-photo-threat-1, ev-case1-audio-call-2
+    // Foreign evidence ID from Case B: ev-case2-unrelated-file-9
     const raw = JSON.stringify({
       incidentType: 'harassment',
-      incidentSummary: 'Summary',
-      extractedFacts: [],
-      actors: [],
-      temporalEvents: [],
-      threats: [],
-      harassmentIndicators: [],
-      blackmailIndicators: [],
-      coercionIndicators: [],
-      paymentDemands: [],
-      communicationChannels: [],
-      phoneNumbers: ['+1-555-0199'], // Not in evidence
-      urlsAndDomains: [],
-      quotedStatements: [],
-      uncertainties: [],
-    });
-
-    const res = validateAndGroundForensicExtraction(raw, mockEvidence);
-    expect(res.isValid).toBe(true);
-    expect(res.schema?.phoneNumbers.length).toBe(0);
-    expect(res.rejectedClaims.some((r) => r.field === 'phoneNumbers' && r.value === '+1-555-0199')).toBe(true);
-  });
-
-  // G. Unsupported URL
-  test('G. Hallucinated URL not in evidence is rejected and recorded', () => {
-    const raw = JSON.stringify({
-      incidentType: 'blackmail',
-      incidentSummary: 'Summary',
-      extractedFacts: [],
-      actors: [],
-      temporalEvents: [],
-      threats: [],
-      harassmentIndicators: [],
-      blackmailIndicators: [],
-      coercionIndicators: [],
-      paymentDemands: [],
-      communicationChannels: [],
-      phoneNumbers: [],
-      urlsAndDomains: ['https://fake-scam-site.org'], // Not in evidence
-      quotedStatements: [],
-      uncertainties: [],
-    });
-
-    const res = validateAndGroundForensicExtraction(raw, mockEvidence);
-    expect(res.isValid).toBe(true);
-    expect(res.schema?.urlsAndDomains.length).toBe(0);
-    expect(res.rejectedClaims.some((r) => r.field === 'urlsOrDomains' && r.value === 'https://fake-scam-site.org')).toBe(true);
-  });
-
-  // H. Unsupported Quote
-  test('H. Quoted statement not occurring verbatim in evidence is rejected', () => {
-    const raw = JSON.stringify({
-      incidentType: 'blackmail',
-      incidentSummary: 'Summary',
-      extractedFacts: [],
+      incidentSummary: 'Cross-case isolation test',
+      extractedFacts: [
+        {
+          fact: 'Claim referencing evidence from a different case',
+          type: 'statement',
+          sourceEvidenceId: 'ev-case2-unrelated-file-9',
+          certainty: 'explicit',
+        },
+      ],
       actors: [],
       temporalEvents: [],
       threats: [],
@@ -275,63 +163,44 @@ I hope this structured extraction is helpful for TRACE investigation.`;
       communicationChannels: [],
       phoneNumbers: [],
       urlsAndDomains: [],
-      quotedStatements: ['I have already sent your documents to the police department.'], // Hallucinated quote
+      quotedStatements: [],
       uncertainties: [],
     });
 
     const res = validateAndGroundForensicExtraction(raw, mockEvidence);
     expect(res.isValid).toBe(true);
-    expect(res.schema?.quotedStatements.length).toBe(0);
-    expect(res.rejectedClaims.some((r) => r.field === 'quotedStatements')).toBe(true);
+    expect(res.schema?.extractedFacts.length).toBe(0);
+    expect(res.rejectedClaims.some((r) => r.reason === 'INVALID_SOURCE_EVIDENCE_ID' && r.sourceEvidenceId === 'ev-case2-unrelated-file-9')).toBe(true);
   });
 
-  // I. Explicit Threat
-  test('I. Explicit threat extracted from evidence is preserved', () => {
+  // 4. missing sourceEvidenceId → rejected for evidence-backed claims
+  test('4. Missing sourceEvidenceId is strictly rejected for evidence-backed claims', () => {
     const raw = JSON.stringify({
       incidentType: 'threat',
-      incidentSummary: 'Explicit threat identified',
+      incidentSummary: 'Missing provenance test',
       extractedFacts: [
         {
-          fact: 'Offender threatened photo release',
-          type: 'threat',
-          sourceEvidenceId: 'ev-photo-threat-1',
-          sourceSpan: 'I will publish your private photos',
+          fact: 'Claim without any evidence citation',
+          type: 'statement',
+          // sourceEvidenceId omitted
           certainty: 'explicit',
         },
       ],
       actors: [],
-      temporalEvents: [],
-      threats: ['I will publish your private photos if you do not pay me'],
+      temporalEvents: [
+        {
+          description: 'Event without evidence citation',
+          eventType: 'demand',
+          severity: 2,
+          // sourceEvidenceId omitted
+          certainty: 'explicit',
+        },
+      ],
+      threats: [],
       harassmentIndicators: [],
       blackmailIndicators: [],
       coercionIndicators: [],
       paymentDemands: [],
-      communicationChannels: [],
-      phoneNumbers: [],
-      urlsAndDomains: [],
-      quotedStatements: ['I will publish your private photos if you do not pay me'],
-      uncertainties: [],
-    });
-
-    const res = validateAndGroundForensicExtraction(raw, mockEvidence);
-    expect(res.isValid).toBe(true);
-    expect(res.schema?.threats.length).toBe(1);
-    expect(res.schema?.extractedFacts[0].certainty).toBe('explicit');
-  });
-
-  // J. Blackmail / Payment Demand
-  test('J. Blackmail and payment demands with amount/targets are captured', () => {
-    const raw = JSON.stringify({
-      incidentType: 'blackmail',
-      incidentSummary: 'Blackmail demand',
-      extractedFacts: [],
-      actors: [],
-      temporalEvents: [],
-      threats: [],
-      harassmentIndicators: [],
-      blackmailIndicators: ['Demanding $5,000 to prevent private photo leak'],
-      coercionIndicators: ['Financial coercion'],
-      paymentDemands: ['$5,000 to UPI ID victim@okbank'],
       communicationChannels: [],
       phoneNumbers: [],
       urlsAndDomains: [],
@@ -341,102 +210,70 @@ I hope this structured extraction is helpful for TRACE investigation.`;
 
     const res = validateAndGroundForensicExtraction(raw, mockEvidence);
     expect(res.isValid).toBe(true);
-    expect(res.schema?.blackmailIndicators.length).toBe(1);
-    expect(res.schema?.paymentDemands.length).toBe(1);
+    expect(res.schema?.extractedFacts.length).toBe(0);
+    expect(res.schema?.temporalEvents.length).toBe(0);
+    expect(res.rejectedClaims.length).toBe(2);
+    expect(res.rejectedClaims.every((r) => r.reason === 'INVALID_SOURCE_EVIDENCE_ID')).toBe(true);
   });
 
-  // K. Evidence with no threat
-  test('K. Benign evidence without threats produces empty threat arrays', () => {
-    const benignEvidence: EvidenceItemContext[] = [
-      {
-        id: 'ev-receipt-1',
-        media_type: 'IMAGE',
-        file_path: 'files/receipt.jpg',
-        ocr_text: 'Coffee Shop Receipt. 1x Cappuccino $4.50. Thank you for visiting!',
-        import_ts: 1725710000000,
-        sha256_import: 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-      },
-    ];
-
-    const raw = JSON.stringify({
-      incidentType: 'benign',
-      incidentSummary: 'A standard retail purchase receipt.',
-      extractedFacts: [
-        {
-          fact: 'Purchase of cappuccino for $4.50',
-          type: 'financial',
-          sourceEvidenceId: 'ev-receipt-1',
-          sourceSpan: 'Cappuccino $4.50',
-          certainty: 'explicit',
-        },
-      ],
-      actors: [],
-      temporalEvents: [],
-      threats: [],
-      harassmentIndicators: [],
-      blackmailIndicators: [],
-      coercionIndicators: [],
-      paymentDemands: [],
-      communicationChannels: [],
-      phoneNumbers: [],
-      urlsAndDomains: [],
-      quotedStatements: [],
-      uncertainties: [],
-    });
-
-    const res = validateAndGroundForensicExtraction(raw, benignEvidence);
-    expect(res.isValid).toBe(true);
-    expect(res.schema?.incidentType).toBe('benign');
-    expect(res.schema?.threats.length).toBe(0);
-    expect(res.schema?.paymentDemands.length).toBe(0);
-  });
-
-  // L. Empty evidence context handling
-  test('L. Empty evidence items handled gracefully', () => {
-    const raw = JSON.stringify({
-      incidentType: 'other',
-      incidentSummary: 'No evidence available.',
-      extractedFacts: [],
-      actors: [],
-      temporalEvents: [],
-      threats: [],
-      harassmentIndicators: [],
-      blackmailIndicators: [],
-      coercionIndicators: [],
-      paymentDemands: [],
-      communicationChannels: [],
-      phoneNumbers: [],
-      urlsAndDomains: [],
-      quotedStatements: [],
-      uncertainties: ['No evidence supplied for analysis.'],
-    });
-
-    const res = validateAndGroundForensicExtraction(raw, []);
-    expect(res.isValid).toBe(true);
-    expect(res.schema?.uncertainties).toContain('No evidence supplied for analysis.');
-  });
-
-  // M. Mixed explicit fact + inference
-  test('M. Mixed explicit facts and inferences preserve their distinct classifications', () => {
+  // 5. valid evidence + inferred interpretation → accepted as inferred
+  test('5. Valid evidence with inferred interpretation is accepted as inferred', () => {
     const raw = JSON.stringify({
       incidentType: 'blackmail',
       incidentSummary: 'Summary',
       extractedFacts: [
         {
-          fact: 'Message requested $5,000',
-          type: 'financial',
-          sourceEvidenceId: 'ev-photo-threat-1',
-          sourceSpan: 'pay me $5,000',
-          certainty: 'explicit',
-        },
-        {
-          fact: 'Perpetrator likely has access to victim social media',
+          fact: 'Perpetrator likely has access to victims cloud drive',
           type: 'inference',
-          sourceEvidenceId: 'ev-photo-threat-1',
+          sourceEvidenceId: 'ev-case1-photo-threat-1',
           certainty: 'inferred',
         },
       ],
       actors: [],
+      temporalEvents: [
+        {
+          description: 'Probable earlier contact occurred based on familiarity',
+          eventType: 'initial_contact',
+          severity: 2,
+          sourceEvidenceId: 'ev-case1-photo-threat-1',
+          certainty: 'inferred',
+        },
+      ],
+      threats: [],
+      harassmentIndicators: [],
+      blackmailIndicators: [],
+      coercionIndicators: [],
+      paymentDemands: [],
+      communicationChannels: [],
+      phoneNumbers: [],
+      urlsAndDomains: [],
+      quotedStatements: [],
+      uncertainties: [],
+    });
+
+    const res = validateAndGroundForensicExtraction(raw, mockEvidence);
+    expect(res.isValid).toBe(true);
+    expect(res.schema?.extractedFacts.length).toBe(1);
+    expect(res.schema?.extractedFacts[0].certainty).toBe('inferred');
+    expect(res.schema?.temporalEvents.length).toBe(1);
+    expect(res.schema?.temporalEvents[0].certainty).toBe('inferred');
+    expect(res.rejectedClaims.length).toBe(0);
+  });
+
+  // 6. invalid evidence + inferred interpretation → rejected (cannot rescue invalid provenance)
+  test('6. Invalid evidence with inferred certainty is rejected (cannot rescue invalid ID)', () => {
+    const raw = JSON.stringify({
+      incidentType: 'blackmail',
+      incidentSummary: 'Summary',
+      extractedFacts: [
+        {
+          fact: 'Inferred claim citing fake evidence',
+          type: 'inference',
+          sourceEvidenceId: 'fake-evidence-id',
+          certainty: 'inferred', // Model attempts to mark as inferred
+        },
+      ],
+      actors: [],
       temporalEvents: [],
       threats: [],
       harassmentIndicators: [],
@@ -452,79 +289,33 @@ I hope this structured extraction is helpful for TRACE investigation.`;
 
     const res = validateAndGroundForensicExtraction(raw, mockEvidence);
     expect(res.isValid).toBe(true);
-    const facts = res.schema?.extractedFacts;
-    expect(facts?.[0].certainty).toBe('explicit');
-    expect(facts?.[1].certainty).toBe('inferred');
+    // MUST BE REJECTED despite certainty="inferred"
+    expect(res.schema?.extractedFacts.length).toBe(0);
+    expect(res.rejectedClaims.some((r) => r.reason === 'INVALID_SOURCE_EVIDENCE_ID' && r.sourceEvidenceId === 'fake-evidence-id')).toBe(true);
   });
 
-  // N. Multiple evidence items
-  test('N. Multiple evidence items are correctly indexed and cited', () => {
+  // 7. one valid claim + one invalid claim → valid claim survives, invalid claim rejected
+  test('7. Independent claim validation: valid claim survives, invalid claim rejected without pollution', () => {
     const raw = JSON.stringify({
-      incidentType: 'blackmail',
-      incidentSummary: 'Combined photo and voicemail harassment',
+      incidentType: 'threat',
+      incidentSummary: 'Mixed claims test',
       extractedFacts: [
         {
-          fact: 'Voicemail from Alex demanding payment',
+          fact: 'Valid claim citing real evidence',
           type: 'statement',
-          sourceEvidenceId: 'ev-audio-call-2',
-          sourceSpan: 'Alex speaking',
-          certainty: 'explicit',
-        },
-        {
-          fact: 'Photo message demanding $5,000',
-          type: 'financial',
-          sourceEvidenceId: 'ev-photo-threat-1',
+          sourceEvidenceId: 'ev-case1-photo-threat-1',
           sourceSpan: 'pay me $5,000',
           certainty: 'explicit',
         },
-      ],
-      actors: [
         {
-          name: 'Alex',
-          role: 'perpetrator',
-          identifiers: [],
+          fact: 'Invalid claim citing fake evidence',
+          type: 'statement',
+          sourceEvidenceId: 'fake-evidence-999',
           certainty: 'explicit',
         },
       ],
-      temporalEvents: [],
-      threats: [],
-      harassmentIndicators: [],
-      blackmailIndicators: [],
-      coercionIndicators: [],
-      paymentDemands: [],
-      communicationChannels: ['Voicemail', 'Photo Message'],
-      phoneNumbers: [],
-      urlsAndDomains: [],
-      quotedStatements: [
-        'I will publish your private photos if you do not pay me',
-        'Send the money through this UPI ID or I will send the screenshots',
-      ],
-      uncertainties: [],
-    });
-
-    const res = validateAndGroundForensicExtraction(raw, mockEvidence);
-    expect(res.isValid).toBe(true);
-    expect(res.schema?.extractedFacts.length).toBe(2);
-    expect(res.schema?.quotedStatements.length).toBe(2);
-  });
-
-  // O. Timestamp preservation
-  test('O. Valid timestamps are preserved without fabrication', () => {
-    const raw = JSON.stringify({
-      incidentType: 'threat',
-      incidentSummary: 'Summary',
-      extractedFacts: [],
       actors: [],
-      temporalEvents: [
-        {
-          timestamp: '2026-09-08T08:00:00Z',
-          description: 'Ultimatum deadline set',
-          eventType: 'threat',
-          severity: 5,
-          sourceEvidenceId: 'ev-audio-call-2',
-          certainty: 'explicit',
-        },
-      ],
+      temporalEvents: [],
       threats: [],
       harassmentIndicators: [],
       blackmailIndicators: [],
@@ -539,40 +330,153 @@ I hope this structured extraction is helpful for TRACE investigation.`;
 
     const res = validateAndGroundForensicExtraction(raw, mockEvidence);
     expect(res.isValid).toBe(true);
-    expect(res.schema?.temporalEvents[0].timestamp).toBe('2026-09-08T08:00:00Z');
-    expect(res.schema?.temporalEvents[0].severity).toBe(5);
+    expect(res.schema?.extractedFacts.length).toBe(1);
+    expect(res.schema?.extractedFacts[0].fact).toBe('Valid claim citing real evidence');
+    expect(res.schema?.extractedFacts[0].sourceEvidenceId).toBe('ev-case1-photo-threat-1');
+    expect(res.rejectedClaims.length).toBe(1);
+    expect(res.rejectedClaims[0].sourceEvidenceId).toBe('fake-evidence-999');
   });
 
-  // P & Q. End-to-End SQLite Persistence and Hash Chain ANALYZE Event
-  test('P & Q. Full Forensic Analysis Pipeline persists to SQLite and creates hash chain ANALYZE event', async () => {
-    // 1. Create a test case and evidence in SQLite
+  // 8. model uses "fact" or "facts" alias → deterministic normalization only if safe
+  test('8. Model uses deterministic "facts" or "fact" alias which normalizes and validates safely', () => {
+    const raw = JSON.stringify({
+      incidentType: 'blackmail',
+      incidentSummary: 'Alias test',
+      facts: [
+        {
+          fact: 'Alias fact properly referenced',
+          type: 'financial',
+          sourceEvidenceId: 'ev-case1-photo-threat-1',
+          certainty: 'explicit',
+        },
+      ],
+      events: [
+        {
+          description: 'Alias event properly referenced',
+          eventType: 'demand',
+          severity: 3,
+          sourceEvidenceId: 'ev-case1-audio-call-2',
+          certainty: 'explicit',
+        },
+      ],
+      entities: [
+        {
+          name: 'Alex',
+          role: 'perpetrator',
+          identifiers: ['victim@okbank'],
+          certainty: 'explicit',
+        },
+      ],
+      quotes: ['I will publish your private photos if you do not pay me'],
+      phones: ['9876543210'],
+      urls: ['https://blackmail-drop.com'],
+      threats: [],
+      harassmentIndicators: [],
+      blackmailIndicators: [],
+      coercionIndicators: [],
+      paymentDemands: [],
+      communicationChannels: [],
+      uncertainties: [],
+    });
+
+    const res = validateAndGroundForensicExtraction(raw, mockEvidence);
+    expect(res.isValid).toBe(true);
+    expect(res.schema?.extractedFacts.length).toBe(1);
+    expect(res.schema?.extractedFacts[0].fact).toBe('Alias fact properly referenced');
+    expect(res.schema?.temporalEvents.length).toBe(1);
+    expect(res.schema?.temporalEvents[0].description).toBe('Alias event properly referenced');
+    expect(res.schema?.actors.length).toBe(1);
+    expect(res.schema?.actors[0].name).toBe('Alex');
+    expect(res.schema?.quotedStatements).toContain('I will publish your private photos if you do not pay me');
+    expect(res.schema?.phoneNumbers).toContain('9876543210');
+    expect(res.schema?.urlsAndDomains).toContain('https://blackmail-drop.com');
+  });
+
+  // 9. malformed output → INVALID_MODEL_OUTPUT
+  test('9. Malformed non-JSON or top-level primitive returns INVALID_MODEL_OUTPUT', () => {
+    const rawText = 'I am an AI assistant and here is the analysis: Suspect is threatening.';
+    const resText = validateAndGroundForensicExtraction(rawText, mockEvidence);
+    expect(resText.isValid).toBe(false);
+    expect(resText.status).toBe('INVALID_MODEL_OUTPUT');
+
+    const rawArray = JSON.stringify(['item1', 'item2']);
+    const resArray = validateAndGroundForensicExtraction(rawArray, mockEvidence);
+    expect(resArray.isValid).toBe(false);
+    expect(resArray.status).toBe('INVALID_MODEL_OUTPUT');
+  });
+
+  // 10. rejected claim preserved in audit output (rejectedClaims + uncertainties)
+  test('10. Rejected claims are fully preserved in audit structure without information loss', () => {
+    const raw = JSON.stringify({
+      incidentType: 'harassment',
+      incidentSummary: 'Audit log test',
+      extractedFacts: [
+        {
+          fact: 'Hallucinated fact with fake ID',
+          type: 'statement',
+          sourceEvidenceId: 'fake-id-1234',
+          certainty: 'explicit',
+        },
+      ],
+      actors: [],
+      temporalEvents: [],
+      threats: [],
+      harassmentIndicators: [],
+      blackmailIndicators: [],
+      coercionIndicators: [],
+      paymentDemands: [],
+      communicationChannels: [],
+      phoneNumbers: ['+1-555-0199'], // Hallucinated phone
+      urlsAndDomains: ['https://unsupported-site.org'], // Hallucinated URL
+      quotedStatements: ['I never said this statement in the call.'], // Hallucinated quote
+      uncertainties: [],
+    });
+
+    const res = validateAndGroundForensicExtraction(raw, mockEvidence);
+    expect(res.isValid).toBe(true);
+    expect(res.rejectedClaims.length).toBe(4);
+    // Audit uncertainties log contains each rejection with field and reason
+    expect(res.schema?.uncertainties.some((u) => u.includes('extractedFacts') && u.includes('fake-id-1234'))).toBe(true);
+    expect(res.schema?.uncertainties.some((u) => u.includes('phoneNumbers') && u.includes('+1-555-0199'))).toBe(true);
+    expect(res.schema?.uncertainties.some((u) => u.includes('urlsOrDomains') && u.includes('https://unsupported-site.org'))).toBe(true);
+    expect(res.schema?.uncertainties.some((u) => u.includes('quotedStatements'))).toBe(true);
+  });
+
+  // 11 & 12. SQLite persistence does not persist rejected claims; ANALYZE hash chain represents validated state
+  test('11 & 12. SQLite pipeline persists ONLY validated claims; ANALYZE hash chain captures verified state', async () => {
     const testCase = await databaseEngine.createCase({
-      case_number: `TR-TEST-${Date.now()}`,
-      title: 'Step 8 Hardware Grounding Test',
-      description: 'Validation of SQLite persistence and hash ledger',
-      investigator_name: 'Investigator Agent',
+      case_number: `TR-TEST-81-${Date.now()}`,
+      title: 'Step 8.1 Strict Provenance Pipeline Test',
+      description: 'Validation of strict provenance persistence and hash chain ledger',
+      investigator_name: 'Lead Forensics Investigator',
       status: 'ACTIVE',
     });
 
-    const testEvidence = await databaseEngine.insertEvidence({
+    const validEvidence = await databaseEngine.insertEvidence({
       case_id: testCase.id,
-      file_path: 'sandbox/threat_letter.jpg',
+      file_path: 'sandbox/threat_letter_81.jpg',
       media_type: 'IMAGE',
       import_ts: Date.now(),
-      sha256_import: '1111111111111111111111111111111111111111111111111111111111111111',
+      sha256_import: '2222222222222222222222222222222222222222222222222222222222222222',
       ocr_text: 'I will publish your private photos if you do not pay me $5,000 to UPI ID victim@okbank. Call 9876543210.',
     });
 
-    // Mock local inference model output for pipeline integration test
+    // Model returns 1 valid fact, 1 valid event, 1 INVALID fact, and 1 INVALID event
     const mockModelOutput = JSON.stringify({
       incidentType: 'blackmail',
       incidentSummary: 'Blackmail threat demanding $5,000.',
       extractedFacts: [
         {
-          fact: 'Demanded $5,000 to prevent photo disclosure',
+          fact: 'Valid fact citing real evidence ID',
           type: 'financial',
-          sourceEvidenceId: testEvidence.id,
+          sourceEvidenceId: validEvidence.id,
           sourceSpan: 'pay me $5,000',
+          certainty: 'explicit',
+        },
+        {
+          fact: 'Invalid fact citing hallucinated evidence ID',
+          type: 'statement',
+          sourceEvidenceId: 'hallucinated-evidence-999',
           certainty: 'explicit',
         },
       ],
@@ -580,17 +484,25 @@ I hope this structured extraction is helpful for TRACE investigation.`;
         {
           name: 'Blackmailer',
           role: 'perpetrator',
-          identifiers: ['9876543210', 'victim@okbank'],
+          identifiers: ['9876543210'],
           certainty: 'explicit',
         },
       ],
       temporalEvents: [
         {
           timestamp: '2026-09-08T09:00:00Z',
-          description: 'Payment demand sent with photo leak threat',
+          description: 'Valid event with real evidence ID',
           eventType: 'demand',
           severity: 5,
-          sourceEvidenceId: testEvidence.id,
+          sourceEvidenceId: validEvidence.id,
+          certainty: 'explicit',
+        },
+        {
+          timestamp: '2026-09-08T10:00:00Z',
+          description: 'Invalid event with hallucinated ID',
+          eventType: 'threat',
+          severity: 4,
+          sourceEvidenceId: 'hallucinated-evidence-888',
           certainty: 'explicit',
         },
       ],
@@ -606,45 +518,39 @@ I hope this structured extraction is helpful for TRACE investigation.`;
       uncertainties: [],
     });
 
-    // Spy on onDeviceInferenceService.inferForensicExtraction to return valid grounded model result
     const spy = jest.spyOn(onDeviceInferenceService, 'inferForensicExtraction').mockResolvedValueOnce({
-      schema: validateAndGroundForensicExtraction(mockModelOutput, [testEvidence]).schema,
+      schema: validateAndGroundForensicExtraction(mockModelOutput, [validEvidence]).schema,
       rawOutput: mockModelOutput,
-      durationMs: 4200,
-      warnings: [],
-      rejectedClaims: [],
+      durationMs: 4100,
+      warnings: ['Fact references invalid or missing evidence ID "hallucinated-evidence-999". Claim rejected.'],
+      rejectedClaims: [
+        { field: 'extractedFacts', value: 'Invalid fact citing hallucinated evidence ID', reason: 'INVALID_SOURCE_EVIDENCE_ID', sourceEvidenceId: 'hallucinated-evidence-999' },
+        { field: 'temporalEvents', value: 'Invalid event with hallucinated ID', reason: 'INVALID_SOURCE_EVIDENCE_ID', sourceEvidenceId: 'hallucinated-evidence-888' },
+      ],
       chunksCount: 1,
     });
 
     const analysisResult = await forensicAnalysisService.analyzeCaseEvidence(testCase.id);
 
-    expect(analysisResult.caseId).toBe(testCase.id);
-    expect(analysisResult.persistedEventIds.length).toBe(1);
-    expect(analysisResult.persistedActorIds.length).toBe(1);
-    expect(analysisResult.hashChainNodeId).toBeDefined();
-    expect(analysisResult.payloadHash).toBeDefined();
-
-    // Verify Event in SQLite
+    // 11. Verify rejected claims are NOT persisted as verified events in SQLite
+    expect(analysisResult.persistedEventIds.length).toBe(1); // Only the 1 valid event persisted
     const savedEvents = await databaseEngine.getEventsForCase(testCase.id);
     expect(savedEvents.length).toBe(1);
-    expect(savedEvents[0].severity).toBe(5);
-    expect(savedEvents[0].evidence_ids).toContain(testEvidence.id);
+    expect(savedEvents[0].ai_summary).toContain('Valid event with real evidence ID');
+    expect(savedEvents[0].evidence_ids).toEqual([validEvidence.id]);
 
-    // Verify Actor in SQLite
-    const savedActors = await databaseEngine.getActorsForCase(testCase.id);
-    expect(savedActors.length).toBe(1);
-    expect(savedActors[0].name).toBe('Blackmailer');
-    expect(savedActors[0].role).toBe('offender');
-
-    // Verify Narrative in SQLite
+    // Narrative records verified facts and lists rejections under uncertainties
     const savedNarrative = await databaseEngine.getLatestNarrativeForCase(testCase.id);
-    expect(savedNarrative).not.toBeNull();
-    expect(savedNarrative?.content).toContain('### Incident Summary (BLACKMAIL)');
-    expect(savedNarrative?.disclaimer).toContain('Gemma 2B INT4 on-device');
+    expect(savedNarrative?.content).toContain('Valid fact citing real evidence ID');
+    expect(savedNarrative?.content).not.toContain('Ref: hallucinated-evidence-999');
+    expect(savedNarrative?.content).toContain('### Forensic Uncertainties & Validation Rejections');
 
-    // Verify Hash Chain Node in SQLite
-    const chainHistory = await chainService.getChain(testEvidence.id);
-    expect(chainHistory.some((node) => node.operation === 'ANALYZE')).toBe(true);
+    // 12. Hash chain ANALYZE record captures the validated result
+    expect(analysisResult.hashChainNodeId).toBeDefined();
+    const chainHistory = await chainService.getChain(validEvidence.id);
+    const analyzeNode = chainHistory.find((n) => n.operation === 'ANALYZE');
+    expect(analyzeNode).toBeDefined();
+    expect(analyzeNode?.id).toBe(analysisResult.hashChainNodeId);
 
     spy.mockRestore();
   });

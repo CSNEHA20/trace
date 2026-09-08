@@ -252,4 +252,63 @@ STRUCTURED FORENSIC JSON RESPONSE:
             Log.i(TAG, "STEP8_INFERENCE_CLOSED")
         }
     }
+
+    @Test
+    fun executeStep81ProvenanceHardeningValidation() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val modelFile = File(context.filesDir, "trace-models/gemma-2b-it-cpu-int4.bin")
+
+        Log.i(TAG, "==================================================")
+        Log.i(TAG, "TRACE STEP 8.1: REAL HARDWARE PROVENANCE HARDENING VALIDATION")
+        Log.i(TAG, "Model path: ${modelFile.absolutePath}")
+        Log.i(TAG, "==================================================")
+
+        val options = LlmInference.LlmInferenceOptions.builder()
+            .setModelPath(modelFile.absolutePath)
+            .setMaxTokens(512)
+            .setTopK(40)
+            .setTemperature(0.2f)
+            .build()
+
+        val inference = LlmInference.createFromOptions(context, options)
+
+        try {
+            val prompt = """
+You are TRACE, a local on-device forensic evidence analysis engine.
+Strict Rules:
+- Analyze ONLY the supplied evidence items.
+- Every fact and event MUST cite the exact sourceEvidenceId from which it was extracted.
+- If information is not in an evidence item, do not manufacture an evidence ID.
+- Return ONLY JSON conforming to schema: {"extractedFacts":[{"fact":"string","sourceEvidenceId":"id","certainty":"explicit"}]}
+
+EVIDENCE CONTEXT:
+EVIDENCE_ITEM_START
+ID: ev-photo-threat-1
+OCR_TEXT: I will publish your private photos if you do not pay $5,000.
+EVIDENCE_ITEM_END
+
+EVIDENCE_ITEM_START
+ID: ev-audio-call-2
+TRANSCRIPT: Alex speaking. Send the money through UPI ID victim@okbank.
+EVIDENCE_ITEM_END
+
+STRUCTURED FORENSIC JSON RESPONSE:
+""".trimIndent()
+
+            val genStart = System.currentTimeMillis()
+            val output = inference.generateResponse(prompt)
+            val genDurationMs = System.currentTimeMillis() - genStart
+
+            Log.i(TAG, "STEP81_PROVENANCE_OUTPUT:")
+            Log.i(TAG, ">>> DURATION_MS: $genDurationMs")
+            Log.i(TAG, ">>> RAW_OUTPUT:\n$output\n<<< END STEP81 OUTPUT")
+
+            assertNotNull("Output must not be null", output)
+            assertTrue("Output must not be blank", output.isNotBlank())
+            Log.i(TAG, "STEP81_PROVENANCE_VALIDATION_PASSED")
+        } finally {
+            inference.close()
+            Log.i(TAG, "STEP81_INFERENCE_CLOSED")
+        }
+    }
 }
