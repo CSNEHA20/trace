@@ -24,6 +24,7 @@ class MainApplication : Application(), ReactApplication {
             val packages = PackageList(this).packages.toMutableList()
             packages.add(com.trace.ocr.TraceOcrPackage())
             packages.add(com.trace.mediapipe.TraceMediaPipeLlmPackage())
+            packages.add(com.trace.whisper.TraceWhisperPackage())
             return packages
           }
 

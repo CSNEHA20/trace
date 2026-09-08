@@ -67,4 +67,6 @@ include ':trace-ocr'
 project(':trace-ocr').projectDir = new File(rootProject.projectDir, '../modules/trace-ocr/android')
 include ':trace-mediapipe-llm'
 project(':trace-mediapipe-llm').projectDir = new File(rootProject.projectDir, '../modules/trace-mediapipe-llm/android')
+include ':trace-whisper'
+project(':trace-whisper').projectDir = new File(rootProject.projectDir, '../modules/trace-whisper/android')
 includeBuild(new File(["node", "--print", "require.resolve('@react-native/gradle-plugin/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()).getParentFile())
