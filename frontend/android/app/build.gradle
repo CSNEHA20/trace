@@ -193,9 +193,12 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+
+    implementation project(':expo')
 }
 
 if (rnVersion < versionToNumber(0, 75, 0)) {
     apply from: new File(["node", "--print", "require.resolve('@react-native-community/cli-platform-android/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim(), "../native_modules.gradle");
     applyNativeModulesAppBuildGradle(project)
 }
+
