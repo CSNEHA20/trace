@@ -9,6 +9,7 @@ import {
 import { cryptoService } from './cryptoService';
 import { sandboxService } from './sandboxService';
 import { databaseService } from './databaseService';
+import { exifService } from './exifService';
 import { logger } from '../utils/logger';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -202,8 +203,25 @@ class IngestionService {
       };
     }
 
-    // ── 9. Record device import timestamp ─────────────────────────────────
+    // ── 9. Record device import timestamp & Extract Metadata ───────────────
+    notify('EXTRACTING_METADATA');
     const importTs = Date.now();
+    let exifData = null;
+    let exifTs: number | undefined;
+
+    if (typeInfo.mediaCategory === 'IMAGE') {
+      try {
+        exifData = await exifService.extractMetadata(sandboxUri);
+        if (exifData?.dateTimeOriginal) {
+          const parsed = Date.parse(exifData.dateTimeOriginal.replace(/(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3'));
+          if (!isNaN(parsed) && parsed > 0) {
+            exifTs = parsed;
+          }
+        }
+      } catch (err) {
+        logger.debug(`[IngestionService] EXIF extraction skipped: ${err}`);
+      }
+    }
 
     // ── 10. INSERT SQLite evidence record ─────────────────────────────────
     notify('RECORDING');
@@ -219,8 +237,9 @@ class IngestionService {
         mimeType: typeInfo.mimeType,
         sha256Hash: sha256,
         signature: await cryptoService.signPayload(sha256),
+        exifData: exifData || undefined,
+        exifTs,
         isTampered: false,
-        // Step 4 extended fields stored via databaseService bridge
       });
     } catch (err) {
       await sandboxService.deleteSandboxFile(sandboxUri);

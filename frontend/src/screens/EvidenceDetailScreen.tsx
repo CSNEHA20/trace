@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity } from 'react-native';
 import { useEvidenceStore } from '../store/evidenceStore';
 import { AppHeader } from '../components/AppHeader';
 import { AudioTranscriptionCard } from '../components/AudioTranscriptionCard';
 import { ImageOcrCard } from '../components/ImageOcrCard';
 import { ForensicAnalysisCard } from '../components/ForensicAnalysisCard';
+import { IntegrityPanel } from '../components/IntegrityPanel';
 import { whisperService } from '../services/whisperService';
 import { ocrService } from '../services/ocrService';
 import { palette } from '../theme';
@@ -23,9 +24,10 @@ export function EvidenceDetailScreen() {
   const [transcribeResult, setTranscribeResult] = useState<TranscriptionResult | null>(null);
   const [cancelSignal, setCancelSignal] = useState<{ isCancelled: boolean }>({ isCancelled: false });
 
-  // Step 4 OCR State
+  // OCR State
   const [ocrStatus, setOcrStatus] = useState<OcrStatus>('IDLE');
   const [ocrResult, setOcrResult] = useState<OcrResult | null>(null);
+  const [imageError, setImageError] = useState(false);
 
   if (!item) {
     return (
@@ -114,32 +116,141 @@ export function EvidenceDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <AppHeader title={item.title} subtitle={`ID: ${item.id.substring(0, 12)}… · ${item.type}`} />
+      <AppHeader title={item.title || item.fileName} subtitle={`ID: ${item.id.substring(0, 12)}… · ${item.type}`} />
       <ScrollView contentContainerStyle={styles.content}>
         
-        {/* ── SECTION 1: SOURCE EVIDENCE & METADATA ── */}
+        {/* ── MEDIA PREVIEW SECTION ── */}
+        <View style={styles.sectionBadgeRow}>
+          <Text style={styles.sectionBadgeText}>PRESERVED EVIDENCE PREVIEW</Text>
+        </View>
+
+        <View style={styles.previewCard}>
+          {item.type === 'IMAGE' ? (
+            !imageError && item.fileUri && !item.fileUri.startsWith('clipboard://') ? (
+              <View style={styles.imageContainer}>
+                <Image
+                  source={{ uri: item.fileUri }}
+                  style={styles.imagePreview}
+                  resizeMode="contain"
+                  onError={() => setImageError(true)}
+                />
+                <Text style={styles.previewSubtext}>Source: Preserved App-Sandbox Copy</Text>
+              </View>
+            ) : (
+              <View style={styles.fallbackContainer}>
+                <Text style={styles.fallbackIcon}>🖼️</Text>
+                <Text style={styles.fallbackTitle}>{item.fileName}</Text>
+                <Text style={styles.fallbackSub}>
+                  {imageError ? 'Preview unavailable (rendering error)' : 'Image preserved in sandbox'}
+                </Text>
+              </View>
+            )
+          ) : item.type === 'AUDIO' ? (
+            <View style={styles.audioPreviewContainer}>
+              <Text style={styles.audioPreviewIcon}>🎙️</Text>
+              <Text style={styles.audioPreviewTitle}>{item.fileName}</Text>
+              <Text style={styles.audioPreviewMeta}>
+                Audio Container: {item.mimeType || 'audio/*'} • {formatFileSize(item.fileSize)}
+              </Text>
+              <Text style={styles.audioPreviewNotice}>
+                16kHz mono WAV format recommended for Whisper on-device transcription
+              </Text>
+            </View>
+          ) : item.type === 'DOCUMENT' ? (
+            <View style={styles.docPreviewContainer}>
+              <Text style={styles.docPreviewIcon}>📄</Text>
+              <Text style={styles.docPreviewTitle}>{item.fileName}</Text>
+              <Text style={styles.docPreviewMeta}>
+                Document Format: {item.mimeType || 'application/octet-stream'} • {formatFileSize(item.fileSize)}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.fallbackContainer}>
+              <Text style={styles.fallbackIcon}>📁</Text>
+              <Text style={styles.fallbackTitle}>{item.fileName}</Text>
+              <Text style={styles.fallbackSub}>{item.type} Evidence File</Text>
+            </View>
+          )}
+        </View>
+
+        {/* ── SECTION 1: SOURCE EVIDENCE & PRIVATE STORAGE ── */}
         <View style={styles.sectionBadgeRow}>
           <Text style={styles.sectionBadgeText}>SOURCE EVIDENCE (AUTHORITATIVE)</Text>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Source Metadata & Provenance</Text>
+          <Text style={styles.sectionTitle}>Source & Storage Provenance</Text>
           <Text style={styles.metaLine}><Text style={styles.boldText}>Filename: </Text>{item.fileName}</Text>
           <Text style={styles.metaLine}><Text style={styles.boldText}>Media Type: </Text>{item.type} ({item.mimeType})</Text>
           <Text style={styles.metaLine}><Text style={styles.boldText}>File Size: </Text>{formatFileSize(item.fileSize)}</Text>
-          <Text style={styles.metaLine}>
-            <Text style={styles.boldText}>Timestamp: </Text>
-            {item.exifData?.dateTimeOriginal 
-              ? `${item.exifData.dateTimeOriginal} (PROVENANCE: EXIF Verified)`
-              : `${formatDate(item.timestamp)} (PROVENANCE: Ingested)`}
-          </Text>
-          <Text style={styles.metaLine}><Text style={styles.boldText}>File URI: </Text>{item.fileUri}</Text>
+          
+          <View style={styles.storageBox}>
+            <Text style={styles.storageBoxTitle}>TRACE PRESERVED COPY (SANDBOX)</Text>
+            <Text style={styles.storageBoxPath} numberOfLines={2} selectable>
+              {item.fileUri}
+            </Text>
+            <Text style={styles.storageBoxNote}>
+              Preserved in app-private sandbox storage. External apps cannot mutate this forensic copy.
+            </Text>
+          </View>
+        </View>
+
+        {/* ── SECTION 2: TIMESTAMP PROVENANCE ── */}
+        <View style={styles.sectionBadgeRow}>
+          <Text style={styles.sectionBadgeText}>TIMESTAMP PROVENANCE</Text>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Cryptographic Proof</Text>
-          <Text style={styles.monoLabel}>SHA-256 Digest:</Text>
+          <Text style={styles.sectionTitle}>Temporal Attribution</Text>
+          
+          <View style={styles.timestampRow}>
+            <Text style={styles.timestampLabel}>CAPTURE TIME (EXIF):</Text>
+            <Text style={styles.timestampVal}>
+              {item.exifData?.dateTimeOriginal || 'Not available in source EXIF'}
+            </Text>
+            <View style={[styles.provenanceBadge, item.exifData?.dateTimeOriginal ? styles.badgeExif : styles.badgeNone]}>
+              <Text style={styles.provenanceBadgeText}>
+                {item.exifData?.dateTimeOriginal ? 'EXIF VERIFIED' : 'NOT DETECTED'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.timestampRow}>
+            <Text style={styles.timestampLabel}>IMPORT TIME:</Text>
+            <Text style={styles.timestampVal}>{formatDate(item.timestamp)}</Text>
+            <View style={[styles.provenanceBadge, styles.badgeImport]}>
+              <Text style={styles.provenanceBadgeText}>IMPORT</Text>
+            </View>
+          </View>
+
+          {item.exifData && (item.exifData.make || item.exifData.model || item.exifData.gpsLatitude) ? (
+            <View style={styles.exifDetailsBox}>
+              <Text style={styles.exifDetailsTitle}>Embedded EXIF Tags:</Text>
+              {item.exifData.make || item.exifData.model ? (
+                <Text style={styles.metaLine}>Device: {item.exifData.make} {item.exifData.model}</Text>
+              ) : null}
+              {item.exifData.gpsLatitude && item.exifData.gpsLongitude ? (
+                <Text style={styles.metaLine}>GPS: {item.exifData.gpsLatitude}, {item.exifData.gpsLongitude}</Text>
+              ) : null}
+              {item.exifData.gpsAltitude ? (
+                <Text style={styles.metaLine}>Altitude: {item.exifData.gpsAltitude} m</Text>
+              ) : null}
+            </View>
+          ) : null}
+        </View>
+
+        {/* ── SECTION 3: CRYPTOGRAPHIC PROOF ── */}
+        <View style={styles.sectionBadgeRow}>
+          <Text style={styles.sectionBadgeText}>CRYPTOGRAPHIC INTEGRITY</Text>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>SHA-256 Digest</Text>
+          <Text style={styles.monoLabel}>Preserved File Hash:</Text>
           <Text style={styles.monoVal} selectable>{item.sha256Hash}</Text>
+          <Text style={styles.hashNote}>
+            Computed directly on copied bytes in private sandbox storage upon intake.
+          </Text>
           {item.signature ? (
             <>
               <Text style={styles.monoLabel}>Hardware Signature:</Text>
@@ -148,24 +259,9 @@ export function EvidenceDetailScreen() {
           ) : null}
         </View>
 
-        {item.exifData ? (
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>EXIF Embedded Metadata</Text>
-            {item.exifData.make || item.exifData.model ? (
-              <Text style={styles.metaLine}>Device: {item.exifData.make} {item.exifData.model}</Text>
-            ) : null}
-            {item.exifData.dateTimeOriginal ? (
-              <Text style={styles.metaLine}>Capture Time: {item.exifData.dateTimeOriginal}</Text>
-            ) : null}
-            {item.exifData.gpsLatitude && item.exifData.gpsLongitude ? (
-              <Text style={styles.metaLine}>GPS Coordinates: {item.exifData.gpsLatitude}, {item.exifData.gpsLongitude}</Text>
-            ) : null}
-          </View>
-        ) : null}
-
-        {/* ── SECTION 2: EXTRACTED CONTENT (OCR / WHISPER) ── */}
+        {/* ── SECTION 4: EXTRACTED CONTENT (OCR / WHISPER) ── */}
         <View style={styles.sectionBadgeRow}>
-          <Text style={styles.sectionBadgeText}>EXTRACTED CONTENT (DETERMINISTIC)</Text>
+          <Text style={styles.sectionBadgeText}>EXTRACTED CONTENT (DETERMINISTIC / DERIVED)</Text>
         </View>
 
         {item.type === 'IMAGE' && (
@@ -193,7 +289,7 @@ export function EvidenceDetailScreen() {
           />
         )}
 
-        {/* ── SECTION 3: AI-DERIVED FORENSIC FINDINGS ── */}
+        {/* ── SECTION 5: AI-DERIVED FORENSIC FINDINGS ── */}
         <View style={styles.sectionBadgeRow}>
           <Text style={[styles.sectionBadgeText, { color: palette.primary }]}>
             AI-DERIVED FORENSIC FINDINGS (ON-DEVICE GEMMA 2B)
@@ -206,7 +302,7 @@ export function EvidenceDetailScreen() {
           onAnalysisCompleted={() => fetchEvidence(item.caseId)}
         />
 
-        {/* ── SECTION 4: INTEGRITY LEDGER ── */}
+        {/* ── SECTION 6: INTEGRITY LEDGER ── */}
         <View style={styles.sectionBadgeRow}>
           <Text style={[styles.sectionBadgeText, { color: palette.success }]}>
             CRYPTOGRAPHIC INTEGRITY LEDGER
@@ -222,7 +318,6 @@ export function EvidenceDetailScreen() {
   );
 }
 
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -230,6 +325,94 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
+    paddingBottom: 40,
+  },
+  previewCard: {
+    backgroundColor: palette.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: palette.border,
+    padding: 12,
+    marginBottom: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageContainer: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  imagePreview: {
+    width: '100%',
+    height: 240,
+    borderRadius: 8,
+    backgroundColor: palette.surfaceVariant,
+  },
+  previewSubtext: {
+    fontSize: 10,
+    color: palette.textSecondary,
+    marginTop: 6,
+  },
+  fallbackContainer: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  fallbackIcon: {
+    fontSize: 40,
+    marginBottom: 8,
+  },
+  fallbackTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: palette.text,
+  },
+  fallbackSub: {
+    fontSize: 11,
+    color: palette.textSecondary,
+    marginTop: 2,
+  },
+  audioPreviewContainer: {
+    padding: 20,
+    alignItems: 'center',
+    width: '100%',
+  },
+  audioPreviewIcon: {
+    fontSize: 36,
+    marginBottom: 8,
+  },
+  audioPreviewTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: palette.text,
+  },
+  audioPreviewMeta: {
+    fontSize: 12,
+    color: palette.primary,
+    marginTop: 4,
+  },
+  audioPreviewNotice: {
+    fontSize: 10,
+    color: palette.textSecondary,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  docPreviewContainer: {
+    padding: 20,
+    alignItems: 'center',
+    width: '100%',
+  },
+  docPreviewIcon: {
+    fontSize: 36,
+    marginBottom: 8,
+  },
+  docPreviewTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: palette.text,
+  },
+  docPreviewMeta: {
+    fontSize: 12,
+    color: palette.secondary,
+    marginTop: 4,
   },
   card: {
     backgroundColor: palette.card,
@@ -243,7 +426,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: 'bold',
     color: palette.primary,
-    marginBottom: 8,
+    marginBottom: 10,
   },
   monoLabel: {
     fontSize: 11,
@@ -256,17 +439,99 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     color: palette.text,
     marginBottom: 6,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    padding: 6,
+    borderRadius: 4,
+  },
+  hashNote: {
+    fontSize: 10,
+    color: palette.textSecondary,
+    fontStyle: 'italic',
+    marginTop: 2,
   },
   metaLine: {
     fontSize: 13,
     color: palette.text,
     marginBottom: 4,
   },
-  aiSummary: {
-    fontSize: 13,
-    color: palette.text,
+  storageBox: {
+    backgroundColor: 'rgba(0, 242, 254, 0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 242, 254, 0.15)',
+    borderRadius: 6,
+    padding: 10,
+    marginTop: 10,
+  },
+  storageBoxTitle: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: palette.primary,
+    letterSpacing: 0.6,
+    marginBottom: 4,
+  },
+  storageBoxPath: {
+    fontSize: 10,
+    fontFamily: 'monospace',
+    color: palette.textSecondary,
+    marginBottom: 4,
+  },
+  storageBoxNote: {
+    fontSize: 10,
+    color: palette.textSecondary,
     fontStyle: 'italic',
-    marginBottom: 6,
+  },
+  timestampRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.04)',
+  },
+  timestampLabel: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: palette.textSecondary,
+  },
+  timestampVal: {
+    fontSize: 12,
+    color: palette.text,
+    flex: 1,
+    marginHorizontal: 8,
+    textAlign: 'right',
+  },
+  provenanceBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  badgeExif: {
+    backgroundColor: '#064E3B',
+  },
+  badgeImport: {
+    backgroundColor: '#1E293B',
+  },
+  badgeNone: {
+    backgroundColor: '#374151',
+  },
+  provenanceBadgeText: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    color: '#E2E8F0',
+  },
+  exifDetailsBox: {
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderRadius: 6,
+    padding: 8,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
+  exifDetailsTitle: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: palette.secondary,
+    marginBottom: 4,
   },
   errText: {
     color: palette.error,

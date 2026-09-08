@@ -18,8 +18,12 @@ export type EvidenceType = MediaCategory;
  */
 export type IngestionStatus =
   | 'PENDING'
+  | 'SELECTING'
   | 'COPYING'
+  | 'VALIDATING'
   | 'HASHING'
+  | 'EXTRACTING_METADATA'
+  | 'PROCESSING_EXTRACT'
   | 'RECORDING'
   | 'COMPLETE'
   | 'FAILED'

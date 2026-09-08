@@ -93,13 +93,15 @@ class DatabaseService {
     return this.mapEvidenceRecordToItem(rec);
   }
 
-  async addEvidence(item: Omit<EvidenceItem, 'id' | 'timestamp'>): Promise<EvidenceItem> {
+  async addEvidence(item: Omit<EvidenceItem, 'id' | 'timestamp'> & { exifTs?: number; userTs?: number }): Promise<EvidenceItem> {
     // Store only file_path reference in DB — never raw binary evidence data
     const rec = await databaseEngine.insertEvidence({
       case_id: item.caseId,
       file_path: item.fileUri,
       media_type: item.type,
       import_ts: Date.now(),
+      exif_ts: item.exifTs ?? (item.exifData?.dateTimeOriginal ? Date.parse(item.exifData.dateTimeOriginal) || undefined : undefined),
+      user_ts: item.userTs,
       sha256_import: item.sha256Hash,
       sha256_processed: item.sha256Hash,
       ocr_text: item.aiAnalysis?.detectedText?.join('\n'),
@@ -112,6 +114,15 @@ class DatabaseService {
     const mapped = this.mapEvidenceRecordToItem(rec);
     if (item.signature) {
       mapped.signature = item.signature;
+    }
+    if (item.exifData) {
+      mapped.exifData = item.exifData;
+    }
+    if (item.fileSize) {
+      mapped.fileSize = item.fileSize;
+    }
+    if (item.fileName) {
+      mapped.fileName = item.fileName;
     }
     return mapped;
   }
@@ -153,11 +164,14 @@ class DatabaseService {
       title: `Evidence ${rec.id.substring(0, 8)}`,
       type: rec.media_type,
       fileUri: rec.file_path,
-      fileName: rec.file_path.split('/').pop() || rec.id,
+      fileName: rec.file_path.split(/[/|\\]/).pop() || rec.id,
       fileSize: 0,
       mimeType: rec.media_type === 'IMAGE' ? 'image/jpeg' : rec.media_type === 'AUDIO' ? 'audio/wav' : 'application/octet-stream',
       sha256Hash: rec.sha256_import,
       timestamp: rec.import_ts,
+      exifData: rec.exif_ts ? {
+        dateTimeOriginal: new Date(rec.exif_ts).toISOString(),
+      } : undefined,
       aiAnalysis: rec.ocr_text || rec.transcription ? {
         detectedText: rec.ocr_text ? rec.ocr_text.split('\n') : undefined,
         transcription: rec.transcription,
