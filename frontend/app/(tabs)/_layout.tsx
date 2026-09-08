@@ -25,19 +25,31 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: 'Workspace',
         }}
       />
       <Tabs.Screen
         name="evidence"
         options={{
-          title: 'Evidence',
+          title: 'Vault',
         }}
       />
       <Tabs.Screen
         name="timeline"
         options={{
           title: 'Timeline',
+        }}
+      />
+      <Tabs.Screen
+        name="findings"
+        options={{
+          title: 'Findings',
+        }}
+      />
+      <Tabs.Screen
+        name="integrity"
+        options={{
+          title: 'Integrity',
         }}
       />
       <Tabs.Screen

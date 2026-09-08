@@ -245,6 +245,22 @@ class DatabaseService {
     }));
   }
 
+  async getHashChainForCase(caseId: string): Promise<HashChainRecord[]> {
+    const recs = await databaseEngine.getHashChainForCase(caseId);
+    return recs.map(rec => ({
+      ...rec,
+      operation: rec.operation.split(':')[0],
+    }));
+  }
+
+  async getAllHashChainNodes(): Promise<HashChainRecord[]> {
+    const recs = await databaseEngine.getAllHashChainNodes();
+    return recs.map(rec => ({
+      ...rec,
+      operation: rec.operation.split(':')[0],
+    }));
+  }
+
   async getEventsForCase(caseId: string): Promise<EventRecord[]> {
     return databaseEngine.getEventsForCase(caseId);
   }

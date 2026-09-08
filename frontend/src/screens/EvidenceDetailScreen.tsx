@@ -114,14 +114,58 @@ export function EvidenceDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <AppHeader title={item.title} subtitle={`Type: ${item.type}`} />
+      <AppHeader title={item.title} subtitle={`ID: ${item.id.substring(0, 12)}… · ${item.type}`} />
       <ScrollView contentContainerStyle={styles.content}>
+        
+        {/* ── SECTION 1: SOURCE EVIDENCE & METADATA ── */}
+        <View style={styles.sectionBadgeRow}>
+          <Text style={styles.sectionBadgeText}>SOURCE EVIDENCE (AUTHORITATIVE)</Text>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Source Metadata & Provenance</Text>
+          <Text style={styles.metaLine}><Text style={styles.boldText}>Filename: </Text>{item.fileName}</Text>
+          <Text style={styles.metaLine}><Text style={styles.boldText}>Media Type: </Text>{item.type} ({item.mimeType})</Text>
+          <Text style={styles.metaLine}><Text style={styles.boldText}>File Size: </Text>{formatFileSize(item.fileSize)}</Text>
+          <Text style={styles.metaLine}>
+            <Text style={styles.boldText}>Timestamp: </Text>
+            {item.exifData?.dateTimeOriginal 
+              ? `${item.exifData.dateTimeOriginal} (PROVENANCE: EXIF Verified)`
+              : `${formatDate(item.timestamp)} (PROVENANCE: Ingested)`}
+          </Text>
+          <Text style={styles.metaLine}><Text style={styles.boldText}>File URI: </Text>{item.fileUri}</Text>
+        </View>
+
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Cryptographic Proof</Text>
-          <Text style={styles.monoLabel}>SHA-256 Hash:</Text>
-          <Text style={styles.monoVal}>{item.sha256Hash}</Text>
-          <Text style={styles.monoLabel}>Hardware Signature:</Text>
-          <Text style={styles.monoVal}>{item.signature}</Text>
+          <Text style={styles.monoLabel}>SHA-256 Digest:</Text>
+          <Text style={styles.monoVal} selectable>{item.sha256Hash}</Text>
+          {item.signature ? (
+            <>
+              <Text style={styles.monoLabel}>Hardware Signature:</Text>
+              <Text style={styles.monoVal} selectable>{item.signature}</Text>
+            </>
+          ) : null}
+        </View>
+
+        {item.exifData ? (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>EXIF Embedded Metadata</Text>
+            {item.exifData.make || item.exifData.model ? (
+              <Text style={styles.metaLine}>Device: {item.exifData.make} {item.exifData.model}</Text>
+            ) : null}
+            {item.exifData.dateTimeOriginal ? (
+              <Text style={styles.metaLine}>Capture Time: {item.exifData.dateTimeOriginal}</Text>
+            ) : null}
+            {item.exifData.gpsLatitude && item.exifData.gpsLongitude ? (
+              <Text style={styles.metaLine}>GPS Coordinates: {item.exifData.gpsLatitude}, {item.exifData.gpsLongitude}</Text>
+            ) : null}
+          </View>
+        ) : null}
+
+        {/* ── SECTION 2: EXTRACTED CONTENT (OCR / WHISPER) ── */}
+        <View style={styles.sectionBadgeRow}>
+          <Text style={styles.sectionBadgeText}>EXTRACTED CONTENT (DETERMINISTIC)</Text>
         </View>
 
         {item.type === 'IMAGE' && (
@@ -149,40 +193,30 @@ export function EvidenceDetailScreen() {
           />
         )}
 
+        {/* ── SECTION 3: AI-DERIVED FORENSIC FINDINGS ── */}
+        <View style={styles.sectionBadgeRow}>
+          <Text style={[styles.sectionBadgeText, { color: palette.primary }]}>
+            AI-DERIVED FORENSIC FINDINGS (ON-DEVICE GEMMA 2B)
+          </Text>
+        </View>
+
         <ForensicAnalysisCard
           caseId={item.caseId}
           evidenceId={item.id}
           onAnalysisCompleted={() => fetchEvidence(item.caseId)}
         />
 
-        {item.exifData ? (
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>EXIF Forensic Metadata</Text>
-            <Text style={styles.metaLine}>Device: {item.exifData.make} {item.exifData.model}</Text>
-            <Text style={styles.metaLine}>Capture Time: {item.exifData.dateTimeOriginal}</Text>
-            <Text style={styles.metaLine}>GPS Coordinates: {item.exifData.gpsLatitude}, {item.exifData.gpsLongitude}</Text>
-          </View>
-        ) : null}
-
-        {item.aiAnalysis ? (
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>On-Device AI Inference</Text>
-            <Text style={styles.aiSummary}>{item.aiAnalysis.gemmaSummary}</Text>
-            {item.aiAnalysis.detectedText?.length ? (
-              <Text style={styles.metaLine}>OCR Text: {item.aiAnalysis.detectedText.join(', ')}</Text>
-            ) : null}
-            {item.aiAnalysis.transcription ? (
-              <Text style={styles.metaLine}>Transcription: {item.aiAnalysis.transcription}</Text>
-            ) : null}
-          </View>
-        ) : null}
-
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>File Metadata</Text>
-          <Text style={styles.metaLine}>Size: {formatFileSize(item.fileSize)}</Text>
-          <Text style={styles.metaLine}>MIME Type: {item.mimeType}</Text>
-          <Text style={styles.metaLine}>Timestamp: {formatDate(item.timestamp)}</Text>
+        {/* ── SECTION 4: INTEGRITY LEDGER ── */}
+        <View style={styles.sectionBadgeRow}>
+          <Text style={[styles.sectionBadgeText, { color: palette.success }]}>
+            CRYPTOGRAPHIC INTEGRITY LEDGER
+          </Text>
         </View>
+
+        <IntegrityPanel
+          evidenceId={item.id}
+          fileName={item.fileName}
+        />
       </ScrollView>
     </View>
   );
@@ -238,5 +272,19 @@ const styles = StyleSheet.create({
     color: palette.error,
     padding: 20,
     textAlign: 'center',
+  },
+  sectionBadgeRow: {
+    marginBottom: 8,
+    marginTop: 6,
+  },
+  sectionBadgeText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: palette.secondary,
+    letterSpacing: 0.8,
+  },
+  boldText: {
+    fontWeight: 'bold',
+    color: palette.textSecondary,
   },
 });

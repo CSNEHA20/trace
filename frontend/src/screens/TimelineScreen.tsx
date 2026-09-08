@@ -1,188 +1,140 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, RefreshControl, ScrollView, StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import {
+  Alert,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  TextInput,
+} from 'react-native';
+import { useRouter } from 'expo-router';
 import { useCaseStore } from '../store/caseStore';
-import { useAiStore } from '../store/aiStore';
 import { databaseService } from '../services/databaseService';
-import { aiService } from '../services/aiService';
+import {
+  temporalReconstructionService,
+  ForensicTimelineEvent,
+  ReconstructedTimeline,
+  TrustIndicator,
+  ForensicEventType,
+} from '../services/temporalReconstructionService';
 import { AppHeader } from '../components/AppHeader';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
-import { EventReviewModal } from '../components/EventReviewModal';
-import { TimelineEventCard } from '../components/TimelineEventCard';
-import { TimelineEventDetailModal } from '../components/TimelineEventDetailModal';
-import { TimelineFilters } from '../components/TimelineFilters';
-import { EventRecord, EvidenceItem, ActorRecord, IncidentSeverity, MediaCategory } from '../types';
 import { palette } from '../theme';
-import { RECONSTRUCTION_DISCLAIMER } from '../../../ai/clustering/eventTypes';
+import { formatDate } from '../utils/crypto';
+
+const TRUST_COLORS: Record<TrustIndicator, { bg: string; text: string; border: string }> = {
+  VERIFIED: { bg: 'rgba(16, 185, 129, 0.15)', text: palette.success, border: palette.success },
+  INFERRED: { bg: 'rgba(0, 242, 254, 0.15)', text: palette.primary, border: palette.primary },
+  UNCERTAIN: { bg: 'rgba(245, 158, 11, 0.15)', text: palette.warning, border: palette.warning },
+  REJECTED: { bg: 'rgba(239, 68, 68, 0.15)', text: palette.error, border: palette.error },
+};
+
+const EVENT_TYPE_COLORS: Record<ForensicEventType, string> = {
+  THREAT: palette.error,
+  PAYMENT_DEMAND: '#F59E0B',
+  BLACKMAIL: '#EC4899',
+  COERCION: '#8B5CF6',
+  COMMUNICATION: palette.primary,
+  MEDIA_CAPTURE: palette.secondary,
+  MEDIA_UPLOAD: '#06B6D4',
+  OTHER: palette.textSecondary,
+};
 
 export function TimelineScreen() {
+  const router = useRouter();
   const activeCase = useCaseStore((state) => state.activeCase);
-  const { progress, setProgress, clusterResult, setClusterResult } = useAiStore();
 
-  const [events, setEvents] = useState<EventRecord[]>([]);
-  const [allEvidence, setAllEvidence] = useState<EvidenceItem[]>([]);
-  const [allActors, setAllActors] = useState<ActorRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [clustering, setClustering] = useState(false);
+  const [reconstructed, setReconstructed] = useState<ReconstructedTimeline | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [selectedEvent, setSelectedEvent] = useState<EventRecord | null>(null);
-  const [detailEvent, setDetailEvent] = useState<EventRecord | null>(null);
-  const [detailVisible, setDetailVisible] = useState(false);
-
-  const [selectedSeverities, setSelectedSeverities] = useState<IncidentSeverity[]>([1, 2, 3, 4, 5]);
-  const [selectedActors, setSelectedActors] = useState<string[]>([]);
-  const [selectedMediaTypes, setSelectedMediaTypes] = useState<MediaCategory[]>(['IMAGE', 'VIDEO', 'AUDIO', 'DOCUMENT']);
+  // Filters
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTrust, setSelectedTrust] = useState<TrustIndicator[]>(['VERIFIED', 'INFERRED', 'UNCERTAIN', 'REJECTED']);
+  const [selectedType, setSelectedType] = useState<ForensicEventType | 'ALL'>('ALL');
 
-  const load = useCallback(async () => {
+  const loadTimeline = useCallback(async () => {
     if (!activeCase?.id) {
-      setEvents([]);
-      setAllEvidence([]);
-      setAllActors([]);
+      setReconstructed(null);
       setIsLoading(false);
       return;
     }
     setError(null);
     try {
-      const [evs, evidence, actors] = await Promise.all([
+      const [events, evidence] = await Promise.all([
         databaseService.getEventRecordsForCase(activeCase.id),
         databaseService.getEvidenceForCase(activeCase.id),
-        databaseService.getActorsForCase(activeCase.id),
       ]);
-      setEvents([...evs].sort((a, b) => a.timestamp - b.timestamp));
-      setAllEvidence(evidence);
-      setAllActors(actors);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load timeline');
+
+      const result = temporalReconstructionService.reconstructFromDatabaseRecords(
+        activeCase.id,
+        events,
+        evidence
+      );
+      setReconstructed(result);
+    } catch (err: unknown) {
+      setError((err as Error)?.message || 'Failed to reconstruct incident timeline from SQLite.');
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
   }, [activeCase?.id]);
 
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    load();
-  }, [load]);
-
   useEffect(() => {
     setIsLoading(true);
-    load();
-  }, [load]);
+    loadTimeline();
+  }, [loadTimeline]);
 
-  const runClustering = async () => {
-    if (!activeCase?.id) {
-      Alert.alert('No active case', 'Open a case before clustering incident events.');
-      return;
-    }
-    setClustering(true);
-    try {
-      const result = await aiService.clusterIncidentEvents(activeCase.id, {
-        onProgress: (next) => setProgress({
-          stage: next.stage as typeof progress.stage,
-          completedChunks: next.completedChunks,
-          totalChunks: next.totalChunks,
-          message: next.message,
-        }),
-      });
-      setClusterResult(result);
-      await load();
-    } catch (err) {
-      Alert.alert('Clustering failed', err instanceof Error ? err.message : 'Local clustering failed.');
-    } finally {
-      setClustering(false);
-    }
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadTimeline();
+  }, [loadTimeline]);
+
+  // Filter matching
+  const filterEvents = (eventList: ForensicTimelineEvent[]): ForensicTimelineEvent[] => {
+    return eventList.filter((ev) => {
+      if (!selectedTrust.includes(ev.trustIndicator)) return false;
+      if (selectedType !== 'ALL' && ev.eventType !== selectedType) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchesDesc = ev.description.toLowerCase().includes(q);
+        const matchesType = ev.eventType.toLowerCase().includes(q);
+        const matchesEvidence = ev.evidenceId.toLowerCase().includes(q);
+        return matchesDesc || matchesType || matchesEvidence;
+      }
+      return true;
+    });
   };
 
-  const handleSeverityToggle = (severity: IncidentSeverity) => {
-    setSelectedSeverities((prev) =>
-      prev.includes(severity) ? prev.filter((s) => s !== severity) : [...prev, severity]
+  const filteredChronological = useMemo(() => {
+    return reconstructed ? filterEvents(reconstructed.chronologicalEvents) : [];
+  }, [reconstructed, selectedTrust, selectedType, searchQuery]);
+
+  const filteredUnknown = useMemo(() => {
+    return reconstructed ? filterEvents(reconstructed.unknownTimestampEvents) : [];
+  }, [reconstructed, selectedTrust, selectedType, searchQuery]);
+
+  const filteredRejected = useMemo(() => {
+    return reconstructed ? filterEvents(reconstructed.rejectedEvents) : [];
+  }, [reconstructed, selectedTrust, selectedType, searchQuery]);
+
+  const toggleTrust = (t: TrustIndicator) => {
+    setSelectedTrust((prev) =>
+      prev.includes(t) ? prev.filter((item) => item !== t) : [...prev, t]
     );
-  };
-
-  const handleActorToggle = (actorId: string) => {
-    setSelectedActors((prev) =>
-      prev.includes(actorId) ? prev.filter((a) => a !== actorId) : [...prev, actorId]
-    );
-  };
-
-  const handleMediaTypeToggle = (mediaType: MediaCategory) => {
-    setSelectedMediaTypes((prev) =>
-      prev.includes(mediaType) ? prev.filter((m) => m !== mediaType) : [...prev, mediaType]
-    );
-  };
-
-  const clearAllFilters = () => {
-    setSelectedSeverities([1, 2, 3, 4, 5]);
-    setSelectedActors([]);
-    setSelectedMediaTypes(['IMAGE', 'VIDEO', 'AUDIO', 'DOCUMENT']);
-    setSearchQuery('');
-  };
-
-  const hasActiveFilters = useMemo(() => {
-    return (
-      selectedSeverities.length !== 5 ||
-      selectedActors.length > 0 ||
-      selectedMediaTypes.length !== 4 ||
-      searchQuery.trim() !== ''
-    );
-  }, [selectedSeverities, selectedActors, selectedMediaTypes, searchQuery]);
-
-  const filteredEvents = useMemo(() => {
-    let result = events;
-
-    if (selectedSeverities.length < 5) {
-      result = result.filter((e) => selectedSeverities.includes(e.severity));
-    }
-
-    if (selectedActors.length > 0) {
-      result = result.filter((e) => e.actor_ids?.some((a) => selectedActors.includes(a)));
-    }
-
-    if (selectedMediaTypes.length < 4) {
-      result = result.filter((e) =>
-        e.evidence_ids?.some((eid) => {
-          const ev = allEvidence.find((e) => e.id === eid);
-          return ev && selectedMediaTypes.includes(ev.type);
-        })
-      );
-    }
-
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim();
-      result = result.filter(
-        (e) =>
-          e.event_type.toLowerCase().includes(query) ||
-          e.ai_summary?.toLowerCase().includes(query) ||
-          e.user_annotation?.toLowerCase().includes(query) ||
-          e.timestamp_hint?.toLowerCase().includes(query) ||
-          e.evidence_ids?.some((id) => id.toLowerCase().includes(query))
-      );
-    }
-
-    return result;
-  }, [events, selectedSeverities, selectedActors, selectedMediaTypes, searchQuery, allEvidence]);
-
-  const getPrimaryEvidence = (event: EventRecord): EvidenceItem | null => {
-    if (!event.evidence_ids?.length) return null;
-    const primaryId = event.evidence_ids[0];
-    return allEvidence.find((e) => e.id === primaryId) || null;
-  };
-
-  const handleEventPress = (event: EventRecord) => {
-    setDetailEvent(event);
-    setDetailVisible(true);
-  };
-
-  const handleEventReviewPress = (event: EventRecord) => {
-    setSelectedEvent(event);
   };
 
   return (
     <View style={styles.container}>
-      <AppHeader title="Case Timeline" subtitle="AI incident reconstruction — review required" />
+      <AppHeader
+        title="INCIDENT TIMELINE"
+        subtitle={`Deterministic Reconstruction · Case ${activeCase?.caseNumber || 'N/A'}`}
+      />
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
@@ -190,132 +142,538 @@ export function TimelineScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.primary]} />
         }
       >
-        <View style={styles.disclaimerContainer}>
-          <Text style={styles.disclaimer}>{RECONSTRUCTION_DISCLAIMER}</Text>
-        </View>
-
-        <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.clusterBtn} onPress={runClustering} disabled={clustering}>
-            <Text style={styles.clusterBtnText}>
-              {clustering ? 'Clustering on device…' : 'Cluster incident events'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {clustering && <Text style={styles.progress}>{progress.message}</Text>}
-        {clusterResult && (
-          <Text style={styles.meta}>
-            Accepted {clusterResult.persisted.length} · Rejected {clusterResult.rejected.length}
-            {clusterResult.skippedReason ? ` · ${clusterResult.skippedReason}` : ''}
+        {/* Forensics Principles Banner */}
+        <View style={styles.banner}>
+          <Text style={styles.bannerTitle}>DETERMINISTIC TEMPORAL RECONSTRUCTION</Text>
+          <Text style={styles.bannerText}>
+            Chronology strictly governed by verified timestamps. LLM/Gemma provides semantic candidates only. Missing timestamps are isolated and never fabricated.
           </Text>
-        )}
+        </View>
 
-        {error && (
-          <View style={styles.errorBanner}>
-            <Text style={styles.errorText}>⚠️ {error}</Text>
-            <TouchableOpacity style={styles.retryBtn} onPress={onRefresh}>
-              <Text style={styles.retryBtnText}>Retry</Text>
-            </TouchableOpacity>
+        {/* Stats Strip */}
+        {reconstructed && (
+          <View style={styles.statsStrip}>
+            <View style={styles.statCol}>
+              <Text style={styles.statVal}>{reconstructed.totalEventsCount}</Text>
+              <Text style={styles.statLbl}>TOTAL</Text>
+            </View>
+            <View style={styles.statCol}>
+              <Text style={[styles.statVal, { color: palette.success }]}>
+                {reconstructed.verifiedCount}
+              </Text>
+              <Text style={styles.statLbl}>VERIFIED</Text>
+            </View>
+            <View style={styles.statCol}>
+              <Text style={[styles.statVal, { color: palette.primary }]}>
+                {reconstructed.inferredCount}
+              </Text>
+              <Text style={styles.statLbl}>INFERRED</Text>
+            </View>
+            <View style={styles.statCol}>
+              <Text style={[styles.statVal, { color: palette.warning }]}>
+                {reconstructed.uncertainCount}
+              </Text>
+              <Text style={styles.statLbl}>UNCERTAIN</Text>
+            </View>
+            <View style={styles.statCol}>
+              <Text style={[styles.statVal, { color: palette.error }]}>
+                {reconstructed.rejectedCount}
+              </Text>
+              <Text style={styles.statLbl}>REJECTED</Text>
+            </View>
           </View>
         )}
 
-        <TimelineFilters
-          selectedSeverities={selectedSeverities}
-          onSeverityToggle={handleSeverityToggle}
-          selectedActors={selectedActors}
-          onActorToggle={handleActorToggle}
-          availableActors={allActors}
-          selectedMediaTypes={selectedMediaTypes}
-          onMediaTypeToggle={handleMediaTypeToggle}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          onClearAll={clearAllFilters}
-          hasActiveFilters={hasActiveFilters}
-        />
+        {/* Search & Filter Bar */}
+        <View style={styles.filterSection}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search events, descriptions, evidence IDs…"
+            placeholderTextColor={palette.textSecondary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+
+          <View style={styles.trustFilterRow}>
+            {(['VERIFIED', 'INFERRED', 'UNCERTAIN', 'REJECTED'] as TrustIndicator[]).map((t) => {
+              const active = selectedTrust.includes(t);
+              const colorInfo = TRUST_COLORS[t];
+              return (
+                <TouchableOpacity
+                  key={t}
+                  style={[
+                    styles.trustChip,
+                    active && { backgroundColor: colorInfo.bg, borderColor: colorInfo.border },
+                  ]}
+                  onPress={() => toggleTrust(t)}
+                >
+                  <Text style={[styles.trustChipText, { color: active ? colorInfo.text : palette.textSecondary }]}>
+                    {t}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
 
         {isLoading ? (
-          <LoadingSpinner label="Loading timeline..." />
-        ) : filteredEvents.length === 0 ? (
+          <LoadingSpinner label="Reconstructing incident chronology…" />
+        ) : error ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>⚠️ {error}</Text>
+          </View>
+        ) : !reconstructed || reconstructed.totalEventsCount === 0 ? (
           <EmptyState
-            title={events.length === 0 ? 'Timeline Empty' : 'No Matching Events'}
-            message={
-              events.length === 0
-                ? 'No chronological events logged yet. Run clustering to reconstruct events from evidence.'
-                : 'Try adjusting your filters or search query.'
-            }
+            title="No Chronological Events"
+            message="No forensic events or evidence recorded yet. Ingest evidence and run analysis to populate the incident timeline."
           />
         ) : (
-          <View style={styles.timelineContainer}>
-            {filteredEvents.map((ev, index) => (
-              <TimelineEventCard
-                key={ev.id}
-                event={ev}
-                index={index}
-                total={filteredEvents.length}
-                primaryEvidence={getPrimaryEvidence(ev)}
-                onPress={() => handleEventPress(ev)}
-                isSelected={detailEvent?.id === ev.id}
-              />
-            ))}
-          </View>
+          <>
+            {/* ── 1. CHRONOLOGICAL TIMELINE (VERIFIED TIMESTAMPS) ── */}
+            <View style={styles.timelineSectionHeader}>
+              <Text style={styles.timelineSectionTitle}>CHRONOLOGICAL TIMELINE</Text>
+              <Text style={styles.timelineSectionCount}>
+                {filteredChronological.length} verified/inferred sequence events
+              </Text>
+            </View>
+
+            {filteredChronological.length === 0 ? (
+              <View style={styles.emptyFilterBox}>
+                <Text style={styles.emptyFilterText}>No chronological events matching filter.</Text>
+              </View>
+            ) : (
+              <View style={styles.timelineSpineContainer}>
+                {filteredChronological.map((ev, idx) => {
+                  const trustStyle = TRUST_COLORS[ev.trustIndicator];
+                  const typeColor = EVENT_TYPE_COLORS[ev.eventType] || palette.primary;
+                  const isLast = idx === filteredChronological.length - 1;
+
+                  return (
+                    <View key={ev.id} style={styles.timelineRow}>
+                      {/* Left: Time column */}
+                      <View style={styles.timeCol}>
+                        <Text style={styles.timeText}>
+                          {ev.timestamp ? formatDate(ev.timestamp).split(' ')[1] || formatDate(ev.timestamp) : 'N/A'}
+                        </Text>
+                        <Text style={styles.dateText}>
+                          {ev.timestamp ? formatDate(ev.timestamp).split(' ')[0] : ''}
+                        </Text>
+                        <Text style={styles.provenanceTag}>
+                          [{ev.timestampProvenance}]
+                        </Text>
+                      </View>
+
+                      {/* Center: Spine & Node */}
+                      <View style={styles.spineCol}>
+                        <View style={[styles.spineNode, { borderColor: typeColor }]} />
+                        {!isLast && <View style={styles.spineLine} />}
+                      </View>
+
+                      {/* Right: Event Card */}
+                      <TouchableOpacity
+                        style={[styles.eventCard, { borderLeftColor: typeColor }]}
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          if (ev.evidenceId && !ev.evidenceId.startsWith('UNGROUNDED')) {
+                            router.push(`/evidence/${ev.evidenceId}`);
+                          }
+                        }}
+                      >
+                        <View style={styles.eventCardHeader}>
+                          <View style={[styles.eventTypeBadge, { backgroundColor: 'rgba(255,255,255,0.06)' }]}>
+                            <Text style={[styles.eventTypeText, { color: typeColor }]}>
+                              {ev.eventType}
+                            </Text>
+                          </View>
+
+                          <View
+                            style={[
+                              styles.trustBadge,
+                              { backgroundColor: trustStyle.bg, borderColor: trustStyle.border },
+                            ]}
+                          >
+                            <Text style={[styles.trustBadgeText, { color: trustStyle.text }]}>
+                              {ev.trustIndicator}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <Text style={styles.eventDesc}>{ev.description}</Text>
+
+                        <View style={styles.eventCardFooter}>
+                          <Text style={styles.evidenceRef}>
+                            Evidence: <Text style={styles.evidenceRefLink}>{ev.evidenceId || 'N/A'}</Text>
+                          </Text>
+                          <Text style={styles.tapToView}>Tap to view →</Text>
+                        </View>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+
+            {/* ── 2. TIMESTAMP UNKNOWN (ISOLATED) ── */}
+            {filteredUnknown.length > 0 && (
+              <View style={styles.isolatedSection}>
+                <View style={styles.isolatedHeader}>
+                  <Text style={styles.isolatedTitle}>⚠️ TIMESTAMP UNKNOWN / UNRESOLVED</Text>
+                  <Text style={styles.isolatedSub}>
+                    Events with missing or conflicting timestamps. Chronological placement is not fabricated.
+                  </Text>
+                </View>
+
+                {filteredUnknown.map((ev) => {
+                  const trustStyle = TRUST_COLORS[ev.trustIndicator];
+                  const typeColor = EVENT_TYPE_COLORS[ev.eventType] || palette.warning;
+
+                  return (
+                    <TouchableOpacity
+                      key={ev.id}
+                      style={[styles.isolatedCard, { borderLeftColor: typeColor }]}
+                      onPress={() => {
+                        if (ev.evidenceId && !ev.evidenceId.startsWith('UNGROUNDED')) {
+                          router.push(`/evidence/${ev.evidenceId}`);
+                        }
+                      }}
+                    >
+                      <View style={styles.eventCardHeader}>
+                        <Text style={[styles.eventTypeText, { color: typeColor }]}>{ev.eventType}</Text>
+                        <View
+                          style={[
+                            styles.trustBadge,
+                            { backgroundColor: trustStyle.bg, borderColor: trustStyle.border },
+                          ]}
+                        >
+                          <Text style={[styles.trustBadgeText, { color: trustStyle.text }]}>
+                            {ev.trustIndicator}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.eventDesc}>{ev.description}</Text>
+                      <Text style={styles.evidenceRef}>
+                        Evidence: <Text style={styles.evidenceRefLink}>{ev.evidenceId}</Text> · Chronology: Unverified
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
+            {/* ── 3. REJECTED CLAIMS AUDIT ── */}
+            {filteredRejected.length > 0 && (
+              <View style={[styles.isolatedSection, { borderColor: palette.error }]}>
+                <View style={styles.isolatedHeader}>
+                  <Text style={[styles.isolatedTitle, { color: palette.error }]}>
+                    🚫 REJECTED CLAIMS (AUDIT TRAIL)
+                  </Text>
+                  <Text style={styles.isolatedSub}>
+                    Generated candidate claims rejected by deterministic evidence-grounding validation.
+                  </Text>
+                </View>
+
+                {filteredRejected.map((ev) => (
+                  <View key={ev.id} style={[styles.isolatedCard, { borderLeftColor: palette.error }]}>
+                    <View style={styles.eventCardHeader}>
+                      <Text style={[styles.eventTypeText, { color: palette.error }]}>{ev.eventType}</Text>
+                      <View
+                        style={[
+                          styles.trustBadge,
+                          { backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: palette.error },
+                        ]}
+                      >
+                        <Text style={[styles.trustBadgeText, { color: palette.error }]}>REJECTED</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.eventDesc}>{ev.description}</Text>
+                    <Text style={[styles.evidenceRef, { color: palette.error }]}>
+                      Reason: {ev.rejectionReason || 'Ungrounded in evidence context'}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </>
         )}
       </ScrollView>
-
-      <EventReviewModal
-        event={selectedEvent}
-        visible={!!selectedEvent}
-        onClose={() => setSelectedEvent(null)}
-        onSave={async (updates) => {
-          if (!selectedEvent) return;
-          await aiService.annotateClusterEvent(selectedEvent.id, updates);
-          await load();
-        }}
-      />
-
-      <TimelineEventDetailModal
-        event={detailEvent}
-        visible={detailVisible}
-        onClose={() => setDetailVisible(false)}
-        caseId={activeCase?.id || ''}
-      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: palette.background },
-  scrollView: { flex: 1 },
-  content: { padding: 16, paddingBottom: 40 },
-  disclaimerContainer: { marginBottom: 12 },
-  disclaimer: { color: palette.warning, fontSize: 12, lineHeight: 18 },
-  actionRow: { marginBottom: 12 },
-  clusterBtn: {
-    backgroundColor: palette.primary,
+  container: {
+    flex: 1,
+    backgroundColor: palette.background,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  content: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  banner: {
+    backgroundColor: palette.surfaceVariant,
+    padding: 12,
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: palette.primary,
+    marginBottom: 14,
+  },
+  bannerTitle: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: palette.primary,
+    marginBottom: 2,
+    letterSpacing: 0.5,
+  },
+  bannerText: {
+    fontSize: 11,
+    color: palette.textSecondary,
+    lineHeight: 16,
+  },
+  statsStrip: {
+    flexDirection: 'row',
+    backgroundColor: palette.surface,
     borderRadius: 10,
-    padding: 14,
+    borderWidth: 1,
+    borderColor: palette.border,
+    paddingVertical: 10,
+    marginBottom: 14,
+  },
+  statCol: {
+    flex: 1,
     alignItems: 'center',
   },
-  clusterBtnText: { color: '#041018', fontWeight: 'bold', fontSize: 14 },
-  progress: { color: palette.textSecondary, marginBottom: 8, fontSize: 13 },
-  meta: { color: palette.textSecondary, fontSize: 12, marginBottom: 12 },
-  errorBanner: {
+  statVal: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: palette.text,
+  },
+  statLbl: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    color: palette.textSecondary,
+    marginTop: 2,
+  },
+  filterSection: {
+    marginBottom: 14,
+    gap: 8,
+  },
+  searchInput: {
+    backgroundColor: palette.surface,
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    color: palette.text,
+    fontSize: 13,
+  },
+  trustFilterRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  trustChip: {
+    flex: 1,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: palette.border,
+    backgroundColor: palette.surface,
+    alignItems: 'center',
+  },
+  trustChipText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  timelineSectionHeader: {
+    marginBottom: 12,
+    marginTop: 4,
+  },
+  timelineSectionTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: palette.text,
+    letterSpacing: 0.8,
+  },
+  timelineSectionCount: {
+    fontSize: 11,
+    color: palette.textSecondary,
+  },
+  timelineSpineContainer: {
+    paddingLeft: 4,
+    marginBottom: 20,
+  },
+  timelineRow: {
+    flexDirection: 'row',
+    marginBottom: 14,
+  },
+  timeCol: {
+    width: 64,
+    paddingRight: 6,
+    alignItems: 'flex-end',
+    paddingTop: 4,
+  },
+  timeText: {
+    fontFamily: 'monospace',
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: palette.text,
+  },
+  dateText: {
+    fontSize: 9,
+    color: palette.textSecondary,
+  },
+  provenanceTag: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    color: palette.secondary,
+    marginTop: 2,
+  },
+  spineCol: {
+    width: 20,
+    alignItems: 'center',
+    position: 'relative',
+  },
+  spineNode: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: palette.background,
+    borderWidth: 3,
+    marginTop: 5,
+    zIndex: 2,
+  },
+  spineLine: {
+    position: 'absolute',
+    top: 15,
+    bottom: -20,
+    width: 2,
+    backgroundColor: palette.border,
+    zIndex: 1,
+  },
+  eventCard: {
+    flex: 1,
+    backgroundColor: palette.surface,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderLeftWidth: 4,
+    padding: 12,
+    marginLeft: 6,
+  },
+  eventCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 6,
+  },
+  eventTypeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  eventTypeText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  trustBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+  },
+  trustBadgeText: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  eventDesc: {
+    fontSize: 13,
+    color: palette.text,
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  eventCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.05)',
+    paddingTop: 6,
+  },
+  evidenceRef: {
+    fontSize: 11,
+    color: palette.textSecondary,
+  },
+  evidenceRefLink: {
+    fontFamily: 'monospace',
+    color: palette.primary,
+    fontWeight: 'bold',
+  },
+  tapToView: {
+    fontSize: 10,
+    color: palette.secondary,
+    fontWeight: '600',
+  },
+  isolatedSection: {
+    backgroundColor: palette.surfaceVariant,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: palette.warning,
+    padding: 14,
+    marginTop: 14,
+    marginBottom: 14,
+  },
+  isolatedHeader: {
+    marginBottom: 10,
+  },
+  isolatedTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: palette.warning,
+    letterSpacing: 0.6,
+  },
+  isolatedSub: {
+    fontSize: 11,
+    color: palette.textSecondary,
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  isolatedCard: {
+    backgroundColor: palette.surface,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderLeftWidth: 4,
+    padding: 10,
+    marginBottom: 8,
+  },
+  emptyFilterBox: {
+    padding: 16,
+    alignItems: 'center',
+    backgroundColor: palette.surface,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: palette.border,
+    marginBottom: 14,
+  },
+  emptyFilterText: {
+    fontSize: 12,
+    color: palette.textSecondary,
+  },
+  errorBox: {
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
     borderWidth: 1,
     borderColor: palette.error,
     borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
+    padding: 14,
+    marginVertical: 10,
   },
-  errorText: { color: palette.error, fontSize: 13, flex: 1 },
-  retryBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    backgroundColor: palette.error,
-    borderRadius: 6,
+  errorText: {
+    color: palette.error,
+    fontSize: 13,
   },
-  retryBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
-  timelineContainer: { gap: 0 },
 });

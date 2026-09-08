@@ -1047,6 +1047,27 @@ export class DatabaseEngine {
     );
   }
 
+  async getHashChainForCase(caseId: string): Promise<HashChainRecord[]> {
+    await this.initialize();
+    const db = this.getDatabase();
+    return db.getAllAsync<HashChainRecord>(
+      `SELECT hc.id, hc.evidence_id, hc.operation, hc.payload_hash, hc.chain_hash, hc.timestamp 
+       FROM hash_chain hc 
+       JOIN evidence e ON hc.evidence_id = e.id 
+       WHERE e.case_id = ? 
+       ORDER BY hc.rowid ASC, hc.timestamp ASC;`,
+      [caseId]
+    );
+  }
+
+  async getAllHashChainNodes(): Promise<HashChainRecord[]> {
+    await this.initialize();
+    const db = this.getDatabase();
+    return db.getAllAsync<HashChainRecord>(
+      'SELECT id, evidence_id, operation, payload_hash, chain_hash, timestamp FROM hash_chain ORDER BY rowid ASC, timestamp ASC;'
+    );
+  }
+
   async getLatestHashChainNode(evidenceId: string): Promise<HashChainRecord | null> {
     await this.initialize();
     const db = this.getDatabase();

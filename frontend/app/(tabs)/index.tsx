@@ -1,6 +1,7 @@
 import React from 'react';
-import { HomeScreen } from '../../src/screens/HomeScreen';
+import { WorkspaceScreen } from '../../src/screens/WorkspaceScreen';
 
-export default function HomeRoute() {
-  return <HomeScreen />;
+export default function WorkspaceRoute() {
+  return <WorkspaceScreen />;
 }
+
