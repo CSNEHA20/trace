@@ -343,32 +343,72 @@ Time:        4.82 s
 
 ---
 
-## 👥 Team & Contributors
+## 👥 Team & Contribution Breakdown
 
 Proudly developed for **iQOO Hackathon 2026**:
 
 <div align="center">
   <table>
     <tr>
-      <td align="center" width="50%">
+      <td align="center" width="50%" valign="top">
         <a href="https://github.com/Vishallakshmikanthan">
-          <img src="https://github.com/Vishallakshmikanthan.png" width="100px;" alt="Vishal Lakshmikanthan"/><br />
+          <img src="https://github.com/Vishallakshmikanthan.png" width="110px;" alt="Vishal Lakshmikanthan" style="border-radius: 50%;" /><br />
           <sub><b>Vishal Lakshmikanthan</b></sub>
         </a><br />
-        <sub>Lead Full Stack & Mobile Engineer • Systems Architect</sub><br />
-        <a href="mailto:vishallakshmikanthan777@gmail.com">✉️ Contact</a>
+        <b>Lead Systems Architect • Core Forensics & AI Engineer</b><br />
+        <a href="mailto:vishallakshmikanthan777@gmail.com">✉️ Contact</a> • <a href="https://github.com/Vishallakshmikanthan">🐙 GitHub Profile</a>
+        <br /><br />
+        <div align="left">
+          <b>Key Contributions (Core Systems & Hard Engineering):</b>
+          <ul>
+            <li><b>System Architecture & Zero-Mock Engine:</b> Designed and built the entire offline-first forensic pipeline, ensuring zero mock data and zero cloud leakage.</li>
+            <li><b>Native MediaPipe Gemma 2B LLM Bridge:</b> Built <code>trace-mediapipe-llm</code> in Kotlin/C++ with background coroutines (<code>Dispatchers.IO</code>), RAM safety guards to prevent OOM/<code>lmkd</code> SIGKILLs, prompt truncation, and automatic memory deallocation.</li>
+            <li><b>Cryptographic Hash Chain Ledger:</b> Implemented internal blockchain-style SHA-256 block ledger in SQLite (<code>trace_vault.db</code>) with Android Keymaster hardware-backed signing.</li>
+            <li><b>Deterministic Forensic Engine:</b> Designed deterministic entity, threat, and timeline extractor with strict claim grounding to eliminate AI hallucinations.</li>
+            <li><b>Pure-TS ISO 32000 PDF 1.4 Generator:</b> Built zero-dependency PDF binary synthesizer from scratch (<code>pdfGenerator.ts</code>) generating court-admissible reports with SHA-256 seals.</li>
+            <li><b>Native Google ML Kit & Whisper.cpp:</b> Authored native Kotlin OCR bridge (<code>trace-ocr</code>), on-device EXIF/binary text scanner, and Whisper.cpp JNI speech-to-text pipeline.</li>
+            <li><b>Native Android Compilation & Stability:</b> Resolved complex Gradle, Kotlin, CMake, NDK, and Hermes build pipelines for OnePlus 12R & Snapdragon devices.</li>
+          </ul>
+        </div>
       </td>
-      <td align="center" width="50%">
+      <td align="center" width="50%" valign="top">
         <a href="https://github.com/CSNEHA20">
-          <img src="https://github.com/CSNEHA20.png" width="100px;" alt="Sneha C"/><br />
+          <img src="https://github.com/CSNEHA20.png" width="110px;" alt="Sneha C" style="border-radius: 50%;" /><br />
           <sub><b>Sneha C</b></sub>
         </a><br />
-        <sub>AI & Security Engineer • Core Developer</sub><br />
+        <b>Frontend Developer • UI/UX Specialist</b><br />
         <a href="https://github.com/CSNEHA20">🐙 GitHub Profile</a>
+        <br /><br />
+        <div align="left">
+          <b>Key Contributions (Mobile Frontend & UI/UX):</b>
+          <ul>
+            <li><b>Mobile Frontend Design & Styling:</b> Crafted the visual theme and styling using React Native, NativeWind (TailwindCSS), and React Native Paper MD3.</li>
+            <li><b>Screens & Navigation Flow:</b> Implemented frontend views across Workspace, Evidence Vault, Incident Timeline, and Forensic Report tabs via Expo Router v3.</li>
+            <li><b>Interactive UI Components:</b> Designed Evidence cards, OCR result cards, media preview modals, audio player cards, and case selector drawers.</li>
+            <li><b>Mobile Layout & Responsive Polish:</b> Configured SafeAreaView boundaries, header status bar alignments, and mobile device typography.</li>
+            <li><b>Client State Integration:</b> Wired frontend components to Zustand state stores (<code>caseStore</code>, <code>evidenceStore</code>, <code>uiStore</code>) for reactive UI updates.</li>
+          </ul>
+        </div>
       </td>
     </tr>
   </table>
 </div>
+
+### 📊 Responsibility & Contribution Matrix
+
+| Module / Component | Primary Architect & Developer | Scope of Work |
+| :--- | :---: | :--- |
+| **System Architecture & Design** | **Vishal Lakshmikanthan** | Offline-first specifications, Zero-Mock guarantees, security model |
+| **Native MediaPipe Gemma 2B LLM** | **Vishal Lakshmikanthan** | Kotlin JNI module, coroutine IO offload, RAM monitor, OOM prevention |
+| **Cryptographic Hash Chain Ledger** | **Vishal Lakshmikanthan** | SHA-256 block ledger, hardware keymaster signing, tamper audit |
+| **Deterministic Grounding Validator** | **Vishal Lakshmikanthan** | Grounding verification, hallucination rejection, fact extraction |
+| **ISO 32000 PDF Binary Generator** | **Vishal Lakshmikanthan** | Pure-TS PDF 1.4 stream synthesizer, proof seal, signature blocks |
+| **Native ML Kit OCR & Whisper STT** | **Vishal Lakshmikanthan** | Kotlin ML Kit bridge, EXIF scanner, Whisper.cpp audio pipeline |
+| **Native Gradle & Android Tooling** | **Vishal Lakshmikanthan** | CMake, NDK, Kotlin 1.9, JDK 17, APK builds, and ADB optimization |
+| **Mobile Frontend UI/UX Design** | **Sneha C** | Visual styling, theme colors, NativeWind classes, icons, branding |
+| **Screen Views & User Navigation** | **Sneha C** | Workspace, Evidence, Timeline, Report screens in Expo Router |
+| **Interactive Modals & Cards** | **Sneha C** | EvidenceCard, ImageOcrCard, ReportPreviewModal, audio UI |
+| **Frontend State & Store Binding** | **Sneha C** | Zustand store hooks, loading spinners, user action handlers |
 
 ---
 
