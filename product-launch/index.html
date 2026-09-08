@@ -1,0 +1,1852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TRACE — On-Device Mobile Digital Forensics</title>
+  <meta name="description" content="Court-admissible digital forensics. Zero cloud. Zero latency. TRACE runs an entire forensic laboratory on Android with SHA-256 chain-of-custody, Gemma 2B AI, and Section 65B compliance." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;0,800;0,900;1,700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/png" href="./assets/trace_logo.png" />
+
+  <style>
+    /* ─── CSS Variables — iQOO Palette ─────────────────────────────── */
+    :root {
+      --bg-main:          #0A0A0A;
+      --bg-card:          #111111;
+      --bg-card-2:        #161616;
+      --bg-card-hover:    #1C1C1C;
+      --bg-gold-dim:      #1A1500;
+      --text-primary:     #FFFFFF;
+      --text-secondary:   #AAAAAA;
+      --text-muted:       #555555;
+      --accent-gold:      #E8B84B;
+      --accent-gold-2:    #C99A2E;
+      --accent-gold-light:#F5D07A;
+      --border:           #222222;
+      --border-gold:      #3A2E00;
+      --status-verified:  #22C55E;
+      --status-inferred:  #F59E0B;
+      --status-uncertain: #6B7280;
+      --status-tampered:  #EF4444;
+      --status-rejected:  #EF4444;
+      --font-display:     'Barlow Condensed', sans-serif;
+      --font-body:        'Barlow', sans-serif;
+      --font-mono:        'JetBrains Mono', monospace;
+      --radius:           8px;
+      --radius-sm:        4px;
+    }
+
+    /* ─── Reset ─────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg-main);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: 16px;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+    a { color: inherit; text-decoration: none; }
+    img { display: block; max-width: 100%; }
+    button { cursor: pointer; border: none; background: none; font: inherit; }
+
+    /* ─── Utility ────────────────────────────────────────────────────── */
+    .container { max-width: 1240px; margin: 0 auto; padding: 0 24px; }
+    .gold { color: var(--accent-gold); }
+    .mono { font-family: var(--font-mono); }
+    .tag {
+      display: inline-block;
+      font-family: var(--font-display);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--accent-gold);
+      padding: 4px 10px;
+      border: 1px solid var(--border-gold);
+      background: var(--bg-gold-dim);
+      border-radius: var(--radius-sm);
+    }
+    .section-eyebrow {
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--accent-gold);
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-family: var(--font-display);
+      font-size: clamp(32px, 5vw, 52px);
+      font-weight: 900;
+      text-transform: uppercase;
+      line-height: 1;
+      letter-spacing: -.01em;
+      color: var(--text-primary);
+    }
+    .section-sub {
+      font-size: 16px;
+      color: var(--text-secondary);
+      max-width: 640px;
+      line-height: 1.7;
+      margin-top: 14px;
+    }
+
+    /* ─── Gold Divider ──────────────────────────────────────────────── */
+    .gold-line {
+      width: 100%;
+      height: 2px;
+      background: var(--accent-gold);
+    }
+
+    /* ─── Navbar ─────────────────────────────────────────────────────── */
+    #navbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(10,10,10,0.96);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+    }
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .nav-logo {
+      font-family: var(--font-display);
+      font-size: 26px;
+      font-weight: 900;
+      letter-spacing: -.02em;
+      color: var(--text-primary);
+      text-transform: uppercase;
+    }
+    .nav-logo span { color: var(--accent-gold); }
+    .nav-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-family: var(--font-body);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--status-verified);
+      background: rgba(34,197,94,0.08);
+      border: 1px solid rgba(34,197,94,0.2);
+      border-radius: 20px;
+      padding: 3px 8px;
+    }
+    .nav-badge .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--status-verified);
+      animation: pulse-green 2s infinite;
+    }
+    @keyframes pulse-green {
+      0%,100% { opacity: 1; } 50% { opacity: .3; }
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      list-style: none;
+    }
+    .nav-links a {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      padding: 6px 10px;
+      border-radius: var(--radius-sm);
+      transition: color .2s;
+    }
+    .nav-links a:hover { color: var(--text-primary); }
+    .btn-github {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: var(--bg-main);
+      background: var(--accent-gold);
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      transition: background .2s, transform .15s;
+    }
+    .btn-github:hover { background: var(--accent-gold-light); transform: translateY(-1px); }
+    .btn-github svg { flex-shrink: 0; }
+    .nav-hamburger { display: none; flex-direction: column; gap: 5px; padding: 6px; }
+    .nav-hamburger span { width: 22px; height: 2px; background: var(--text-primary); border-radius: 2px; }
+
+    /* ─── Hero ───────────────────────────────────────────────────────── */
+    #hero {
+      padding: 100px 0 80px;
+      border-bottom: 1px solid var(--border);
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent-gold);
+      background: var(--bg-gold-dim);
+      border: 1px solid var(--border-gold);
+      border-radius: 20px;
+      padding: 6px 14px;
+      margin-bottom: 28px;
+    }
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(44px, 7vw, 88px);
+      font-weight: 900;
+      line-height: .95;
+      letter-spacing: -.02em;
+      text-transform: uppercase;
+      color: var(--text-primary);
+      max-width: 900px;
+      margin-bottom: 24px;
+    }
+    .hero-title .line-gold { color: var(--accent-gold); }
+    .hero-sub {
+      font-size: clamp(15px, 2vw, 18px);
+      color: var(--text-secondary);
+      max-width: 680px;
+      line-height: 1.7;
+      margin-bottom: 40px;
+    }
+    .hero-ctas {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 60px;
+    }
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      background: var(--accent-gold);
+      color: var(--bg-main);
+      padding: 14px 28px;
+      border-radius: var(--radius-sm);
+      transition: background .2s, transform .15s, box-shadow .2s;
+    }
+    .btn-primary:hover { background: var(--accent-gold-light); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(232,184,75,.25); }
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      background: transparent;
+      color: var(--text-primary);
+      padding: 13px 28px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      transition: border-color .2s, color .2s, transform .15s;
+    }
+    .btn-secondary:hover { border-color: var(--accent-gold); color: var(--accent-gold); transform: translateY(-2px); }
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      padding: 13px 20px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      transition: color .2s, border-color .2s;
+    }
+    .btn-ghost:hover { color: var(--accent-gold); border-color: var(--border-gold); }
+
+    /* Stats bar */
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .stat-item {
+      padding: 22px 24px;
+      border-right: 1px solid var(--border);
+      background: var(--bg-card);
+    }
+    .stat-item:last-child { border-right: none; }
+    .stat-value {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--accent-gold);
+      text-transform: uppercase;
+      letter-spacing: -.01em;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+    .stat-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* ─── Demo Video ─────────────────────────────────────────────────── */
+    #demo { padding: 96px 0; border-bottom: 1px solid var(--border); }
+    .demo-grid {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 32px;
+      align-items: start;
+    }
+    .video-wrapper {
+      position: relative;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .video-wrapper iframe {
+      display: block;
+      width: 100%;
+      aspect-ratio: 16/9;
+      border: none;
+    }
+    .video-fallback {
+      display: block;
+      text-align: center;
+      padding: 10px;
+      font-size: 12px;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border);
+    }
+    .video-fallback a { color: var(--accent-gold); }
+    .video-timestamps {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .ts-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--accent-gold);
+    }
+    .ts-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      transition: background .15s;
+    }
+    .ts-item:last-child { border-bottom: none; }
+    .ts-item:hover { background: var(--bg-card-hover); }
+    .ts-time {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--accent-gold);
+      white-space: nowrap;
+      padding-top: 1px;
+    }
+    .ts-text { font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
+
+    /* ─── Architecture ───────────────────────────────────────────────── */
+    #architecture { padding: 96px 0; border-bottom: 1px solid var(--border); }
+    .arch-steps {
+      margin-top: 56px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .arch-step {
+      display: grid;
+      grid-template-columns: 80px 2px 1fr;
+      gap: 0 32px;
+      position: relative;
+    }
+    .arch-step-num {
+      font-family: var(--font-display);
+      font-size: 72px;
+      font-weight: 900;
+      color: var(--border);
+      line-height: 1;
+      text-align: right;
+      padding-top: 8px;
+      transition: color .3s;
+    }
+    .arch-step:hover .arch-step-num { color: var(--accent-gold); }
+    .arch-connector {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .arch-dot {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: var(--border);
+      border: 2px solid var(--bg-main);
+      flex-shrink: 0;
+      margin-top: 16px;
+      transition: background .3s;
+    }
+    .arch-step:hover .arch-dot { background: var(--accent-gold); }
+    .arch-line {
+      flex: 1;
+      width: 2px;
+      background: var(--border);
+      margin-top: 4px;
+    }
+    .arch-step:last-child .arch-line { display: none; }
+    .arch-content {
+      padding: 8px 0 56px;
+    }
+    .arch-step-tag {
+      font-family: var(--font-display);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--accent-gold);
+      margin-bottom: 8px;
+    }
+    .arch-step-title {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 900;
+      text-transform: uppercase;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+      line-height: 1.05;
+    }
+    .arch-step-desc {
+      font-size: 15px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+      max-width: 600px;
+      margin-bottom: 16px;
+    }
+    .arch-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .chip {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--accent-gold);
+      background: var(--bg-gold-dim);
+      border: 1px solid var(--border-gold);
+      border-radius: var(--radius-sm);
+      padding: 4px 10px;
+    }
+
+    /* ─── Screenshot Gallery ─────────────────────────────────────────── */
+    #screenshots { padding: 96px 0; border-bottom: 1px solid var(--border); }
+    .gallery-tabs {
+      display: flex;
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-top: 40px;
+      margin-bottom: 32px;
+    }
+    .gallery-tab {
+      flex: 1;
+      padding: 12px 8px;
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      background: var(--bg-card);
+      border-right: 1px solid var(--border);
+      cursor: pointer;
+      transition: background .15s, color .15s;
+      text-align: center;
+    }
+    .gallery-tab:last-child { border-right: none; }
+    .gallery-tab.active { background: var(--accent-gold); color: var(--bg-main); }
+    .gallery-tab:not(.active):hover { color: var(--text-primary); background: var(--bg-card-hover); }
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    .gallery-panel { display: none; }
+    .gallery-panel.active { display: contents; }
+    .gallery-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color .2s, transform .2s;
+    }
+    .gallery-card:hover { border-color: var(--accent-gold); transform: translateY(-3px); }
+    .gallery-img {
+      width: 100%;
+      aspect-ratio: 9/16;
+      object-fit: cover;
+      background: var(--bg-card-2);
+      display: block;
+      border-bottom: 1px solid var(--border);
+      transition: transform .25s ease;
+    }
+    .gallery-card:hover .gallery-img {
+      transform: scale(1.02);
+    }
+    .gallery-img-placeholder {
+      width: 100%;
+      aspect-ratio: 9/16;
+      background: var(--bg-card-2);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .gallery-img-placeholder svg { opacity: .3; }
+    .gallery-img-placeholder span { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
+    .gallery-caption {
+      padding: 14px 16px;
+    }
+    .gallery-caption-id {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--accent-gold);
+      margin-bottom: 4px;
+    }
+    .gallery-caption-text {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    /* Lightbox */
+    #lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 500;
+      background: rgba(0,0,0,0.92);
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    #lightbox.open { display: flex; }
+    .lightbox-inner {
+      max-width: 480px;
+      width: 100%;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-card);
+      border: 1px solid var(--border-gold);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    #lightbox-img {
+      width: 100%;
+      max-height: 70vh;
+      object-fit: contain;
+      display: block;
+      background: var(--bg-card-2);
+    }
+    .lightbox-body { padding: 20px; }
+    .lightbox-id { font-family: var(--font-mono); font-size: 10px; color: var(--accent-gold); margin-bottom: 6px; }
+    .lightbox-caption { font-size: 14px; color: var(--text-secondary); }
+    .lightbox-close {
+      position: absolute;
+      top: 20px; right: 24px;
+      font-size: 28px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      line-height: 1;
+      transition: color .15s;
+    }
+    .lightbox-close:hover { color: var(--text-primary); }
+
+    /* ─── Integrity Simulator ────────────────────────────────────────── */
+    #simulator { padding: 96px 0; border-bottom: 1px solid var(--border); }
+    .sim-container {
+      max-width: 720px;
+      margin: 48px auto 0;
+    }
+    .sim-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .sim-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sim-header-label {
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--accent-gold);
+    }
+    .sim-badge {
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      transition: all .3s;
+    }
+    .sim-badge.verified { background: rgba(34,197,94,.12); color: var(--status-verified); border: 1px solid rgba(34,197,94,.3); }
+    .sim-badge.tampered { background: rgba(239,68,68,.12); color: var(--status-tampered); border: 1px solid rgba(239,68,68,.3); }
+    .sim-body { padding: 28px 24px; }
+    .sim-field {
+      margin-bottom: 20px;
+    }
+    .sim-field-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .sim-hash {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      word-break: break-all;
+      line-height: 1.6;
+      padding: 12px 16px;
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      transition: color .3s, border-color .3s;
+    }
+    .sim-hash.verified-hash { color: var(--status-verified); border-color: rgba(34,197,94,.3); }
+    .sim-hash.tampered-hash { color: var(--status-tampered); border-color: rgba(239,68,68,.3); animation: flash-border .4s ease; }
+    @keyframes flash-border { 0%,100% { border-color: rgba(239,68,68,.3); } 50% { border-color: var(--status-tampered); } }
+    .sim-chain {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .chain-node {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 5px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--status-verified);
+      color: var(--status-verified);
+      background: rgba(34,197,94,.06);
+      transition: all .3s;
+    }
+    .chain-node.broken { border-color: var(--status-tampered); color: var(--status-tampered); background: rgba(239,68,68,.06); }
+    .chain-arrow { color: var(--text-muted); font-size: 12px; }
+    .chain-arrow.broken { color: var(--status-tampered); }
+    .sim-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn-tamper {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      background: rgba(239,68,68,.12);
+      color: var(--status-tampered);
+      border: 1px solid rgba(239,68,68,.3);
+      padding: 10px 18px;
+      border-radius: var(--radius-sm);
+      transition: background .2s;
+    }
+    .btn-tamper:hover { background: rgba(239,68,68,.2); }
+    .btn-reset {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+      padding: 10px 18px;
+      border-radius: var(--radius-sm);
+      transition: color .2s, border-color .2s;
+    }
+    .btn-reset:hover { color: var(--text-primary); border-color: var(--text-secondary); }
+    .sim-explanation {
+      margin-top: 16px;
+      padding: 14px 16px;
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      transition: border-color .3s;
+    }
+    .sim-explanation.alert-mode { border-color: rgba(239,68,68,.4); background: rgba(239,68,68,.04); }
+
+    /* ─── Features Grid ──────────────────────────────────────────────── */
+    #features { padding: 96px 0; border-bottom: 1px solid var(--border); }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-top: 56px;
+    }
+    .feature-card {
+      background: var(--bg-card);
+      padding: 32px 28px;
+      transition: background .2s;
+    }
+    .feature-card:hover { background: var(--bg-card-hover); }
+    .feature-icon {
+      width: 44px; height: 44px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg-gold-dim);
+      border: 1px solid var(--border-gold);
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+      color: var(--accent-gold);
+    }
+    .feature-title {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--text-primary);
+      margin-bottom: 10px;
+      letter-spacing: -.01em;
+    }
+    .feature-desc {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.65;
+    }
+
+    /* ─── Tech Stack ─────────────────────────────────────────────────── */
+    #techstack { padding: 96px 0; border-bottom: 1px solid var(--border); }
+    .tech-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-top: 56px;
+    }
+    .tech-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      transition: border-color .2s;
+    }
+    .tech-card:hover { border-color: var(--border-gold); }
+    .tech-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .tech-category {
+      font-family: var(--font-display);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--accent-gold);
+    }
+    .tech-card-name {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 900;
+      text-transform: uppercase;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+    .tech-detail {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      font-family: var(--font-mono);
+    }
+    .tech-badge-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    .tech-pill {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 3px 8px;
+    }
+
+    /* ─── Team ───────────────────────────────────────────────────────── */
+    #team { padding: 96px 0; border-bottom: 1px solid var(--border); }
+    .team-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+      margin-top: 56px;
+    }
+    .team-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 36px 32px;
+      transition: border-color .2s;
+    }
+    .team-card:hover { border-color: var(--accent-gold); }
+    .team-avatar {
+      width: 60px; height: 60px;
+      border-radius: 50%;
+      background: var(--bg-gold-dim);
+      border: 2px solid var(--border-gold);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--accent-gold);
+      margin-bottom: 20px;
+    }
+    .team-name {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 900;
+      text-transform: uppercase;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+    .team-role {
+      font-size: 13px;
+      color: var(--accent-gold);
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+    .team-contributions {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+      margin-bottom: 24px;
+    }
+    .team-contrib-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .contrib-dot {
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: var(--accent-gold);
+      flex-shrink: 0;
+      margin-top: 7px;
+    }
+    .team-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-family: var(--font-display);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 14px;
+      transition: color .15s, border-color .15s;
+    }
+    .team-link:hover { color: var(--accent-gold); border-color: var(--border-gold); }
+
+    /* ─── Footer ─────────────────────────────────────────────────────── */
+    footer {
+      padding: 60px 0 40px;
+    }
+    .footer-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 40px;
+      padding-bottom: 40px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 32px;
+    }
+    .footer-brand { max-width: 400px; }
+    .footer-logo {
+      font-family: var(--font-display);
+      font-size: 36px;
+      font-weight: 900;
+      text-transform: uppercase;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+    .footer-logo span { color: var(--accent-gold); }
+    .footer-tagline {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+    .footer-links-group { }
+    .footer-links-label {
+      font-family: var(--font-display);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+    }
+    .footer-links { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .footer-links a {
+      font-size: 13px;
+      color: var(--text-secondary);
+      transition: color .15s;
+    }
+    .footer-links a:hover { color: var(--accent-gold); }
+    .footer-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .footer-legal {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      max-width: 600px;
+    }
+    .footer-copy { font-size: 11px; color: var(--text-muted); }
+    .footer-github {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: var(--bg-main);
+      background: var(--accent-gold);
+      padding: 10px 20px;
+      border-radius: var(--radius-sm);
+      transition: background .2s;
+    }
+    .footer-github:hover { background: var(--accent-gold-light); }
+
+    /* ─── Section common ─────────────────────────────────────────────── */
+    .section-header { margin-bottom: 0; }
+    .section-header .section-eyebrow { display: block; }
+
+    /* ─── Scroll reveal ──────────────────────────────────────────────── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity .6s ease, transform .6s ease;
+    }
+    .reveal.visible { opacity: 1; transform: none; }
+
+    /* ─── Responsive ─────────────────────────────────────────────────── */
+    @media (max-width: 1024px) {
+      .demo-grid { grid-template-columns: 1fr; }
+      .video-timestamps { grid-column: 1; }
+      .features-grid { grid-template-columns: repeat(2, 1fr); }
+      .tech-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .nav-links.open {
+        display: flex;
+        flex-direction: column;
+        position: absolute;
+        top: 60px; left: 0; right: 0;
+        background: var(--bg-card);
+        border-bottom: 1px solid var(--border);
+        padding: 12px 24px;
+        gap: 4px;
+        z-index: 99;
+      }
+      .nav-hamburger { display: flex; }
+      .btn-github.nav-github { display: none; }
+      .hero-stats { grid-template-columns: repeat(2, 1fr); }
+      .stat-item:nth-child(2) { border-right: none; }
+      .stat-item:nth-child(3) { border-top: 1px solid var(--border); }
+      .stat-item:nth-child(4) { border-top: 1px solid var(--border); }
+      .features-grid { grid-template-columns: 1fr; }
+      .gallery-grid { grid-template-columns: repeat(2, 1fr); }
+      .gallery-tabs { flex-wrap: wrap; border-radius: var(--radius-sm); }
+      .gallery-tab { flex: none; width: 50%; }
+      .team-grid { grid-template-columns: 1fr; }
+      .footer-top { flex-direction: column; }
+      .footer-bottom { flex-direction: column; align-items: flex-start; }
+      .arch-step { grid-template-columns: 48px 2px 1fr; }
+      .arch-step-num { font-size: 42px; }
+    }
+    @media (max-width: 480px) {
+      .hero-ctas { flex-direction: column; }
+      .hero-ctas .btn-primary, .hero-ctas .btn-secondary, .hero-ctas .btn-ghost { width: 100%; justify-content: center; }
+      .gallery-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ─── Top gold stripe ────────────────────────────────────────────── */
+    .site-top-stripe {
+      width: 100%;
+      height: 3px;
+      background: var(--accent-gold);
+    }
+
+    /* ─── Status pills ───────────────────────────────────────────────── */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      padding: 3px 8px;
+      border-radius: 20px;
+    }
+    .pill-verified { background: rgba(34,197,94,.1); color: var(--status-verified); border: 1px solid rgba(34,197,94,.25); }
+    .pill-tampered { background: rgba(239,68,68,.1); color: var(--status-tampered); border: 1px solid rgba(239,68,68,.25); }
+    .pill-inferred { background: rgba(245,158,11,.1); color: var(--status-inferred); border: 1px solid rgba(245,158,11,.25); }
+  </style>
+</head>
+<body>
+
+  <!-- Top gold stripe -->
+  <div class="site-top-stripe"></div>
+
+  <!-- ─── NAVBAR ─────────────────────────────────────────────────────── -->
+  <nav id="navbar">
+    <div class="container">
+      <div class="nav-inner">
+        <div class="nav-brand">
+          <a href="#" class="nav-logo" style="display:flex;align-items:center;gap:10px;">
+            <img src="./assets/trace_logo.png" alt="TRACE Logo" style="width:26px;height:26px;border-radius:6px;object-fit:cover;" />
+            TR<span>A</span>CE
+          </a>
+          <div class="nav-badge">
+            <span class="dot"></span>
+            Air-Gapped &amp; Offline
+          </div>
+        </div>
+
+        <ul class="nav-links" id="nav-links">
+          <li><a href="#demo">Demo</a></li>
+          <li><a href="#architecture">Architecture</a></li>
+          <li><a href="#screenshots">Screenshots</a></li>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#techstack">Tech Stack</a></li>
+          <li><a href="#team">Team</a></li>
+        </ul>
+
+        <a href="https://github.com/Vishallakshmikanthan/Trace" target="_blank" rel="noopener" class="btn-github nav-github">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          Star on GitHub
+        </a>
+
+        <button class="nav-hamburger" id="hamburger" aria-label="Menu">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ─── HERO ───────────────────────────────────────────────────────── -->
+  <section id="hero">
+    <div class="container">
+      <div class="hero-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        🛡️ 100% On-Device Mobile Digital Forensics &amp; Multimodal AI
+      </div>
+
+      <h1 class="hero-title">
+        Court-Admissible<br />
+        Digital Forensics.<br />
+        <span class="line-gold">Zero Cloud.</span><br />
+        Zero Latency.
+      </h1>
+
+      <p class="hero-sub">
+        Empowering law enforcement and cybercrime units with an immutable cryptographic chain-of-custody, on-device Gemma&nbsp;2B &amp; Whisper AI, and tamper-evident proof seals — running entirely on edge mobile hardware.
+      </p>
+
+      <div class="hero-ctas">
+        <a href="#demo" class="btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Watch Demo Video
+        </a>
+        <a href="#architecture" class="btn-secondary">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          Explore Architecture
+        </a>
+        <a href="https://github.com/Vishallakshmikanthan/Trace" target="_blank" rel="noopener" class="btn-ghost">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          Star on GitHub
+        </a>
+      </div>
+
+      <div class="hero-stats reveal">
+        <div class="stat-item">
+          <div class="stat-value">100%</div>
+          <div class="stat-label">Offline</div>
+          <div class="stat-sub">Zero network calls · Air-gapped privacy</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">SHA-256</div>
+          <div class="stat-label">Ledger</div>
+          <div class="stat-sub">Tamper-evident cryptographic hash chain</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">&lt; 2.5s</div>
+          <div class="stat-label">On-Device AI</div>
+          <div class="stat-sub">Gemma 2B + Whisper.cpp + ML Kit OCR</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">Sec 65B</div>
+          <div class="stat-label">Compliant</div>
+          <div class="stat-sub">Hardware-signed court evidence certificates</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── DEMO VIDEO ──────────────────────────────────────────────────── -->
+  <section id="demo">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-eyebrow">Live Hardware Demo</span>
+        <h2 class="section-title">See TRACE in Action<br />on Live Hardware.</h2>
+        <p class="section-sub">Watch authentic evidence ingestion, on-device AI transcription, tamper detection, and cryptographic report generation recorded directly on an Android device.</p>
+      </div>
+
+      <div class="demo-grid" style="margin-top:48px;">
+        <div class="reveal">
+          <div class="video-wrapper">
+            <iframe
+              src="https://drive.google.com/file/d/1c5qjlTSCos3vO4jMLAgbNm5ARNHVUnkm/preview"
+              width="100%"
+              height="480"
+              allow="autoplay"
+              allowfullscreen
+            ></iframe>
+            <a class="video-fallback" href="https://drive.google.com/file/d/1c5qjlTSCos3vO4jMLAgbNm5ARNHVUnkm/view?usp=sharing" target="_blank" rel="noopener">
+              ↗ Open Video in New Tab
+            </a>
+          </div>
+        </div>
+        <div class="reveal">
+          <div class="video-timestamps">
+            <div class="ts-header">Key Timestamps</div>
+            <div class="ts-item">
+              <span class="ts-time">00:00</span>
+              <span class="ts-text">Case Initialization &amp; Multi-Source Evidence Ingestion</span>
+            </div>
+            <div class="ts-item">
+              <span class="ts-time">00:45</span>
+              <span class="ts-text">Google ML Kit OCR &amp; Whisper.cpp Voice Transcription</span>
+            </div>
+            <div class="ts-item">
+              <span class="ts-time">01:20</span>
+              <span class="ts-text">Gemma 2B Multimodal Extortion &amp; Threat Analysis</span>
+            </div>
+            <div class="ts-item">
+              <span class="ts-time">01:50</span>
+              <span class="ts-text">Tamper Detection Alert &amp; Cryptographic Hash Chain Audit</span>
+            </div>
+            <div class="ts-item">
+              <span class="ts-time">02:25</span>
+              <span class="ts-text">Section 65B Court Report Generation &amp; Ed25519 Proof Seal</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── ARCHITECTURE ────────────────────────────────────────────────── -->
+  <section id="architecture">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-eyebrow">5-Stage Pipeline</span>
+        <h2 class="section-title">The TRACE<br />Evidence Lifecycle.</h2>
+        <p class="section-sub">From device intake to court-admissible proof seal — every byte is tracked, hashed, and grounded.</p>
+      </div>
+
+      <div class="arch-steps">
+
+        <div class="arch-step reveal">
+          <div class="arch-step-num">01</div>
+          <div class="arch-connector"><div class="arch-dot"></div><div class="arch-line"></div></div>
+          <div class="arch-content">
+            <div class="arch-step-tag">Intake &amp; Vault</div>
+            <h3 class="arch-step-title">Evidence Ingestion &amp; Sandbox Vault</h3>
+            <p class="arch-step-desc">The user selects evidence from Camera, Gallery, Audio, or Files. TRACE immediately copies each file into an application-private vault — inaccessible to all other apps. SHA-256 is computed over the preserved bytes before any processing begins. Every ingestion event is timestamped and registered in SQLite.</p>
+            <div class="arch-chips">
+              <span class="chip">SHA-256</span>
+              <span class="chip">/data/user/0/com.trace.forensic/</span>
+              <span class="chip">SQLite</span>
+              <span class="chip">trace_vault.db</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="arch-step reveal">
+          <div class="arch-step-num">02</div>
+          <div class="arch-connector"><div class="arch-dot"></div><div class="arch-line"></div></div>
+          <div class="arch-content">
+            <div class="arch-step-tag">Multimodal Extraction</div>
+            <h3 class="arch-step-title">On-Device OCR &amp; Audio Transcription</h3>
+            <p class="arch-step-desc">Google ML Kit's offline Latin Text Recognition extracts text from screenshots, chat images, and documents without sending a single byte to the cloud. Whisper.cpp decodes audio evidence as 16kHz mono PCM via Android MediaCodec, transcribing voice messages and recorded calls entirely on-device. All extracted content is marked as derived data — it supplements, never replaces, the original.</p>
+            <div class="arch-chips">
+              <span class="chip">ML Kit OCR</span>
+              <span class="chip">Whisper.cpp GGML Tiny</span>
+              <span class="chip">16kHz PCM</span>
+              <span class="chip">JNI Bridge</span>
+              <span class="chip">100% Offline</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="arch-step reveal">
+          <div class="arch-step-num">03</div>
+          <div class="arch-connector"><div class="arch-dot"></div><div class="arch-line"></div></div>
+          <div class="arch-content">
+            <div class="arch-step-tag">Edge AI Reasoning</div>
+            <h3 class="arch-step-title">Gemma 2B On-Device Forensic Analysis</h3>
+            <p class="arch-step-desc">Google MediaPipe LLM runs Gemma 2B INT4 quantized locally — classifying incidents (BLACKMAIL, EXTORTION, COERCION), attributing suspect entities and UPI payment IDs, identifying financial demands, and linking every assertion to a specific source evidence UUID. Hallucinated claims that lack valid provenance are automatically rejected by the grounding validator.</p>
+            <div class="arch-chips">
+              <span class="chip">Gemma 2B INT4</span>
+              <span class="chip">MediaPipe LLM</span>
+              <span class="chip">sourceEvidenceId</span>
+              <span class="chip">Grounding Validator</span>
+              <span class="chip">Zero Hallucination Policy</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="arch-step reveal">
+          <div class="arch-step-num">04</div>
+          <div class="arch-connector"><div class="arch-dot"></div><div class="arch-line"></div></div>
+          <div class="arch-content">
+            <div class="arch-step-tag">Cryptographic Integrity</div>
+            <h3 class="arch-step-title">Sequential Hash Chain Ledger &amp; Tamper Audit</h3>
+            <p class="arch-step-desc">Every forensic operation — import, OCR, transcription, analysis, export — is appended as an immutable node to an append-only cryptographic hash chain. Each node's hash is computed from its payload hash chained to the previous node: <code class="mono" style="font-size:12px;color:var(--accent-gold)">chain[N] = SHA-256(chain[N-1] + payload[N])</code>. Any tampering anywhere in the chain is immediately detected.</p>
+            <div class="arch-chips">
+              <span class="chip">Hash Chain Ledger</span>
+              <span class="chip">Append-Only</span>
+              <span class="chip">Real-Time Tamper Detection</span>
+              <span class="chip">[TAMPERED] Alert</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="arch-step reveal">
+          <div class="arch-step-num">05</div>
+          <div class="arch-connector"><div class="arch-dot"></div><div class="arch-line"></div></div>
+          <div class="arch-content">
+            <div class="arch-step-tag">Court-Admissible Export</div>
+            <h3 class="arch-step-title">Proof Seal &amp; Section 65B Report Generation</h3>
+            <p class="arch-step-desc">TRACE auto-generates a structured PDF report compliant with Section 65B of the Indian Evidence Act (Bharatiya Sakshya Adhiniyam). The report includes officer credentials, case metadata, the complete evidence chain, grounded findings, and a hardware-signed Ed25519 cryptographic proof seal — exportable in one tap via Android's native share sheet.</p>
+            <div class="arch-chips">
+              <span class="chip">Section 65B / BSA</span>
+              <span class="chip">Ed25519</span>
+              <span class="chip">SIG_TRACE_HARDWARE</span>
+              <span class="chip">PDF Report</span>
+              <span class="chip">Native Share</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── SCREENSHOTS ─────────────────────────────────────────────────── -->
+  <section id="screenshots">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-eyebrow">Product Screenshots</span>
+        <h2 class="section-title">Real-Device Android<br />Screenshots.</h2>
+        <p class="section-sub">Every screenshot captured directly from a physical Android device running TRACE.</p>
+      </div>
+
+      <div class="gallery-tabs reveal" id="gallery-tabs">
+        <button class="gallery-tab active" data-tab="vault">Case Intake &amp; Vault</button>
+        <button class="gallery-tab" data-tab="ai">On-Device AI &amp; OCR</button>
+        <button class="gallery-tab" data-tab="timeline">Incident Timeline</button>
+        <button class="gallery-tab" data-tab="ledger">Cryptographic Ledger</button>
+        <button class="gallery-tab" data-tab="report">Court Reports</button>
+      </div>
+
+      <div class="gallery-grid" id="gallery-grid">
+
+        <!-- Vault -->
+        <div class="gallery-panel active" data-panel="vault">
+          <div class="gallery-card" onclick="openLightbox('./screenshots/01_forensic_workspace_dashboard.jpeg','EV-01','Central workspace with active Case TR-2026-9886, officer Rajesh Kumar, evidence counts, and storage metrics.')">
+            <img class="gallery-img" src="./screenshots/01_forensic_workspace_dashboard.jpeg" alt="Central Forensic Workspace Dashboard" loading="lazy" />
+            <div class="gallery-caption"><div class="gallery-caption-id">EV-01 / WORKSPACE</div><div class="gallery-caption-text">Central forensic workspace with active case, evidence counts, storage metrics, and integrity status.</div></div>
+          </div>
+          <div class="gallery-card" onclick="openLightbox('./screenshots/02_case_selection_modal.jpeg','EV-02','Encrypted SQLite multi-case switcher modal.')">
+            <img class="gallery-img" src="./screenshots/02_case_selection_modal.jpeg" alt="Encrypted SQLite Case Selection Modal" loading="lazy" />
+            <div class="gallery-caption"><div class="gallery-caption-id">EV-02 / CASE SWITCHER</div><div class="gallery-caption-text">Encrypted SQLite multi-case switcher with investigation metadata and status indicators.</div></div>
+          </div>
+          <div class="gallery-card" onclick="openLightbox('./screenshots/03_evidence_ingestion_sources.jpeg','EV-03','Multi-source evidence intake sheet.')">
+            <img class="gallery-img" src="./screenshots/03_evidence_ingestion_sources.jpeg" alt="Multi-Source Evidence Intake Sheet" loading="lazy" />
+            <div class="gallery-caption"><div class="gallery-caption-id">EV-03 / INGESTION</div><div class="gallery-caption-text">Multi-source evidence intake bottom sheet — Camera, Gallery, Audio, Files.</div></div>
+          </div>
+          <div class="gallery-card" onclick="openLightbox('./screenshots/04_evidence_vault_tamper_detection.jpeg','EV-04','Evidence Vault showing real-time tamper detection.')">
+            <img class="gallery-img" src="./screenshots/04_evidence_vault_tamper_detection.jpeg" alt="Evidence Vault Real-Time Tamper Detection" loading="lazy" />
+            <div class="gallery-caption"><div class="gallery-caption-id">EV-04 / VAULT</div><div class="gallery-caption-text">Evidence Vault showing real-time red <span style="color:var(--status-tampered)">[TAMPERED]</span> alert vs green <span style="color:var(--status-verified)">[VERIFIED]</span> items.</div></div>
+          </div>
+          <div class="gallery-card" onclick="openLightbox('./screenshots/05_evidence_detail_provenance.jpeg','EV-05','Authoritative file provenance and timestamp metadata.')">
+            <img class="gallery-img" src="./screenshots/05_evidence_detail_provenance.jpeg" alt="Authoritative Evidence File Provenance" loading="lazy" />
+            <div class="gallery-caption"><div class="gallery-caption-id">EV-05 / PROVENANCE</div><div class="gallery-caption-text">Authoritative file provenance, sandbox URI, SHA-256 digest, and timestamp metadata.</div></div>
+          </div>
+        </div>
+
+        <!-- AI -->
+        <div class="gallery-panel" data-panel="ai">
+          <div class="gallery-card" onclick="openLightbox('./screenshots/06_on_device_ocr_text_extraction.jpeg','AI-01','Google ML Kit offline text extraction.')">
+            <img class="gallery-img" src="./screenshots/06_on_device_ocr_text_extraction.jpeg" alt="Google ML Kit Offline Text Extraction" loading="lazy" />
+            <div class="gallery-caption"><div class="gallery-caption-id">AI-01 / OCR</div><div class="gallery-caption-text">Google ML Kit offline text extraction identifying extortion message &amp; UPI payment ID.</div></div>
+          </div>
+          <div class="gallery-card" onclick="openLightbox('./screenshots/07_audio_transcription_whisper.jpeg','AI-02','Whisper.cpp speech-to-text transcription.')">
+            <img class="gallery-img" src="./screenshots/07_audio_transcription_whisper.jpeg" alt="Whisper.cpp Audio Speech-to-Text Transcription" loading="lazy" />
+            <div class="gallery-caption"><div class="gallery-caption-id">AI-02 / WHISPER</div><div class="gallery-caption-text">Whisper.cpp speech-to-text transcription of voice evidence — 100% on-device.</div></div>
+          </div>
+          <div class="gallery-card" onclick="openLightbox('./screenshots/08_gemma_ai_forensic_findings.jpeg','AI-03','Gemma 2B INT4 structured incident classification.')">
+            <img class="gallery-img" src="./screenshots/08_gemma_ai_forensic_findings.jpeg" alt="Gemma 2B On-Device AI Forensic Findings" loading="lazy" />
+            <div class="gallery-caption"><div class="gallery-caption-id">AI-03 / GEMMA</div><div class="gallery-caption-text">Gemma 2B INT4 structured incident classification — Blackmail, financial extortion.</div></div>
+          </div>
+          <div class="gallery-card" onclick="openLightbox('./screenshots/09_threat_detection_actors.jpeg','AI-04','Threat detection and actor attribution.')">
+            <img class="gallery-img" src="./screenshots/09_threat_detection_actors.jpeg" alt="Threat Detection and Coercion Breakdown" loading="lazy" />
+            <div class="gallery-caption"><div class="gallery-caption-id">AI-04 / THREATS</div><div class="gallery-caption-text">Threat detection, UPI coercion payment breakdown (darkshadow2005@okaxis).</div></div>
+          </div>
+          <div class="gallery-card" onclick="openLightbox('./screenshots/10_grounded_findings_dashboard.jpeg','AI-05','Evidence-grounded forensic findings dashboard.')">
+            <img class="gallery-img" src="./screenshots/10_grounded_findings_dashboard.jpeg" alt="Evidence-Grounded Forensic Findings Dashboard" loading="lazy" />
+            <div class="gallery-caption"><div class="gallery-caption-id">AI-05 / FINDINGS</div><div class="gallery-caption-text">Evidence-grounded forensic findings synthesis dashboard with source provenance links.</div></div>
+          </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="gallery-panel" data-panel="timeline">
+          <div class="gallery-card" onclick="openLightbox('./screenshots/11_incident_timeline_reconstruction.jpeg','TL-01','Deterministic incident timeline header.')">
+            <img class="gallery-img" src="./screenshots/11_incident_timeline_reconstruction.jpeg" alt="Deterministic Incident Timeline Reconstruction" loading="lazy" />
+            <div class="gallery-caption"><div class="gallery-caption-id">TL-01 / TIMELINE</div><div class="gallery-caption-text">Deterministic incident timeline with Verified / Inferred / Rejected event counts.</div></div>
+          </div>
+          <div class="gallery-card" onclick="openLightbox('./screenshots/11b_incident_timeline_chronological_events.jpeg','TL-02','Chronological event sequence cards.')">
+            <img class="gallery-img" src="./screenshots/11b_incident_timeline_chronological_events.jpeg" alt="Chronological Event Sequence Cards" loading="lazy" />
+            <div class="gallery-caption"><div class="gallery-caption-id">TL-02 / EVENTS</div><div class="gallery-caption-text">Chronological sequence event cards with evidence source links and certainty badges.</div></div>
+          </div>
+        </div>
+
+        <!-- Ledger -->
+        <div class="gallery-panel" data-panel="ledger">
+          <div class="gallery-card" onclick="openLightbox('./screenshots/12_integrity_ledger_audit.jpeg','LG-01','Tamper-evident hash chain status.')">
+            <img class="gallery-img" src="./screenshots/12_integrity_ledger_audit.jpeg" alt="Tamper-Evident Hash Chain Audit" loading="lazy" />
+            <div class="gallery-caption"><div class="gallery-caption-id">LG-01 / INTEGRITY</div><div class="gallery-caption-text">Tamper-evident hash chain status with "Re-Verify Entire Hash Chain" action control.</div></div>
+          </div>
+          <div class="gallery-card" onclick="openLightbox('./screenshots/12b_integrity_ledger_evidence_items.jpeg','LG-02','Evidence items audit list and ledger nodes.')">
+            <img class="gallery-img" src="./screenshots/12b_integrity_ledger_evidence_items.jpeg" alt="Evidence Items Audit List and Ledger Nodes" loading="lazy" />
+            <div class="gallery-caption"><div class="gallery-caption-id">LG-02 / EVIDENCE ITEMS</div><div class="gallery-caption-text">Evidence items audit list and ledger block nodes #1 &amp; #2 with chained SHA-256 hashes.</div></div>
+          </div>
+          <div class="gallery-card" onclick="openLightbox('./screenshots/13_hash_chain_nodes_ledger.jpeg','LG-03','Sequential blockchain-style ledger nodes.')">
+            <img class="gallery-img" src="./screenshots/13_hash_chain_nodes_ledger.jpeg" alt="Sequential Blockchain-Style Ledger Nodes" loading="lazy" />
+            <div class="gallery-caption"><div class="gallery-caption-id">LG-03 / HASH CHAIN</div><div class="gallery-caption-text">Sequential ledger nodes #2, #3, #4 with SHA-256 chained hashes and operation logs.</div></div>
+          </div>
+        </div>
+
+        <!-- Report -->
+        <div class="gallery-panel" data-panel="report">
+          <div class="gallery-card" onclick="openLightbox('./screenshots/14_report_generator_configuration.jpeg','RP-01','Court report customization console.')">
+            <img class="gallery-img" src="./screenshots/14_report_generator_configuration.jpeg" alt="Court Report Customization Console" loading="lazy" />
+            <div class="gallery-caption"><div class="gallery-caption-id">RP-01 / REPORT CONFIG</div><div class="gallery-caption-text">Court report customization console with section toggles, branding, and officer credentials.</div></div>
+          </div>
+          <div class="gallery-card" onclick="openLightbox('./screenshots/15_report_preview_proof_seal.jpeg','RP-02','Rendered court report with Ed25519 proof seal.')">
+            <img class="gallery-img" src="./screenshots/15_report_preview_proof_seal.jpeg" alt="Rendered Court Report with Ed25519 Proof Seal" loading="lazy" />
+            <div class="gallery-caption"><div class="gallery-caption-id">RP-02 / PROOF SEAL</div><div class="gallery-caption-text">Rendered court report preview with hardware Ed25519 cryptographic proof seal (SIG_TRACE_HARDWARE_ED25519).</div></div>
+          </div>
+        </div>
+
+      </div>
+      <!-- /gallery-grid -->
+    </div>
+  </section>
+
+  <!-- Lightbox -->
+  <div id="lightbox" role="dialog" aria-modal="true">
+    <button class="lightbox-close" onclick="closeLightbox()" aria-label="Close">&times;</button>
+    <div class="lightbox-inner">
+      <img id="lightbox-img" src="" alt="" />
+      <div class="lightbox-body">
+        <div class="lightbox-id" id="lightbox-id"></div>
+        <div class="lightbox-caption" id="lightbox-caption"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── INTEGRITY SIMULATOR ─────────────────────────────────────────── -->
+  <section id="simulator">
+    <div class="container">
+      <div class="section-header reveal" style="text-align:center;">
+        <span class="section-eyebrow">Interactive Demo</span>
+        <h2 class="section-title">Cryptographic Integrity<br />Simulator.</h2>
+        <p class="section-sub" style="margin:14px auto 0;">See exactly what TRACE detects when a single byte is altered. This is the core of the chain-of-custody guarantee.</p>
+      </div>
+
+      <div class="sim-container">
+        <div class="sim-card reveal">
+          <div class="sim-header">
+            <span class="sim-header-label">Evidence Block — EV-001 / Screenshot</span>
+            <span class="sim-badge verified" id="sim-badge">✓ VERIFIED</span>
+          </div>
+          <div class="sim-body">
+
+            <div class="sim-field">
+              <div class="sim-field-label">Original SHA-256 Hash (preserved bytes)</div>
+              <div class="sim-hash verified-hash" id="sim-original-hash">b188c7f402a1e9f3d4c2a7b0e5f8d1c9a3b6e2f5d8c1a4b7e0f3d6c9b2a5e8</div>
+            </div>
+
+            <div class="sim-field">
+              <div class="sim-field-label">Current Computed Hash (live verification)</div>
+              <div class="sim-hash verified-hash" id="sim-current-hash">b188c7f402a1e9f3d4c2a7b0e5f8d1c9a3b6e2f5d8c1a4b7e0f3d6c9b2a5e8</div>
+            </div>
+
+            <div class="sim-field">
+              <div class="sim-field-label">Hash Chain State</div>
+              <div class="sim-chain" id="sim-chain">
+                <span class="chain-node" id="cn1">GENESIS</span>
+                <span class="chain-arrow" id="ca1">→</span>
+                <span class="chain-node" id="cn2">INGEST</span>
+                <span class="chain-arrow" id="ca2">→</span>
+                <span class="chain-node" id="cn3">OCR</span>
+                <span class="chain-arrow" id="ca3">→</span>
+                <span class="chain-node" id="cn4">ANALYZE</span>
+              </div>
+            </div>
+
+            <div class="sim-actions">
+              <button class="btn-tamper" id="btn-tamper" onclick="simulateTamper()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                Simulate Tampering (Flip 1 Byte)
+              </button>
+              <button class="btn-reset" id="btn-reset" onclick="resetTamper()" style="display:none;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 .49-5.28"/></svg>
+                Reset to Verified
+              </button>
+            </div>
+
+            <div class="sim-explanation" id="sim-explanation">
+              TRACE computes SHA-256 over the preserved file bytes immediately upon ingestion. The hash is stored immutably in the SQLite ledger. Every verification re-computes the hash live and compares it byte-for-byte. A matching hash means the evidence has not been altered since intake.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── FEATURES ────────────────────────────────────────────────────── -->
+  <section id="features">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-eyebrow">Core Capabilities</span>
+        <h2 class="section-title">Built for Real<br />Forensic Work.</h2>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card reveal">
+          <div class="feature-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+          <div class="feature-title">Cryptographic Chain-of-Custody</div>
+          <p class="feature-desc">Every ingested file is SHA-256 hashed at intake. Every downstream operation is appended immutably to a sequential hash chain. Any post-intake modification is detected instantly.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+          <div class="feature-title">Air-Gapped Privacy Vault</div>
+          <p class="feature-desc">All evidence, model weights, databases, and processing remain inside the device's private application sandbox. Zero mandatory cloud upload. Zero network dependency for core forensic functions.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+          <div class="feature-title">On-Device Gemma 2B LLM</div>
+          <p class="feature-desc">Google MediaPipe runs Gemma 2B INT4 locally. Classifies incidents, attributes actors and UPI IDs, identifies demands — all assertions linked to source evidence UUIDs with zero hallucination tolerance.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+          <div class="feature-title">Deterministic Timeline</div>
+          <p class="feature-desc">Incident chronology is governed by verified timestamps: EXIF → user-specified → embedded → import. Events are categorised as Verified, Inferred, Uncertain, or Rejected — AI never fabricates chronology.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+          <div class="feature-title">Section 65B Court Reports</div>
+          <p class="feature-desc">Auto-generates PDF reports compliant with the Indian Evidence Act / BSA, complete with officer credentials, grounded findings, hash manifests, and a hardware Ed25519 cryptographic proof seal.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg></div>
+          <div class="feature-title">Multimodal Extraction</div>
+          <p class="feature-desc">Google ML Kit extracts text from screenshots and documents 100% offline. Whisper.cpp transcribes voice evidence via Android MediaCodec at 16kHz. All derived data is preserved separately from source evidence.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── TECH STACK ──────────────────────────────────────────────────── -->
+  <section id="techstack">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-eyebrow">Engineering Stack</span>
+        <h2 class="section-title">Real Tools.<br />No Fake Integrations.</h2>
+        <p class="section-sub">Every component listed is physically implemented and validated on an Android device.</p>
+      </div>
+
+      <div class="tech-grid">
+        <div class="tech-card reveal">
+          <div class="tech-card-top">
+            <span class="tech-category">On-Device LLM</span>
+          </div>
+          <div class="tech-card-name">Gemma 2B INT4</div>
+          <div class="tech-detail">Google MediaPipe Tasks GenAI 0.10.14 · CPU inference on Snapdragon 8 Gen 2 · INT4 quantized for mobile memory</div>
+          <div class="tech-badge-row">
+            <span class="tech-pill">MediaPipe LLM Inference</span>
+            <span class="tech-pill">INT4 Quantized</span>
+            <span class="tech-pill">Local CPU Path</span>
+          </div>
+        </div>
+
+        <div class="tech-card reveal">
+          <div class="tech-card-top">
+            <span class="tech-category">Speech-to-Text</span>
+          </div>
+          <div class="tech-card-name">Whisper.cpp</div>
+          <div class="tech-detail">GGML Tiny model via JNI + Android MediaCodec 16kHz mono PCM decoder · Fully offline transcription</div>
+          <div class="tech-badge-row">
+            <span class="tech-pill">JNI Bridge</span>
+            <span class="tech-pill">GGML Tiny</span>
+            <span class="tech-pill">16kHz PCM</span>
+            <span class="tech-pill">100% Offline</span>
+          </div>
+        </div>
+
+        <div class="tech-card reveal">
+          <div class="tech-card-top">
+            <span class="tech-category">Text Recognition</span>
+          </div>
+          <div class="tech-card-name">ML Kit OCR</div>
+          <div class="tech-detail">Google ML Kit On-Device Latin Text Recognition v2 · 100% offline · 100+ languages · ~142ms per image</div>
+          <div class="tech-badge-row">
+            <span class="tech-pill">ML Kit v2</span>
+            <span class="tech-pill">Latin Script</span>
+            <span class="tech-pill">No Network</span>
+          </div>
+        </div>
+
+        <div class="tech-card reveal">
+          <div class="tech-card-top">
+            <span class="tech-category">Core Architecture</span>
+          </div>
+          <div class="tech-card-name">React Native</div>
+          <div class="tech-detail">React Native + Expo SDK 51 · Expo Router · NativeWind · Kotlin native modules (trace-ocr, trace-whisper, trace-mediapipe-llm)</div>
+          <div class="tech-badge-row">
+            <span class="tech-pill">Expo SDK 51</span>
+            <span class="tech-pill">Expo Router</span>
+            <span class="tech-pill">NativeWind</span>
+            <span class="tech-pill">Kotlin JNI</span>
+          </div>
+        </div>
+
+        <div class="tech-card reveal">
+          <div class="tech-card-top">
+            <span class="tech-category">Cryptography</span>
+          </div>
+          <div class="tech-card-name">SHA-256 + Ed25519</div>
+          <div class="tech-detail">SHA-256 payload &amp; chain hashing · Ed25519 hardware digital signatures for court proof seals · Append-only SQLite ledger</div>
+          <div class="tech-badge-row">
+            <span class="tech-pill">SHA-256</span>
+            <span class="tech-pill">Ed25519</span>
+            <span class="tech-pill">Hash Chain</span>
+            <span class="tech-pill">SQLite Vault</span>
+          </div>
+        </div>
+
+        <div class="tech-card reveal">
+          <div class="tech-card-top">
+            <span class="tech-category">Validation Device</span>
+          </div>
+          <div class="tech-card-name">OnePlus 12R</div>
+          <div class="tech-detail">Snapdragon 8 Gen 2 · Android 16 / API 36 · 16 GB RAM · All pipeline components physically validated</div>
+          <div class="tech-badge-row">
+            <span class="tech-pill">Snapdragon 8 Gen 2</span>
+            <span class="tech-pill">Android 16</span>
+            <span class="tech-pill">Physical Validation</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── TEAM ─────────────────────────────────────────────────────────── -->
+  <section id="team">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-eyebrow">The Team</span>
+        <h2 class="section-title">Engineered<br />for Justice.</h2>
+        <p class="section-sub">Two engineers. One mission: give investigators a forensic workbench that respects privacy and survives cross-examination.</p>
+      </div>
+
+      <div class="team-grid">
+        <div class="team-card reveal">
+          <div class="team-avatar">VL</div>
+          <div class="team-name">Vishal Lakshmikanthan</div>
+          <div class="team-role">Lead Forensic Systems &amp; AI Architect</div>
+          <div class="team-contributions">
+            <div class="team-contrib-item"><div class="contrib-dot"></div><span>Native Android JNI Modules for Whisper.cpp &amp; MediaPipe</span></div>
+            <div class="team-contrib-item"><div class="contrib-dot"></div><span>On-Device MediaPipe Gemma 2B LLM Integration</span></div>
+            <div class="team-contrib-item"><div class="contrib-dot"></div><span>Cryptographic SHA-256 Hash Chain Ledger &amp; Tamper Detection</span></div>
+            <div class="team-contrib-item"><div class="contrib-dot"></div><span>SQLite Vault Architecture &amp; Storage Provenance</span></div>
+            <div class="team-contrib-item"><div class="contrib-dot"></div><span>Section 65B PDF Report Generator with Ed25519 Hardware Seal</span></div>
+          </div>
+          <a href="https://github.com/Vishallakshmikanthan" target="_blank" rel="noopener" class="team-link">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+            GitHub — Vishallakshmikanthan
+          </a>
+        </div>
+
+        <div class="team-card reveal">
+          <div class="team-avatar">SC</div>
+          <div class="team-name">Sneha C</div>
+          <div class="team-role">Mobile UI/UX &amp; Frontend Engineer</div>
+          <div class="team-contributions">
+            <div class="team-contrib-item"><div class="contrib-dot"></div><span>Mobile Design System &amp; Component Architecture</span></div>
+            <div class="team-contrib-item"><div class="contrib-dot"></div><span>Interactive Incident Timeline Reconstruction UI</span></div>
+            <div class="team-contrib-item"><div class="contrib-dot"></div><span>Multi-Source Evidence Ingestion Sheet UX</span></div>
+            <div class="team-contrib-item"><div class="contrib-dot"></div><span>Case Switcher &amp; Investigation Workflow Design</span></div>
+            <div class="team-contrib-item"><div class="contrib-dot"></div><span>Court Report Customization Console</span></div>
+          </div>
+          <a href="https://github.com/CSNEHA20" target="_blank" rel="noopener" class="team-link">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+            GitHub — CSNEHA20
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── FOOTER ──────────────────────────────────────────────────────── -->
+  <footer>
+    <div class="gold-line"></div>
+    <div class="container" style="padding-top:48px;">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <div class="footer-logo" style="display:flex;align-items:center;gap:10px;">
+            <img src="./assets/trace_logo.png" alt="TRACE Logo" style="width:26px;height:26px;border-radius:6px;object-fit:cover;" />
+            TR<span>A</span>CE
+          </div>
+          <p class="footer-tagline">
+            An air-gapped mobile forensic workbench for investigators handling digital evidence, cybercrime, and online abuse — no cloud, no compromise.
+          </p>
+          <div style="margin-top:20px;">
+            <a href="https://github.com/Vishallakshmikanthan/Trace" target="_blank" rel="noopener" class="footer-github">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+              ⭐ Star Us on GitHub
+            </a>
+          </div>
+        </div>
+
+        <div class="footer-links-group">
+          <div class="footer-links-label">Navigate</div>
+          <ul class="footer-links">
+            <li><a href="#demo">Demo Video</a></li>
+            <li><a href="#architecture">Architecture</a></li>
+            <li><a href="#screenshots">Screenshots</a></li>
+            <li><a href="#simulator">Integrity Simulator</a></li>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#techstack">Tech Stack</a></li>
+            <li><a href="#team">Team</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-links-group">
+          <div class="footer-links-label">Project</div>
+          <ul class="footer-links">
+            <li><a href="https://github.com/Vishallakshmikanthan/Trace" target="_blank" rel="noopener">GitHub Repository</a></li>
+            <li><a href="https://github.com/Vishallakshmikanthan" target="_blank" rel="noopener">Vishal Lakshmikanthan</a></li>
+            <li><a href="https://github.com/CSNEHA20" target="_blank" rel="noopener">Sneha C</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>
+          <div class="footer-legal">
+            Compliant with Section 65B Indian Evidence Act / Bharatiya Sakshya Adhiniyam (BSA).<br />
+            All processing occurs strictly on-device. No evidence, metadata, or AI inference is transmitted externally.<br />
+            TRACE assists forensic documentation and does not determine legal guilt or admissibility.
+          </div>
+          <div class="footer-copy" style="margin-top:10px;">
+            © 2026 TRACE Project. MIT License. Built for iQOO Hackathon 2026 — Track 09: Open Innovation.
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="gold-line" style="margin-top:40px;"></div>
+  </footer>
+
+  <!-- ─── JAVASCRIPT ──────────────────────────────────────────────────── -->
+  <script>
+    /* ── Nav hamburger ── */
+    document.getElementById('hamburger').addEventListener('click', () => {
+      document.getElementById('nav-links').classList.toggle('open');
+    });
+
+    /* ── Scroll reveal ── */
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); revealObserver.unobserve(e.target); } });
+    }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+    document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
+    /* ── Gallery tabs ── */
+    document.querySelectorAll('.gallery-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.gallery-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.gallery-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        const panel = document.querySelector(`[data-panel="${tab.dataset.tab}"]`);
+        if (panel) panel.classList.add('active');
+      });
+    });
+
+    /* ── Lightbox ── */
+    function openLightbox(src, id, caption) {
+      const lb = document.getElementById('lightbox');
+      document.getElementById('lightbox-img').src = src;
+      document.getElementById('lightbox-id').textContent = id;
+      document.getElementById('lightbox-caption').textContent = caption;
+      lb.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeLightbox() {
+      document.getElementById('lightbox').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+    document.getElementById('lightbox').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('lightbox')) closeLightbox();
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLightbox(); });
+
+    /* ── Integrity Simulator ── */
+    const ORIGINAL_HASH = 'b188c7f402a1e9f3d4c2a7b0e5f8d1c9a3b6e2f5d8c1a4b7e0f3d6c9b2a5e8';
+    const TAMPERED_HASH  = 'f3a29d1c7e4b5f0a8d2c6e9b3f1a7d4c8e2b5f0d3a6c9b1e4f7a0d2c8e5b3f1';
+    let isTampered = false;
+
+    function simulateTamper() {
+      if (isTampered) return;
+      isTampered = true;
+      const curHash = document.getElementById('sim-current-hash');
+      const badge   = document.getElementById('sim-badge');
+      const expl    = document.getElementById('sim-explanation');
+      const chainNodes = ['cn1','cn2','cn3','cn4'];
+      const chainArrows = ['ca1','ca2','ca3'];
+
+      curHash.textContent = TAMPERED_HASH;
+      curHash.classList.remove('verified-hash');
+      curHash.classList.add('tampered-hash');
+
+      badge.textContent = '✗ TAMPERED — INTEGRITY VIOLATION';
+      badge.classList.remove('verified');
+      badge.classList.add('tampered');
+
+      // Break chain from node 2 onward
+      ['cn2','cn3','cn4'].forEach(id => { document.getElementById(id).classList.add('broken'); });
+      ['ca1','ca2','ca3'].forEach(id => { document.getElementById(id).classList.add('broken'); });
+
+      expl.classList.add('alert-mode');
+      expl.innerHTML = '<strong style="color:var(--status-tampered)">⚠ INTEGRITY VIOLATION DETECTED.</strong> The SHA-256 hash of the preserved file no longer matches the hash recorded at intake. One or more bytes have changed after ingestion. This evidence item is flagged as [TAMPERED] and the hash chain is broken from node INGEST onward. TRACE will not include this item in a court report without manual override and documentation.';
+
+      document.getElementById('btn-tamper').style.display = 'none';
+      document.getElementById('btn-reset').style.display = 'inline-flex';
+    }
+
+    function resetTamper() {
+      isTampered = false;
+      const curHash = document.getElementById('sim-current-hash');
+      const badge   = document.getElementById('sim-badge');
+      const expl    = document.getElementById('sim-explanation');
+
+      curHash.textContent = ORIGINAL_HASH;
+      curHash.classList.add('verified-hash');
+      curHash.classList.remove('tampered-hash');
+
+      badge.textContent = '✓ VERIFIED';
+      badge.classList.add('verified');
+      badge.classList.remove('tampered');
+
+      ['cn2','cn3','cn4'].forEach(id => { document.getElementById(id).classList.remove('broken'); });
+      ['ca1','ca2','ca3'].forEach(id => { document.getElementById(id).classList.remove('broken'); });
+
+      expl.classList.remove('alert-mode');
+      expl.innerHTML = 'TRACE computes SHA-256 over the preserved file bytes immediately upon ingestion. The hash is stored immutably in the SQLite ledger. Every verification re-computes the hash live and compares it byte-for-byte. A matching hash means the evidence has not been altered since intake.';
+
+      document.getElementById('btn-tamper').style.display = 'inline-flex';
+      document.getElementById('btn-reset').style.display = 'none';
+    }
+  </script>
+
+</body>
+</html>
