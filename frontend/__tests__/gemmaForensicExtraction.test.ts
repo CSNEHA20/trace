@@ -552,11 +552,10 @@ describe('TRACE Step 7: Local Gemma Forensic Extraction Unit Tests', () => {
       case_id: fallbackCase.id,
       media_type: 'IMAGE',
       file_path: '/mock/path/threatening_chat.png',
-      file_size_bytes: 450000,
       sha256_import: 'aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899',
       import_ts: Date.now(),
       ocr_text: 'Send $5000 in bitcoin to our wallet or we will ruin you and leak your private photos. Contact +15551234567.',
-      transcription: null,
+      transcription: undefined,
       exif_ts: Date.now() - 3600000,
     });
 

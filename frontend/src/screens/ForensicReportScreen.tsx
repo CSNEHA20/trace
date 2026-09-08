@@ -50,17 +50,24 @@ export const ForensicReportScreen: React.FC = () => {
   const isGenerating = status === 'GENERATING_HTML' || status === 'SIGNING' || status === 'CREATING_PDF';
 
   const handleGenerate = async () => {
-    if (caseEvidence.length === 0) {
-      Alert.alert(
-        'Empty Case',
-        'No evidence records found for this case. Ingest evidence items before generating a report.'
-      );
-      return;
-    }
+    try {
+      if (caseEvidence.length === 0) {
+        Alert.alert(
+          'Empty Case',
+          'No evidence records found for this case. Ingest evidence items before generating a report.'
+        );
+        return;
+      }
 
-    const result = await generateReport(selectedCase, caseEvidence);
-    if (result) {
-      setPreviewVisible(true);
+      const result = await generateReport(selectedCase, caseEvidence);
+      if (result) {
+        setPreviewVisible(true);
+      }
+    } catch (err: unknown) {
+      Alert.alert(
+        'Report Generation Error',
+        (err as Error)?.message || 'Failed to generate forensic report.'
+      );
     }
   };
 

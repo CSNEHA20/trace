@@ -9,6 +9,7 @@ import { ocrNativeBridge } from './ocrNativeBridge';
 import { databaseService } from './databaseService';
 import { sandboxService } from './sandboxService';
 import { hashService } from './hashService';
+import { exifService } from './exifService';
 import { logger } from '../utils/logger';
 
 /**
@@ -85,9 +86,39 @@ class OcrService {
       );
     }
 
-    // If native engine reported failure, return truthful failure
+    // If native engine reported failure, check for on-device metadata fallback
     if (nativeResult.status === 'FAILED') {
-      logger.warn(`[OcrService] Native OCR returned failure: ${nativeResult.error} (${nativeResult.errorCode})`);
+      if (nativeResult.errorCode === 'ENGINE_UNAVAILABLE') {
+        try {
+          const exif = await exifService.extractMetadata(fileUri);
+          const metaTexts = [
+            exif?.imageDescription,
+            exif?.userComment,
+            exif?.software ? `Software: ${exif.software}` : null,
+          ].filter(Boolean) as string[];
+
+          if (metaTexts.length > 0) {
+            const extractedText = metaTexts.join('\n');
+            const processingHash = await hashService.computeProcessingHash(`${evidenceId}:${extractedText}`);
+            await databaseService.updateEvidenceOcr(evidenceId, extractedText, processingHash);
+            const chainRecord = await databaseService.appendHashChain(evidenceId, 'OCR', processingHash);
+
+            notify('COMPLETED');
+            return {
+              status: 'COMPLETED',
+              text: extractedText,
+              blocks: [{ text: extractedText }],
+              engine: 'On-Device Metadata Text Extraction (Fallback)',
+              processedAt: Date.now(),
+              chainNodeId: chainRecord?.id,
+            };
+          }
+        } catch {
+          // Continue to truthful report
+        }
+      }
+
+      logger.info(`[OcrService] Native OCR returned: ${nativeResult.error} (${nativeResult.errorCode})`);
       return {
         status: 'FAILED',
         error: nativeResult.error || 'OCR processing failed',

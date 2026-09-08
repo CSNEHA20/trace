@@ -19,7 +19,9 @@ class Logger {
   }
 
   warn(message: string, data?: unknown): void {
-    console.warn(this.formatMessage('warn', message), data !== undefined ? data : '');
+    // In React Native development builds, console.warn triggers LogBox overlays on physical test devices.
+    // We log to console.info to preserve all diagnostics in metro/logcat without interrupting the user.
+    console.info(this.formatMessage('warn', message), data !== undefined ? data : '');
   }
 
   error(message: string, error?: unknown): void {

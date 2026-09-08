@@ -3,14 +3,42 @@ import { cryptoService } from './cryptoService';
 import { sandboxService } from './sandboxService';
 import { logger } from '../utils/logger';
 
+function hasNativeModule(name: string): boolean {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { requireOptionalNativeModule } = require('expo-modules-core');
+    if (typeof requireOptionalNativeModule === 'function') {
+      return !!requireOptionalNativeModule(name);
+    }
+  } catch {
+    // fallback to react-native check
+  }
+  try {
+    const { NativeModules } = require('react-native');
+    if (NativeModules?.[name]) return true;
+    if (NativeModules?.NativeUnimoduleProxy?.modulesConstants?.[name]) return true;
+    if ((globalThis as any)?.expo?.modules?.[name]) return true;
+  } catch {
+    // ignore
+  }
+  return false;
+}
+
 // Lazy imports for native modules
 let _expoPrint: { printToFileAsync: (options: { html: string; base64: boolean }) => Promise<{ uri: string }> } | null = null;
 function getExpoPrint(): { printToFileAsync: (options: { html: string; base64: boolean }) => Promise<{ uri: string }> } | null {
   if (_expoPrint) return _expoPrint;
+  if (!hasNativeModule('ExpoPrint')) {
+    return null;
+  }
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    _expoPrint = require('expo-print') as { printToFileAsync: (options: { html: string; base64: boolean }) => Promise<{ uri: string }> };
-    return _expoPrint;
+    const mod = require('expo-print');
+    if (mod && typeof mod.printToFileAsync === 'function') {
+      _expoPrint = mod;
+      return _expoPrint;
+    }
+    return null;
   } catch {
     return null;
   }
@@ -19,6 +47,9 @@ function getExpoPrint(): { printToFileAsync: (options: { html: string; base64: b
 let _expoSharing: typeof import('expo-sharing') | null = null;
 function getExpoSharing(): typeof import('expo-sharing') | null {
   if (_expoSharing) return _expoSharing;
+  if (!hasNativeModule('ExpoSharing')) {
+    return null;
+  }
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     _expoSharing = require('expo-sharing');
@@ -237,24 +268,34 @@ class ExportService {
     let pdfUri = `file:///exports/${pdfFilename}`;
 
     // 4. Try native PDF generation via expo-print
-    const printModule = getExpoPrint();
-    if (printModule && typeof printModule.printToFileAsync === 'function') {
-      try {
+    let pdfGenerated = false;
+    try {
+      const printModule = getExpoPrint();
+      if (printModule && typeof printModule.printToFileAsync === 'function') {
         const file = await printModule.printToFileAsync({
           html: htmlContent,
           base64: false,
         });
         if (file && file.uri) {
           pdfUri = file.uri;
+          pdfGenerated = true;
         }
-      } catch (err) {
-        logger.warn('expo-print PDF generation failed, falling back to html storage', err);
       }
-    } else {
-      // In test/mock environment, save HTML into sandbox exports directory
+    } catch (err) {
+      logger.info('expo-print PDF generation not available, utilizing sandbox export', err);
+    }
+
+    if (!pdfGenerated) {
       try {
         const sandboxDir = await sandboxService.getSandboxDirectory();
-        pdfUri = `${sandboxDir}exports/${pdfFilename}`;
+        const htmlUri = `${sandboxDir}exports/${pdfFilename.replace(/\.pdf$/, '.html')}`;
+        const fs = require('expo-file-system');
+        if (fs && fs.writeAsStringAsync) {
+          await fs.writeAsStringAsync(htmlUri, htmlContent, { encoding: 'utf8' });
+          pdfUri = htmlUri;
+        } else {
+          pdfUri = `${sandboxDir}exports/${pdfFilename}`;
+        }
       } catch {
         // keep fallback uri
       }
@@ -284,17 +325,33 @@ class ExportService {
         const isAvailable = await sharingModule.isAvailableAsync();
         if (isAvailable) {
           await sharingModule.shareAsync(pdfUri, {
-            mimeType: 'application/pdf',
-            dialogTitle: 'Share TRACE Forensic Report PDF',
-            UTI: 'com.adobe.pdf',
+            mimeType: pdfUri.endsWith('.html') ? 'text/html' : 'application/pdf',
+            dialogTitle: 'Share TRACE Forensic Report',
+            UTI: pdfUri.endsWith('.html') ? 'public.html' : 'com.adobe.pdf',
           });
           return true;
         }
       } catch (err) {
-        logger.warn('expo-sharing failed', err);
+        logger.info('expo-sharing failed, trying standard Share', err);
       }
     }
-    logger.info(`Share report fallback (sharing not supported or in test mode): ${pdfUri}`);
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { Share } = require('react-native');
+      if (Share && typeof Share.share === 'function') {
+        await Share.share({
+          url: pdfUri,
+          title: 'TRACE Forensic Report',
+          message: `TRACE Forensic Report generated: ${pdfUri}`,
+        });
+        return true;
+      }
+    } catch {
+      // ignored
+    }
+
+    logger.info(`Share report fallback completed for: ${pdfUri}`);
     return false;
   }
 }

@@ -991,44 +991,49 @@ class IncidentReportGenerator {
   private async generatePdf(htmlContent: string, caseNumber: string): Promise<string> {
     const filename = `TRACE_Incident_Report_${caseNumber}_${Date.now()}.pdf`;
     
+    // 1. Try expo-print first
     try {
-      const options = {
-        html: htmlContent,
-        fileName: filename,
-        directory: 'Documents',
-        base64: false,
-      };
-
-      const result = await RNHTMLtoPDF.convert(options);
-      
-      if (result && result.filePath) {
-        return Platform.OS === 'ios' ? result.filePath.replace('file://', '') : result.filePath;
-      }
-      
-      throw new Error('PDF generation returned no file path');
-    } catch (error) {
-      logger.warn('react-native-html-to-pdf failed, trying expo-print fallback', error);
-      
-      // Fallback to expo-print
-      try {
-        const { printToFileAsync } = await import('expo-print') as { printToFileAsync: (options: { html: string; base64: boolean }) => Promise<{ uri: string }> };
-        const file = await printToFileAsync({
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const printModule = require('expo-print');
+      if (printModule && typeof printModule.printToFileAsync === 'function') {
+        const file = await printModule.printToFileAsync({
           html: htmlContent,
           base64: false,
         });
-        
         if (file && file.uri) {
           return file.uri;
         }
-      } catch (fallbackError) {
-        logger.error('expo-print fallback also failed', fallbackError);
       }
-      
-      // Last resort: save HTML as file
-      const htmlUri = `${FileSystem.documentDirectory}exports/${filename.replace('.pdf', '.html')}`;
-      await FileSystem.makeDirectoryAsync(`${FileSystem.documentDirectory}exports`, { intermediates: true });
-      await FileSystem.writeAsStringAsync(htmlUri, htmlContent);
-      
+    } catch {
+      // Continue to secondary attempt
+    }
+
+    // 2. Try RNHTMLtoPDF if available
+    try {
+      if (RNHTMLtoPDF && typeof RNHTMLtoPDF.convert === 'function') {
+        const options = {
+          html: htmlContent,
+          fileName: filename,
+          directory: 'Documents',
+          base64: false,
+        };
+        const result = await RNHTMLtoPDF.convert(options);
+        if (result && result.filePath) {
+          return Platform.OS === 'ios' ? result.filePath.replace('file://', '') : result.filePath;
+        }
+      }
+    } catch {
+      // Fall through to sandbox HTML
+    }
+
+    // 3. Resilient fallback: save HTML file in sandbox exports directory
+    const dir = `${FileSystem.documentDirectory}exports`;
+    const htmlUri = `${dir}/${filename.replace('.pdf', '.html')}`;
+    try {
+      await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+      await FileSystem.writeAsStringAsync(htmlUri, htmlContent, { encoding: 'utf8' });
+      return htmlUri;
+    } catch {
       return htmlUri;
     }
   }

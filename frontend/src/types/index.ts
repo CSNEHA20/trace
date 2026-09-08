@@ -91,6 +91,8 @@ export interface ExifMetadata {
   gpsAltitude?: number;
   software?: string;
   orientation?: number;
+  imageDescription?: string;
+  userComment?: string;
   rawExif?: Record<string, unknown>;
 }
 

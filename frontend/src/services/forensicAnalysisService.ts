@@ -134,7 +134,7 @@ export class ForensicAnalysisService {
         options.timeoutMs ?? 60_000
       );
     } catch (llmErr) {
-      logger.warn(
+      logger.info(
         `[ForensicAnalysisService] On-device Gemma LLM unavailable (${(llmErr as Error).message}). Engaging deterministic forensic engine.`
       );
       extractionResult = await onDeviceInferenceService.inferDeterministicForensicExtraction(
@@ -145,7 +145,7 @@ export class ForensicAnalysisService {
     }
 
     if (extractionResult.parseError || !extractionResult.schema) {
-      logger.warn(
+      logger.info(
         `[ForensicAnalysisService] Primary inference produced parse error (${extractionResult.parseError}). Engaging deterministic forensic engine.`
       );
       extractionResult = await onDeviceInferenceService.inferDeterministicForensicExtraction(

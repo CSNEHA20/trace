@@ -199,6 +199,8 @@ dependencies {
     }
 
     implementation project(':expo')
+    implementation project(':trace-ocr')
+    implementation project(':trace-mediapipe-llm')
 
     androidTestImplementation 'androidx.test:runner:1.5.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'

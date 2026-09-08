@@ -16,6 +16,8 @@ config.resolver.blockList = [
   /.*[/\\]\.cxx[/\\].*/,
   /.*[/\\]CMakeFiles[/\\].*/,
   /.*[/\\]CMakeTmp[/\\].*/,
+  /.*[/\\]\.cli-[^/\\]+[/\\].*/,
+  /.*[/\\]node_modules[/\\]@expo[/\\]\.cli-[^/\\]+[/\\].*/,
 ];
 
 const singletons = [
