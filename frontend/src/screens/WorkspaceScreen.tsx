@@ -229,7 +229,8 @@ export function WorkspaceScreen() {
     } catch (err: unknown) {
       setIsAnalyzing(false);
       setAnalysisProgress(null);
-      Alert.alert('Analysis Failed', (err as Error)?.message || 'On-device Gemma analysis failed.');
+      const msg = (err as Error)?.message || '';
+      Alert.alert('Analysis Failed', msg || 'On-device forensic analysis failed.');
     }
   };
 
