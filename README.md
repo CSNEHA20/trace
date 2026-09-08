@@ -101,49 +101,100 @@ TRACE is engineered under a strict **Zero-Mock, Real-World Guarantee**:
 ## 🏗️ System Architecture
 
 ```mermaid
-flowchart TD
-    subgraph UI["User Interface Layer (React Native + Expo Router v3)"]
-        W[Workspace Screen]
-        E[Evidence Vault Screen]
-        T[Timeline Screen]
-        R[Forensic Report Screen]
-        A[AiCapability Screen]
+graph TD
+    subgraph UI ["1. User Interface Layer (React Native 0.74 + Expo Router v3)"]
+        W["Workspace Screen"]
+        E["Evidence Vault"]
+        T["Incident Timeline"]
+        R["Forensic Report"]
+        A["AI Capability Status"]
     end
 
-    subgraph State["State Management (Zustand Stores)"]
-        CS[caseStore]
-        ES[evidenceStore]
-        RS[reportStore]
-        IS[integrityStore]
+    subgraph State ["2. State Management Layer (Zustand Stores)"]
+        CS["caseStore"]
+        ES["evidenceStore"]
+        RS["reportStore"]
+        IS["integrityStore"]
     end
 
-    subgraph CoreServices["Forensic Service Abstraction Layer"]
-        FAS[forensicAnalysisService]
-        DIS[onDeviceInferenceService]
-        CRS[cryptoService]
-        EXS[exifService]
-        OCS[ocrService]
-        EXPS[exportService]
-        PDFG[pdfGenerator (Pure TS ISO 32000)]
+    subgraph Services ["3. Forensic Service Abstraction Layer"]
+        FAS["forensicAnalysisService"]
+        DIS["onDeviceInferenceService"]
+        CRS["cryptoService (SHA-256)"]
+        EXS["exifService"]
+        OCS["ocrService"]
+        EXPS["exportService"]
+        PDFG["pdfGenerator (ISO 32000 / PDF 1.4)"]
     end
 
-    subgraph NativeBridge["Native Bridges (C++ / Kotlin Android)"]
-        MPL[TraceMediaPipeLlmModule (Gemma 2B)]
-        TOC[TraceOcrModule (Google ML Kit)]
-        WSP[TraceWhisperModule (Whisper.cpp)]
+    subgraph NativeBridge ["4. Native Android Modules (Kotlin / C++)"]
+        MPL["TraceMediaPipeLlmModule (Gemma 2B INT4)"]
+        TOC["TraceOcrModule (Google ML Kit v2)"]
+        WSP["TraceWhisperModule (Whisper.cpp)"]
     end
 
-    subgraph Storage["Hardware-Backed Storage & Storage Vault"]
-        SQL[(SQLite: trace_vault.db)]
-        FS[Filesystem: files/trace_vault/]
-        SS[expo-secure-store (Hardware Keymaster / Keystore)]
+    subgraph Storage ["5. Hardware-Backed Storage Vault"]
+        SQL[("SQLite DB: trace_vault.db")]
+        FS["Sandbox Filesystem: files/trace_vault/"]
+        SS["expo-secure-store (Android Keymaster)"]
     end
 
-    UI --> State
-    State --> CoreServices
-    CoreServices --> NativeBridge
-    CoreServices --> Storage
-    NativeBridge --> Storage
+    W --> CS
+    E --> ES
+    T --> IS
+    R --> RS
+
+    CS --> FAS
+    ES --> CRS
+    ES --> EXS
+    ES --> OCS
+    RS --> EXPS
+    EXPS --> PDFG
+    FAS --> DIS
+
+    DIS --> MPL
+    OCS --> TOC
+    FAS --> WSP
+
+    CRS --> SQL
+    CRS --> SS
+    EXS --> SQL
+    OCS --> SQL
+    FAS --> SQL
+    ES --> FS
+    PDFG --> FS
+```
+
+### 📐 Architectural Overview & Component Map
+
+```
++───────────────────────────────────────────────────────────────────────────+
+|                      1. USER INTERFACE LAYER                              |
+|           React Native 0.74 • Expo Router v3 • NativeWind                 |
+|   [Workspace Tab]     [Evidence Tab]     [Timeline Tab]    [Report Tab]   |
++─────────────────────────────────────┬─────────────────────────────────────+
+                                      │
++─────────────────────────────────────v─────────────────────────────────────+
+|                     2. STATE & CLIENT STORES LAYER                        |
+|        caseStore       •   evidenceStore   •   reportStore  • uiStore     |
++─────────────────────────────────────┬─────────────────────────────────────+
+                                      │
++─────────────────────────────────────v─────────────────────────────────────+
+|                  3. FORENSIC SERVICE ABSTRACTION LAYER                    |
+|   • forensicAnalysisService (Deterministic & LLM analysis pipeline)       |
+|   • cryptoService (SHA-256 digests & Keymaster digital signing)          |
+|   • ocrService (Native ML Kit + pure-TS binary/EXIF fallback)             |
+|   • pdfGenerator (Zero-dependency ISO 32000 / PDF 1.4 binary engine)      |
++──────────────────┬─────────────────────────────────────┬──────────────────+
+                   │                                     │
++──────────────────v──────────────────+ +────────────────v──────────────────+
+|  4. NATIVE ANDROID MODULES (KOTLIN) | |   5. LOCAL ENCRYPTED VAULT       |
+| • TraceMediaPipeLlm (Gemma 2B INT4) | | • SQLite DB (trace_vault.db)     |
+|   - Coroutines IO & RAM Safety Guard| |   - Cases, Evidence, Narratives  |
+| • TraceOcrModule (Google ML Kit v2) | |   - Immutable Hash Chain Ledger  |
+| • TraceWhisperModule (Whisper.cpp)  | | • App-Private Vault Filesystem   |
+| • Android FileProvider Share Sheet  | | • expo-secure-store (KeyStore)   |
++─────────────────────────────────────+ +──────────────────────────────────+
 ```
 
 ---
@@ -153,32 +204,32 @@ flowchart TD
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Investigator as Forensic User
-    participant App as TRACE UI
-    participant Vault as Sandbox Vault & EXIF
+    actor Inv as Forensic Investigator
+    participant App as TRACE UI (React Native)
+    participant Vault as Vault Sandbox & EXIF
     participant Crypto as Crypto & Hash Service
-    participant AI as Local AI Engine (Gemma / ML Kit)
+    participant AI as Local AI (Gemma 2B / ML Kit)
     participant Ledger as SQLite Hash Chain
     participant Export as Forensic PDF Generator
 
-    Investigator->>App: Ingest Evidence (Camera / File / Clipboard)
-    App->>Vault: Copy file into app-private trace_vault/
-    Vault->>Crypto: Compute SHA-256 Digest of raw binary
-    Vault->>Vault: Extract EXIF & System Metadata
-    Crypto->>Ledger: Append Hash Chain Block [OP: INTAKE]
+    Inv->>App: Ingest Evidence (Camera / File / Clipboard)
+    App->>Vault: Store into app-private trace_vault/
+    Vault->>Crypto: Compute SHA-256 binary digest
+    Vault->>Vault: Extract EXIF & metadata
+    Crypto->>Ledger: Append Hash Chain Block [INTAKE]
     
-    Investigator->>App: Trigger Case Analysis
-    App->>AI: Dispatch OCR (ML Kit) & Context Inference (Gemma 2B)
-    Note over AI: Executes on Dispatchers.IO with RAM Guard
-    AI->>App: Return Structured Events, Actors, Threats
-    App->>Crypto: Hash Extracted Schema & AI Narrative
-    Crypto->>Ledger: Append Hash Chain Block [OP: ANALYZE]
+    Inv->>App: Trigger Case Analysis
+    App->>AI: Dispatch OCR (ML Kit) & Gemma 2B Inference
+    Note over AI: Runs on Dispatchers.IO with RAM safety guard
+    AI->>App: Return verified facts, events, and actors
+    App->>Crypto: Hash extracted schema payload
+    Crypto->>Ledger: Append Hash Chain Block [ANALYZE]
 
-    Investigator->>App: Generate Forensic Case Report
-    App->>Export: Compile Case Data + Evidence Manifest + Chain Hashes
-    Export->>Export: Synthesize ISO 32000 Compliant PDF
-    Export->>Crypto: Digitally Sign Manifest Hash with Private Key
-    Export->>Investigator: Launch Android Share Sheet (application/pdf)
+    Inv->>App: Request Court Forensic Report
+    App->>Export: Compile evidence manifest + hash chain
+    Export->>Export: Synthesize ISO 32000 PDF 1.4 binary
+    Export->>Crypto: Sign manifest with hardware private key
+    Export->>Inv: Open Android Share Sheet (PDF intent)
 ```
 
 ---
