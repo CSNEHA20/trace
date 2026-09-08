@@ -100,7 +100,7 @@ export const ForensicReportScreen: React.FC = () => {
               <Text style={styles.statLabel}>Tampered Items</Text>
             </View>
             <View style={styles.statBox}>
-              <Text style={styles.statVal}>SHA-256</Text>
+              <Text style={styles.statVal} numberOfLines={1} adjustsFontSizeToFit>SHA-256</Text>
               <Text style={styles.statLabel}>Crypto Engine</Text>
             </View>
           </View>
@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statVal: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '900',
     color: palette.deepBlack,
   },
