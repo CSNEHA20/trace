@@ -116,6 +116,7 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {
         debug {
@@ -142,7 +143,10 @@ android {
     packagingOptions {
         jniLibs {
             useLegacyPackaging (findProperty('expo.useLegacyPackaging')?.toBoolean() ?: false)
+            pickFirsts += ['**/libc++_shared.so', '**/libfbjni.so']
         }
+        pickFirst '**/libc++_shared.so'
+        pickFirst '**/libfbjni.so'
     }
 }
 
@@ -195,6 +199,10 @@ dependencies {
     }
 
     implementation project(':expo')
+
+    androidTestImplementation 'androidx.test:runner:1.5.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'com.google.mediapipe:tasks-genai:0.10.14'
 }
 
 if (rnVersion < versionToNumber(0, 75, 0)) {

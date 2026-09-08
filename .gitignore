@@ -21,6 +21,14 @@ web-build/
 android/app/build
 android/.gradle
 android/app/build/
+frontend/android/app/build/
+frontend/android/.gradle/
+frontend/modules/**/android/build/
+frontend/modules/**/android/.gradle/
+frontend/android/app/src/main/assets/index.android.bundle
+frontend/android/app/src/main/assets/index.android.bundle.map
+frontend/android/app/src/main/res/drawable-*/node_modules_*
+frontend/android/app/src/main/res/raw/
 ios/Pods
 ios/build
 .idea/
