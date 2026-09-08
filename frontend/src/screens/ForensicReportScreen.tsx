@@ -15,6 +15,7 @@ import { useCaseStore } from '../store/caseStore';
 import { useEvidenceStore } from '../store/evidenceStore';
 import { useReportStore } from '../store/reportStore';
 import { ForensicReportPreviewModal } from '../components/ForensicReportPreviewModal';
+import { AppHeader } from '../components/AppHeader';
 import { formatDate } from '../utils/crypto';
 
 export const ForensicReportScreen: React.FC = () => {
@@ -69,15 +70,11 @@ export const ForensicReportScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
+      <AppHeader
+        title="Forensic Report Generator"
+        subtitle="Court-admissible digital evidence audit & cryptographic signing"
+      />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Forensic Report Generator</Text>
-          <Text style={styles.headerSubtitle}>
-            Court-admissible digital evidence audit & cryptographic signing
-          </Text>
-        </View>
-
         {/* Case Summary Card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Target Case Summary</Text>
@@ -145,7 +142,7 @@ export const ForensicReportScreen: React.FC = () => {
             <Switch
               value={options.includeAiSummaries}
               onValueChange={(val) => updateOptions({ includeAiSummaries: val })}
-              trackColor={{ false: palette.border, true: palette.primary }}
+              trackColor={{ false: palette.border, true: palette.brandYellow }}
             />
           </View>
 
@@ -157,7 +154,7 @@ export const ForensicReportScreen: React.FC = () => {
             <Switch
               value={options.includeExifMetadata}
               onValueChange={(val) => updateOptions({ includeExifMetadata: val })}
-              trackColor={{ false: palette.border, true: palette.primary }}
+              trackColor={{ false: palette.border, true: palette.brandYellow }}
             />
           </View>
 
@@ -169,7 +166,7 @@ export const ForensicReportScreen: React.FC = () => {
             <Switch
               value={options.includeHashChain}
               onValueChange={(val) => updateOptions({ includeHashChain: val })}
-              trackColor={{ false: palette.border, true: palette.primary }}
+              trackColor={{ false: palette.border, true: palette.brandYellow }}
             />
           </View>
         </View>
@@ -264,13 +261,22 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: palette.border,
+    borderWidth: 1.5,
+    borderColor: palette.borderDark,
+    borderLeftWidth: 4,
+    borderLeftColor: palette.brandYellow,
+    elevation: 2,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
   },
   cardTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: palette.primary,
+    fontSize: 13,
+    fontWeight: '900',
+    color: palette.deepBlack,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
     marginBottom: 12,
   },
   caseRow: {
@@ -280,25 +286,28 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   caseNumber: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: palette.text,
+    fontSize: 17,
+    fontWeight: '900',
+    color: palette.deepBlack,
+    fontFamily: 'monospace',
   },
   caseTitleStr: {
-    fontSize: 12,
+    fontSize: 13,
+    fontWeight: '600',
     color: palette.textSecondary,
     marginTop: 2,
   },
   badgeContainer: {
-    backgroundColor: 'rgba(30, 64, 175, 0.15)',
+    backgroundColor: palette.brandYellow,
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    paddingVertical: 3,
+    borderRadius: 6,
   },
   badgeText: {
     fontSize: 10,
-    fontWeight: 'bold',
-    color: palette.primary,
+    fontWeight: '900',
+    color: palette.deepBlack,
+    letterSpacing: 0.5,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -306,44 +315,48 @@ const styles = StyleSheet.create({
   },
   statBox: {
     flex: 1,
-    backgroundColor: palette.background,
+    backgroundColor: palette.surfaceVariant,
     padding: 10,
     borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: palette.borderDark,
     alignItems: 'center',
   },
   statVal: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: palette.text,
+    fontSize: 18,
+    fontWeight: '900',
+    color: palette.deepBlack,
   },
   statLabel: {
     fontSize: 10,
+    fontWeight: '700',
     color: palette.textSecondary,
     marginTop: 2,
   },
   textGreen: {
-    color: '#10b981',
+    color: '#16A34A',
   },
   textRed: {
-    color: '#ef4444',
+    color: '#DC2626',
   },
   fieldGroup: {
     marginBottom: 14,
   },
   fieldLabel: {
     fontSize: 12,
-    fontWeight: '600',
-    color: palette.text,
+    fontWeight: '700',
+    color: palette.deepBlack,
     marginBottom: 6,
   },
   input: {
-    backgroundColor: palette.background,
-    borderWidth: 1,
-    borderColor: palette.border,
+    backgroundColor: palette.surfaceVariant,
+    borderWidth: 1.5,
+    borderColor: palette.borderDark,
     borderRadius: 8,
     padding: 10,
     fontSize: 13,
-    color: palette.text,
+    fontWeight: '600',
+    color: palette.deepBlack,
   },
   textArea: {
     height: 70,
@@ -363,29 +376,37 @@ const styles = StyleSheet.create({
   },
   switchLabel: {
     fontSize: 13,
-    fontWeight: '600',
-    color: palette.text,
+    fontWeight: '700',
+    color: palette.deepBlack,
   },
   switchSublabel: {
     fontSize: 11,
+    fontWeight: '500',
     color: palette.textSecondary,
     marginTop: 2,
   },
   generateButton: {
-    backgroundColor: palette.primary,
+    backgroundColor: palette.deepBlack,
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: 'center',
     marginBottom: 16,
-    elevation: 2,
+    borderLeftWidth: 4,
+    borderLeftColor: palette.brandYellow,
+    elevation: 3,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
   },
   disabledButton: {
     opacity: 0.7,
   },
   generateButtonText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-    fontSize: 15,
+    color: palette.white,
+    fontWeight: '800',
+    fontSize: 14,
+    letterSpacing: 0.5,
   },
   loadingRow: {
     flexDirection: 'row',
@@ -401,11 +422,12 @@ const styles = StyleSheet.create({
   },
   historyTitle: {
     fontSize: 13,
-    fontWeight: 'bold',
-    color: palette.text,
+    fontWeight: '800',
+    color: palette.deepBlack,
   },
   historyMeta: {
     fontSize: 11,
+    fontWeight: '600',
     color: palette.textSecondary,
     marginTop: 2,
   },
@@ -413,13 +435,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
-    backgroundColor: palette.background,
-    borderWidth: 1,
-    borderColor: palette.primary,
+    backgroundColor: palette.brandYellow,
   },
   viewButtonText: {
     fontSize: 11,
-    fontWeight: 'bold',
-    color: palette.primary,
+    fontWeight: '800',
+    color: palette.deepBlack,
+    letterSpacing: 0.3,
   },
 });

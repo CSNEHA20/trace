@@ -73,17 +73,24 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   banner: {
-    backgroundColor: palette.surfaceVariant,
+    backgroundColor: palette.surface,
     padding: 16,
     borderRadius: 12,
     marginBottom: 20,
     borderLeftWidth: 4,
-    borderLeftColor: palette.primary,
+    borderLeftColor: palette.brandYellow,
+    borderWidth: 1,
+    borderColor: palette.border,
+    elevation: 1,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
   },
   bannerTitle: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: palette.primary,
+    color: palette.deepBlack,
     marginBottom: 4,
   },
   bannerSubtitle: {
@@ -98,6 +105,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: palette.border,
     marginBottom: 20,
+    elevation: 1,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
   },
   aiLinkTitle: { fontSize: 15, fontWeight: 'bold', color: palette.text },
   aiLinkSubtitle: { fontSize: 12, color: palette.textSecondary, marginTop: 4 },
@@ -115,6 +127,7 @@ const styles = StyleSheet.create({
   addBtnText: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: palette.secondary,
+    color: palette.deepBlack,
   },
 });
+

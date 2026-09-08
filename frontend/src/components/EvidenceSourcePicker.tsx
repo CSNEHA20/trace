@@ -406,7 +406,7 @@ export function EvidenceSourcePicker({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   sheet: {
     backgroundColor: palette.surface,
@@ -417,12 +417,17 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderColor: palette.border,
+    elevation: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
   },
   handle: {
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: palette.border,
+    backgroundColor: palette.borderDark,
     alignSelf: 'center',
     marginBottom: 20,
   },
@@ -485,7 +490,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: palette.border,
     alignItems: 'center',
-    backgroundColor: palette.card,
+    backgroundColor: palette.surface,
   },
   cancelText: {
     fontSize: 15,
@@ -493,3 +498,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+

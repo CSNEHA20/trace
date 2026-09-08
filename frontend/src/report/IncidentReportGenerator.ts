@@ -553,8 +553,8 @@ class IncidentReportGenerator {
       display: flex;
       align-items: center;
       justify-content: center;
-      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-      color: #e2e8f0;
+      background: #F4F4F5;
+      color: #111111;
       padding: 40px;
       page-break-after: always;
     }
@@ -562,30 +562,32 @@ class IncidentReportGenerator {
     .cover-content {
       max-width: 700px;
       width: 100%;
-      background: rgba(30, 41, 59, 0.9);
-      border: 1px solid #334155;
+      background: #FFFFFF;
+      border: 1px solid #E5E7EB;
+      border-left: 6px solid #F5A623;
       border-radius: 8px;
       padding: 40px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     }
     
     .cover-header {
       text-align: center;
       margin-bottom: 40px;
       padding-bottom: 20px;
-      border-bottom: 2px solid #3b82f6;
+      border-bottom: 2px solid #F5A623;
     }
     
     .logo {
       font-size: 48px;
       font-weight: 800;
-      color: #3b82f6;
+      color: #111111;
       letter-spacing: 4px;
       margin-bottom: 8px;
     }
     
     .subtitle {
       font-size: 18px;
-      color: #94a3b8;
+      color: #6B7280;
       text-transform: uppercase;
       letter-spacing: 3px;
     }
@@ -597,15 +599,16 @@ class IncidentReportGenerator {
     .field-group {
       margin-bottom: 20px;
       padding: 16px;
-      background: rgba(15, 23, 42, 0.5);
+      background: #F4F4F5;
+      border: 1px solid #E5E7EB;
       border-radius: 6px;
-      border-left: 4px solid #3b82f6;
+      border-left: 4px solid #F5A623;
     }
     
     .field-label {
       font-size: 11px;
       text-transform: uppercase;
-      color: #64748b;
+      color: #6B7280;
       font-weight: 600;
       letter-spacing: 1px;
       margin-bottom: 6px;
@@ -613,22 +616,22 @@ class IncidentReportGenerator {
     
     .field-value {
       font-size: 16px;
-      color: #f1f5f9;
+      color: #111111;
       font-weight: 500;
     }
     
-    .victim-name { font-size: 20px; font-weight: 700; color: #fbbf24; }
-    .case-ref { font-size: 20px; font-weight: 700; color: #3b82f6; font-family: monospace; }
+    .victim-name { font-size: 20px; font-weight: 700; color: #D97706; }
+    .case-ref { font-size: 20px; font-weight: 700; color: #111111; font-family: monospace; }
     
     .cover-footer {
       text-align: center;
       padding-top: 20px;
-      border-top: 1px solid #334155;
+      border-top: 1px solid #E5E7EB;
     }
     
     .classification {
       font-size: 11px;
-      color: #ef4444;
+      color: #DC2626;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 2px;
@@ -637,7 +640,7 @@ class IncidentReportGenerator {
     
     .watermark {
       font-size: 10px;
-      color: #475569;
+      color: #6B7280;
       letter-spacing: 2px;
     }
     
@@ -653,8 +656,8 @@ class IncidentReportGenerator {
     
     .section-title {
       font-size: 18px;
-      color: #1e293b;
-      border-bottom: 3px solid #3b82f6;
+      color: #111111;
+      border-bottom: 3px solid #F5A623;
       padding-bottom: 8px;
       margin-bottom: 20px;
       text-transform: uppercase;
@@ -662,7 +665,7 @@ class IncidentReportGenerator {
     }
     
     .section-intro {
-      color: #475569;
+      color: #6B7280;
       margin-bottom: 16px;
       font-size: 12px;
     }
@@ -670,40 +673,43 @@ class IncidentReportGenerator {
     .section-summary {
       margin-top: 16px;
       padding: 12px;
-      background: #f1f5f9;
+      background: #F4F4F5;
+      border: 1px solid #E5E7EB;
       border-radius: 4px;
       font-size: 11px;
-      color: #475569;
+      color: #4B5563;
     }
     
     /* Disclaimer Box */
     .disclaimer-box {
-      background: #fef3c7;
-      border: 1px solid #f59e0b;
+      background: #FFFBEB;
+      border: 1px solid #F5A623;
+      border-left: 4px solid #F5A623;
       border-radius: 6px;
       padding: 16px;
       margin-bottom: 20px;
       font-size: 11px;
-      color: #92400e;
+      color: #92400E;
     }
     
     /* Narrative */
     .narrative-content {
-      background: #fafafa;
-      border: 1px solid #e2e8f0;
+      background: #FFFFFF;
+      border: 1px solid #E5E7EB;
       border-radius: 6px;
       padding: 20px;
       margin-bottom: 16px;
       white-space: pre-wrap;
       font-size: 12px;
       line-height: 1.7;
+      color: #111111;
     }
     
     .narrative-meta {
       display: flex;
       gap: 24px;
       font-size: 11px;
-      color: #64748b;
+      color: #6B7280;
     }
     
     /* Tables */
@@ -715,8 +721,8 @@ class IncidentReportGenerator {
     }
     
     th {
-      background: #1e293b;
-      color: #fff;
+      background: #111111;
+      color: #FFFFFF;
       text-align: left;
       padding: 10px 8px;
       font-size: 9px;
@@ -727,17 +733,17 @@ class IncidentReportGenerator {
     
     td {
       padding: 8px;
-      border-bottom: 1px solid #e2e8f0;
+      border-bottom: 1px solid #E5E7EB;
       vertical-align: top;
     }
     
-    tr.even td { background: #fafafa; }
-    tr.odd td { background: #fff; }
-    tr:hover td { background: #f0f9ff; }
+    tr.even td { background: #F4F4F5; }
+    tr.odd td { background: #FFFFFF; }
+    tr:hover td { background: #FEF3C7; }
     
     .empty-row {
       text-align: center;
-      color: #94a3b8;
+      color: #9CA3AF;
       font-style: italic;
       padding: 20px !important;
     }
@@ -751,13 +757,14 @@ class IncidentReportGenerator {
     .col-evidence { width: 160px; font-size: 9px; }
     .col-source { width: 70px; text-transform: capitalize; }
     
-    .severity-high { color: #ef4444; font-weight: 700; }
-    .severity-medium { color: #f59e0b; font-weight: 600; }
-    .severity-low { color: #10b981; }
+    .severity-high { color: #DC2626; font-weight: 700; }
+    .severity-medium { color: #D97706; font-weight: 600; }
+    .severity-low { color: #16A34A; }
     
     .evidence-ref {
-      background: #dbeafe;
-      color: #1e40af;
+      background: #FEF3C7;
+      color: #92400E;
+      border: 1px solid #FDE68A;
       padding: 1px 6px;
       border-radius: 3px;
       font-size: 8px;
@@ -770,10 +777,10 @@ class IncidentReportGenerator {
     .col-size { width: 70px; text-align: right; font-family: monospace; }
     .col-date { width: 140px; font-family: monospace; font-size: 9px; }
     .col-hash { font-family: monospace; font-size: 8px; word-break: break-all; }
-    .col-details { font-size: 9px; color: #475569; }
+    .col-details { font-size: 9px; color: #4B5563; }
     
-    .ocr-snippet { margin-top: 4px; font-style: italic; color: #1e40af; }
-    .transcription-snippet { margin-top: 4px; font-style: italic; color: #059669; }
+    .ocr-snippet { margin-top: 4px; font-style: italic; color: #D97706; }
+    .transcription-snippet { margin-top: 4px; font-style: italic; color: #16A34A; }
     
     /* Hash Chain Table Columns */
     .col-operation { width: 100px; text-transform: uppercase; font-size: 9px; }
@@ -788,8 +795,8 @@ class IncidentReportGenerator {
     }
     
     .thumbnail-item {
-      background: #fff;
-      border: 1px solid #e2e8f0;
+      background: #FFFFFF;
+      border: 1px solid #E5E7EB;
       border-radius: 8px;
       overflow: hidden;
       page-break-inside: avoid;
@@ -797,7 +804,7 @@ class IncidentReportGenerator {
     
     .thumbnail-placeholder {
       aspect-ratio: 4/3;
-      background: #f1f5f9;
+      background: #F4F4F5;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -805,7 +812,7 @@ class IncidentReportGenerator {
     }
     
     .image-placeholder {
-      color: #94a3b8;
+      color: #9CA3AF;
       font-size: 10px;
       text-align: center;
       padding: 8px;
@@ -818,7 +825,7 @@ class IncidentReportGenerator {
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #fff;
+      color: #FFFFFF;
       font-weight: 700;
       font-size: 14px;
       letter-spacing: 2px;
@@ -838,26 +845,26 @@ class IncidentReportGenerator {
     .thumb-hash {
       font-family: monospace;
       font-size: 9px;
-      color: #64748b;
+      color: #6B7280;
     }
     
     .redaction-notice {
       margin-top: 6px;
       font-size: 9px;
-      color: #ef4444;
+      color: #DC2626;
       font-weight: 600;
     }
     
     .thumbnails-disabled {
       text-align: center;
-      color: #94a3b8;
+      color: #9CA3AF;
       font-style: italic;
       padding: 40px;
     }
     
     .no-images {
       text-align: center;
-      color: #94a3b8;
+      color: #9CA3AF;
       font-style: italic;
       padding: 40px;
     }
@@ -866,8 +873,10 @@ class IncidentReportGenerator {
     .report-seal {
       margin-top: 40px;
       padding: 20px;
-      background: #0f172a;
-      color: #94a3b8;
+      background: #FFFFFF;
+      border: 1px solid #E5E7EB;
+      border-left: 4px solid #F5A623;
+      color: #4B5563;
       border-radius: 6px;
       font-family: monospace;
       font-size: 9px;
@@ -875,7 +884,7 @@ class IncidentReportGenerator {
     }
     
     .seal-title {
-      color: #3b82f6;
+      color: #111111;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 1px;
@@ -888,8 +897,8 @@ class IncidentReportGenerator {
       margin: 4px 0;
     }
     
-    .seal-label { color: #64748b; }
-    .seal-value { color: #e2e8f0; }
+    .seal-label { color: #6B7280; }
+    .seal-value { color: #111111; }
   </style>
 </head>
 <body>

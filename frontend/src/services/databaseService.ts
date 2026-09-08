@@ -87,6 +87,10 @@ class DatabaseService {
     return recs.map(this.mapEvidenceRecordToItem);
   }
 
+  async getEvidenceRecordsForCase(caseId: string): Promise<EvidenceRecord[]> {
+    return databaseEngine.getEvidenceForCase(caseId);
+  }
+
   async getEvidenceById(id: string): Promise<EvidenceItem | null> {
     const rec = await databaseEngine.getEvidenceById(id);
     if (!rec) return null;

@@ -566,10 +566,10 @@ export function TimelineEventDetailModal({
 }
 
 const MEDIA_TYPE_COLORS: Record<MediaCategory, string> = {
-  IMAGE: '#00F2FE',
-  VIDEO: '#FF2A6D',
-  AUDIO: '#4FACFE',
-  DOCUMENT: '#10B981',
+  IMAGE: palette.brandYellow,
+  VIDEO: palette.error,
+  AUDIO: palette.deepBlack,
+  DOCUMENT: palette.success,
 };
 
 const styles = StyleSheet.create({
@@ -671,7 +671,8 @@ const styles = StyleSheet.create({
     color: palette.textSecondary,
   },
   tabButtonTextActive: {
-    color: '#041018',
+    color: palette.white,
+    fontWeight: 'bold',
   },
   loadingContainer: {
     flex: 1,
@@ -702,7 +703,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   retryBtnText: {
-    color: '#041018',
+    color: palette.white,
     fontWeight: 'bold',
     fontSize: 14,
   },
@@ -811,7 +812,7 @@ const styles = StyleSheet.create({
   detailSectionTitle: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: palette.secondary,
+    color: palette.brandYellow,
     marginBottom: 6,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -864,14 +865,14 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: palette.primary,
+    backgroundColor: palette.brandYellow,
     alignItems: 'center',
     justifyContent: 'center',
   },
   actorAvatarText: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#041018',
+    color: palette.deepBlack,
   },
   actorInfo: {
     flex: 1,
@@ -884,7 +885,7 @@ const styles = StyleSheet.create({
   },
   actorRole: {
     fontSize: 12,
-    color: palette.primary,
+    color: palette.deepBlack,
     fontWeight: '600',
     marginBottom: 2,
   },
@@ -907,7 +908,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   exportBtnText: {
-    color: '#041018',
+    color: palette.white,
     fontSize: 15,
     fontWeight: 'bold',
   },

@@ -237,7 +237,7 @@ export function validateAndGroundForensicExtraction(
     if (!name) continue;
 
     const role = ['perpetrator', 'victim', 'witness', 'unknown'].includes(a.role) ? a.role : 'unknown';
-    const identifiers = Array.isArray(a.identifiers) ? a.identifiers.map(String).map(s => s.trim()).filter(Boolean) : [];
+    const identifiers = Array.isArray(a.identifiers) ? a.identifiers.map(String).map((s: string) => s.trim()).filter(Boolean) : [];
     let certainty: 'explicit' | 'inferred' = a.certainty === 'inferred' ? 'inferred' : 'explicit';
 
     // Verify if actor name occurs in evidence text

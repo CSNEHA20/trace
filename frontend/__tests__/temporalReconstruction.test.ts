@@ -226,6 +226,8 @@ describe('STEP 9: Deterministic Temporal Forensic Reconstruction', () => {
       blackmailIndicators: [],
       coercionIndicators: [],
       paymentDemands: [],
+      harassmentIndicators: [],
+      communicationChannels: [],
       quotedStatements: [],
       phoneNumbers: [],
       urlsAndDomains: [],
@@ -236,7 +238,7 @@ describe('STEP 9: Deterministic Temporal Forensic Reconstruction', () => {
     const rejectedValidation = [
       {
         timestamp: '2026-09-08T10:00:00Z',
-        eventType: 'payment_demand',
+        eventType: 'demand' as const,
         description: 'Fabricated payment claim',
         sourceEvidenceId: 'non-existent-ev',
         certainty: 'inferred' as const,
@@ -266,7 +268,7 @@ describe('STEP 9: Deterministic Temporal Forensic Reconstruction', () => {
       temporalEvents: [
         {
           timestamp: '2026-09-08T09:00:00Z',
-          eventType: 'communication',
+          eventType: 'other',
           description: 'Contextually inferred message',
           sourceEvidenceId: 'ev-03', // Has only IMPORT timestamp
           certainty: 'inferred',
@@ -277,6 +279,8 @@ describe('STEP 9: Deterministic Temporal Forensic Reconstruction', () => {
       blackmailIndicators: [],
       coercionIndicators: [],
       paymentDemands: [],
+      harassmentIndicators: [],
+      communicationChannels: [],
       quotedStatements: [],
       phoneNumbers: [],
       urlsAndDomains: [],

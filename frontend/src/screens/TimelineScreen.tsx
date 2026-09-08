@@ -26,20 +26,20 @@ import { palette } from '../theme';
 import { formatDate } from '../utils/crypto';
 
 const TRUST_COLORS: Record<TrustIndicator, { bg: string; text: string; border: string }> = {
-  VERIFIED: { bg: 'rgba(16, 185, 129, 0.15)', text: palette.success, border: palette.success },
-  INFERRED: { bg: 'rgba(0, 242, 254, 0.15)', text: palette.primary, border: palette.primary },
-  UNCERTAIN: { bg: 'rgba(245, 158, 11, 0.15)', text: palette.warning, border: palette.warning },
-  REJECTED: { bg: 'rgba(239, 68, 68, 0.15)', text: palette.error, border: palette.error },
+  VERIFIED: { bg: palette.successBg, text: palette.success, border: palette.success },
+  INFERRED: { bg: palette.brandYellowBg, text: palette.brandYellow, border: palette.brandYellow },
+  UNCERTAIN: { bg: palette.warningBg, text: palette.warning, border: palette.warning },
+  REJECTED: { bg: palette.errorBg, text: palette.error, border: palette.error },
 };
 
 const EVENT_TYPE_COLORS: Record<ForensicEventType, string> = {
   THREAT: palette.error,
-  PAYMENT_DEMAND: '#F59E0B',
-  BLACKMAIL: '#EC4899',
-  COERCION: '#8B5CF6',
-  COMMUNICATION: palette.primary,
-  MEDIA_CAPTURE: palette.secondary,
-  MEDIA_UPLOAD: '#06B6D4',
+  PAYMENT_DEMAND: palette.brandYellow,
+  BLACKMAIL: palette.error,
+  COERCION: palette.deepBlack,
+  COMMUNICATION: palette.deepBlack,
+  MEDIA_CAPTURE: palette.brandYellow,
+  MEDIA_UPLOAD: palette.success,
   OTHER: palette.textSecondary,
 };
 
@@ -67,7 +67,7 @@ export function TimelineScreen() {
     try {
       const [events, evidence] = await Promise.all([
         databaseService.getEventRecordsForCase(activeCase.id),
-        databaseService.getEvidenceForCase(activeCase.id),
+        databaseService.getEvidenceRecordsForCase(activeCase.id),
       ]);
 
       const result = temporalReconstructionService.reconstructFromDatabaseRecords(
@@ -280,7 +280,7 @@ export function TimelineScreen() {
                         }}
                       >
                         <View style={styles.eventCardHeader}>
-                          <View style={[styles.eventTypeBadge, { backgroundColor: 'rgba(255,255,255,0.06)' }]}>
+                          <View style={[styles.eventTypeBadge, { backgroundColor: palette.surfaceVariant }]}>
                             <Text style={[styles.eventTypeText, { color: typeColor }]}>
                               {ev.eventType}
                             </Text>
@@ -413,33 +413,41 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   banner: {
-    backgroundColor: palette.surfaceVariant,
+    backgroundColor: palette.card,
     padding: 12,
     borderRadius: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: palette.primary,
+    borderWidth: 1.5,
+    borderColor: palette.borderDark,
+    borderLeftWidth: 4,
+    borderLeftColor: palette.brandYellow,
     marginBottom: 14,
   },
   bannerTitle: {
     fontSize: 11,
-    fontWeight: 'bold',
-    color: palette.primary,
+    fontWeight: '900',
+    color: palette.deepBlack,
     marginBottom: 2,
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
   },
   bannerText: {
     fontSize: 11,
     color: palette.textSecondary,
     lineHeight: 16,
+    fontWeight: '500',
   },
   statsStrip: {
     flexDirection: 'row',
     backgroundColor: palette.surface,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: palette.border,
+    borderWidth: 1.5,
+    borderColor: palette.borderDark,
     paddingVertical: 10,
     marginBottom: 14,
+    elevation: 2,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
   },
   statCol: {
     flex: 1,
@@ -447,14 +455,15 @@ const styles = StyleSheet.create({
   },
   statVal: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: palette.text,
+    fontWeight: '900',
+    color: palette.deepBlack,
   },
   statLbl: {
     fontSize: 9,
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: palette.textSecondary,
     marginTop: 2,
+    letterSpacing: 0.5,
   },
   filterSection: {
     marginBottom: 14,
@@ -462,13 +471,14 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     backgroundColor: palette.surface,
-    borderWidth: 1,
-    borderColor: palette.border,
+    borderWidth: 1.5,
+    borderColor: palette.borderDark,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    color: palette.text,
+    color: palette.deepBlack,
     fontSize: 13,
+    fontWeight: '600',
   },
   trustFilterRow: {
     flexDirection: 'row',
@@ -478,14 +488,15 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 6,
     borderRadius: 6,
-    borderWidth: 1,
-    borderColor: palette.border,
+    borderWidth: 1.5,
+    borderColor: palette.borderDark,
     backgroundColor: palette.surface,
     alignItems: 'center',
   },
   trustChipText: {
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   timelineSectionHeader: {
     marginBottom: 12,
@@ -493,12 +504,13 @@ const styles = StyleSheet.create({
   },
   timelineSectionTitle: {
     fontSize: 12,
-    fontWeight: 'bold',
-    color: palette.text,
+    fontWeight: '900',
+    color: palette.deepBlack,
     letterSpacing: 0.8,
   },
   timelineSectionCount: {
     fontSize: 11,
+    fontWeight: '600',
     color: palette.textSecondary,
   },
   timelineSpineContainer: {
@@ -518,17 +530,18 @@ const styles = StyleSheet.create({
   timeText: {
     fontFamily: 'monospace',
     fontSize: 11,
-    fontWeight: 'bold',
-    color: palette.text,
+    fontWeight: '800',
+    color: palette.deepBlack,
   },
   dateText: {
     fontSize: 9,
+    fontWeight: '600',
     color: palette.textSecondary,
   },
   provenanceTag: {
     fontSize: 8,
-    fontWeight: 'bold',
-    color: palette.secondary,
+    fontWeight: '800',
+    color: palette.deepBlack,
     marginTop: 2,
   },
   spineCol: {
@@ -550,18 +563,23 @@ const styles = StyleSheet.create({
     top: 15,
     bottom: -20,
     width: 2,
-    backgroundColor: palette.border,
+    backgroundColor: palette.borderDark,
     zIndex: 1,
   },
   eventCard: {
     flex: 1,
     backgroundColor: palette.surface,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: palette.border,
+    borderWidth: 1.5,
+    borderColor: palette.borderDark,
     borderLeftWidth: 4,
     padding: 12,
     marginLeft: 6,
+    elevation: 2,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
   },
   eventCardHeader: {
     flexDirection: 'row',
@@ -601,7 +619,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.05)',
+    borderTopColor: palette.border,
     paddingTop: 6,
   },
   evidenceRef: {
@@ -610,12 +628,12 @@ const styles = StyleSheet.create({
   },
   evidenceRefLink: {
     fontFamily: 'monospace',
-    color: palette.primary,
+    color: palette.brandYellow,
     fontWeight: 'bold',
   },
   tapToView: {
     fontSize: 10,
-    color: palette.secondary,
+    color: palette.deepBlack,
     fontWeight: '600',
   },
   isolatedSection: {

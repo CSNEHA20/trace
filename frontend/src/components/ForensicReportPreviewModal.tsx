@@ -179,13 +179,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   statusCardSuccess: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    borderColor: '#10b981',
+    backgroundColor: palette.successBg,
+    borderColor: palette.success,
     borderWidth: 1,
   },
   statusCardWarning: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    borderColor: '#ef4444',
+    backgroundColor: palette.errorBg,
+    borderColor: palette.error,
     borderWidth: 1,
   },
   statusTitle: {
@@ -198,21 +198,23 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   textSuccess: {
-    color: '#10b981',
+    color: palette.success,
   },
   textWarning: {
-    color: '#ef4444',
+    color: palette.error,
   },
   section: {
     marginBottom: 16,
     backgroundColor: palette.surface,
     padding: 12,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: palette.border,
   },
   sectionTitle: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: palette.primary,
+    color: palette.deepBlack,
     marginBottom: 8,
   },
   infoRow: {
@@ -251,7 +253,7 @@ const styles = StyleSheet.create({
   evidenceType: {
     fontSize: 10,
     fontWeight: 'bold',
-    color: palette.primary,
+    color: palette.brandYellow,
   },
   hashText: {
     fontSize: 10,
@@ -260,24 +262,26 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   sealBox: {
-    backgroundColor: '#181825',
+    backgroundColor: palette.surfaceVariant,
     padding: 12,
     borderRadius: 8,
     marginTop: 8,
+    borderWidth: 1,
+    borderColor: palette.border,
   },
   sealHeader: {
-    color: '#89b4fa',
+    color: palette.brandYellow,
     fontWeight: 'bold',
     fontSize: 11,
     marginBottom: 6,
   },
   sealLabel: {
     fontSize: 10,
-    color: '#a6adc8',
+    color: palette.textSecondary,
   },
   sealValue: {
     fontSize: 10,
-    color: '#cdd6f4',
+    color: palette.text,
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     marginTop: 1,
   },

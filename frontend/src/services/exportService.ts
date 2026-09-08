@@ -50,8 +50,8 @@ class ExportService {
         const sizeKb = (item.fileSize / 1024).toFixed(1);
         const dateStr = new Date(item.timestamp).toLocaleString();
         const statusBadge = item.isTampered
-          ? `<span style="color: #ef4444; font-weight: bold; background: #fee2e2; padding: 2px 8px; border-radius: 4px;">⚠️ TAMPERED</span>`
-          : `<span style="color: #10b981; font-weight: bold; background: #d1fae5; padding: 2px 8px; border-radius: 4px;">✓ VERIFIED</span>`;
+          ? `<span style="color: #DC2626; font-weight: bold; background: #fee2e2; padding: 2px 8px; border-radius: 4px;">⚠️ TAMPERED</span>`
+          : `<span style="color: #16A34A; font-weight: bold; background: #dcfce7; padding: 2px 8px; border-radius: 4px;">✓ VERIFIED</span>`;
 
         let detailsHtml = '';
         if (options.includeExifMetadata && item.exifData) {
@@ -112,22 +112,22 @@ class ExportService {
       <meta charset="utf-8" />
       <title>TRACE Forensic Report — ${c.caseNumber}</title>
       <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111827; margin: 0; padding: 24px; font-size: 13px; line-height: 1.5; }
-        .header { border-bottom: 3px solid #1e40af; padding-bottom: 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-start; }
-        .title-block h1 { margin: 0; font-size: 22px; color: #1e40af; text-transform: uppercase; letter-spacing: 0.5px; }
-        .title-block h2 { margin: 4px 0 0 0; font-size: 14px; color: #4b5563; font-weight: normal; }
-        .meta-card { background: #f3f4f6; border-radius: 8px; padding: 16px; margin-bottom: 24px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111111; margin: 0; padding: 24px; font-size: 13px; line-height: 1.5; background: #FFFFFF; }
+        .header { border-bottom: 3px solid #F5A623; padding-bottom: 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-start; }
+        .title-block h1 { margin: 0; font-size: 22px; color: #111111; text-transform: uppercase; letter-spacing: 0.5px; }
+        .title-block h2 { margin: 4px 0 0 0; font-size: 14px; color: #6B7280; font-weight: normal; }
+        .meta-card { background: #F4F4F5; border: 1px solid #E5E7EB; border-left: 4px solid #F5A623; border-radius: 8px; padding: 16px; margin-bottom: 24px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
         .meta-item { display: flex; flex-direction: column; }
-        .meta-label { font-size: 11px; text-transform: uppercase; color: #6b7280; font-weight: 600; }
-        .meta-val { font-size: 13px; color: #111827; font-weight: 600; margin-top: 2px; }
+        .meta-label { font-size: 11px; text-transform: uppercase; color: #6B7280; font-weight: 600; }
+        .meta-val { font-size: 13px; color: #111111; font-weight: 600; margin-top: 2px; }
         .status-banner { padding: 12px 16px; border-radius: 6px; margin-bottom: 24px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
-        .status-verified { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
-        .status-tampered { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+        .status-verified { background: #DCFCE7; color: #16A34A; border: 1px solid #86EFAC; }
+        .status-tampered { background: #FEE2E2; color: #DC2626; border: 1px solid #FECACA; }
         table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-        th { background: #1e40af; color: #ffffff; text-align: left; padding: 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .footer { margin-top: 40px; border-top: 2px solid #e5e7eb; padding-top: 20px; font-size: 11px; color: #6b7280; }
-        .seal-box { background: #1e1e2e; color: #a6adc8; border-radius: 6px; padding: 14px; font-family: monospace; font-size: 11px; margin-top: 16px; word-break: break-all; }
-        .seal-title { color: #89b4fa; font-weight: bold; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        th { background: #111111; color: #FFFFFF; text-align: left; padding: 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .footer { margin-top: 40px; border-top: 2px solid #E5E7EB; padding-top: 20px; font-size: 11px; color: #6B7280; }
+        .seal-box { background: #F4F4F5; color: #4B5563; border: 1px solid #E5E7EB; border-left: 4px solid #F5A623; border-radius: 6px; padding: 14px; font-family: monospace; font-size: 11px; margin-top: 16px; word-break: break-all; }
+        .seal-title { color: #111111; font-weight: bold; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
       </style>
     </head>
     <body>
@@ -136,7 +136,7 @@ class ExportService {
           <h1>TRACE Forensic Evidence Report</h1>
           <h2>Official Digital Case Audit & Cryptographic Chain of Custody</h2>
         </div>
-        <div style="text-align: right; font-size: 11px; color: #6b7280;">
+        <div style="text-align: right; font-size: 11px; color: #6B7280;">
           <div><strong>Agency:</strong> ${options.agencyName}</div>
           <div><strong>Generated:</strong> ${generatedAt}</div>
         </div>
@@ -168,7 +168,7 @@ class ExportService {
 
       ${notesBlock}
 
-      <h3 style="color: #1e40af; margin-top: 28px; margin-bottom: 8px;">Evidence Manifest (${evidenceList.length} Records)</h3>
+      <h3 style="color: #111111; margin-top: 28px; margin-bottom: 8px;">Evidence Manifest (${evidenceList.length} Records)</h3>
       <table>
         <thead>
           <tr>

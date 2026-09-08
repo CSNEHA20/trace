@@ -196,7 +196,7 @@ export const IncidentReportConfigScreen: React.FC = () => {
             <Switch
               value={options.includeAiNarrative}
               onValueChange={(val) => handleOptionChange('includeAiNarrative', val)}
-              trackColor={{ false: palette.border, true: palette.primary }}
+              trackColor={{ false: palette.border, true: palette.brandYellow }}
             />
           </View>
 
@@ -208,7 +208,7 @@ export const IncidentReportConfigScreen: React.FC = () => {
             <Switch
               value={options.includeEventLog}
               onValueChange={(val) => handleOptionChange('includeEventLog', val)}
-              trackColor={{ false: palette.border, true: palette.primary }}
+              trackColor={{ false: palette.border, true: palette.brandYellow }}
             />
           </View>
 
@@ -220,7 +220,7 @@ export const IncidentReportConfigScreen: React.FC = () => {
             <Switch
               value={options.includeEvidenceInventory}
               onValueChange={(val) => handleOptionChange('includeEvidenceInventory', val)}
-              trackColor={{ false: palette.border, true: palette.primary }}
+              trackColor={{ false: palette.border, true: palette.brandYellow }}
             />
           </View>
 
@@ -232,7 +232,7 @@ export const IncidentReportConfigScreen: React.FC = () => {
             <Switch
               value={options.includeHashChain}
               onValueChange={(val) => handleOptionChange('includeHashChain', val)}
-              trackColor={{ false: palette.border, true: palette.primary }}
+              trackColor={{ false: palette.border, true: palette.brandYellow }}
             />
           </View>
 
@@ -244,7 +244,7 @@ export const IncidentReportConfigScreen: React.FC = () => {
             <Switch
               value={options.includeAppendix}
               onValueChange={(val) => handleOptionChange('includeAppendix', val)}
-              trackColor={{ false: palette.border, true: palette.primary }}
+              trackColor={{ false: palette.border, true: palette.brandYellow }}
             />
           </View>
         </View>
@@ -261,7 +261,7 @@ export const IncidentReportConfigScreen: React.FC = () => {
             <Switch
               value={options.includeOCR}
               onValueChange={(val) => handleOptionChange('includeOCR', val)}
-              trackColor={{ false: palette.border, true: palette.primary }}
+              trackColor={{ false: palette.border, true: palette.brandYellow }}
             />
           </View>
 
@@ -273,7 +273,7 @@ export const IncidentReportConfigScreen: React.FC = () => {
             <Switch
               value={options.includeThumbnails}
               onValueChange={(val) => handleOptionChange('includeThumbnails', val)}
-              trackColor={{ false: palette.border, true: palette.primary }}
+              trackColor={{ false: palette.border, true: palette.brandYellow }}
             />
           </View>
         </View>
@@ -290,7 +290,7 @@ export const IncidentReportConfigScreen: React.FC = () => {
             <Switch
               value={options.anonymizeVictim}
               onValueChange={(val) => handleOptionChange('anonymizeVictim', val)}
-              trackColor={{ false: palette.border, true: palette.primary }}
+              trackColor={{ false: palette.border, true: palette.brandYellow }}
             />
           </View>
 
@@ -472,11 +472,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
     borderColor: palette.border,
+    borderLeftWidth: 4,
+    borderLeftColor: palette.brandYellow,
   },
   cardTitle: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: palette.primary,
+    color: palette.brandAmber,
     marginBottom: 12,
   },
   caseRow: {
@@ -496,15 +498,17 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   badgeContainer: {
-    backgroundColor: 'rgba(30, 64, 175, 0.15)',
+    backgroundColor: palette.pillBg,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: palette.brandYellow,
   },
   badgeText: {
     fontSize: 10,
     fontWeight: 'bold',
-    color: palette.primary,
+    color: palette.brandAmber,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -512,9 +516,11 @@ const styles = StyleSheet.create({
   },
   statBox: {
     flex: 1,
-    backgroundColor: palette.background,
+    backgroundColor: palette.surfaceVariant,
     padding: 10,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: palette.border,
     alignItems: 'center',
   },
   statVal: {
@@ -537,7 +543,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   input: {
-    backgroundColor: palette.background,
+    backgroundColor: palette.surfaceVariant,
     borderWidth: 1,
     borderColor: palette.border,
     borderRadius: 8,
@@ -550,7 +556,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   picker: {
-    backgroundColor: palette.background,
+    backgroundColor: palette.surfaceVariant,
     borderWidth: 1,
     borderColor: palette.border,
     borderRadius: 8,
@@ -582,7 +588,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   generateButton: {
-    backgroundColor: palette.primary,
+    backgroundColor: palette.deepBlack,
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: 'center',
@@ -593,7 +599,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   generateButtonText: {
-    color: '#ffffff',
+    color: palette.white,
     fontWeight: 'bold',
     fontSize: 15,
   },
@@ -605,7 +611,7 @@ const styles = StyleSheet.create({
   emptyWarning: {
     textAlign: 'center',
     fontSize: 12,
-    color: '#f59e0b',
+    color: palette.brandAmber,
     marginBottom: 16,
     fontStyle: 'italic',
   },
@@ -647,11 +653,11 @@ const styles = StyleSheet.create({
     flex: 2,
     paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: palette.primary,
+    backgroundColor: palette.deepBlack,
     alignItems: 'center',
   },
   primaryButtonText: {
-    color: '#ffffff',
+    color: palette.white,
     fontWeight: 'bold',
   },
   toast: {
@@ -663,12 +669,12 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: palette.primary,
+    borderColor: palette.brandYellow,
     elevation: 4,
   },
   toastText: {
     textAlign: 'center',
-    color: palette.primary,
+    color: palette.brandAmber,
     fontWeight: '600',
   },
 });

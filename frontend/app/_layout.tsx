@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PaperProvider } from 'react-native-paper';
 import { ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { theme, navigationTheme } from '../src/theme';
 
@@ -17,6 +18,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <PaperProvider theme={theme}>
           <ThemeProvider value={navigationTheme}>
+            <StatusBar style="dark" />
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="case/[id]" options={{ headerShown: false }} />
@@ -29,4 +31,5 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
 

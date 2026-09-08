@@ -167,7 +167,7 @@ export function FindingsScreen() {
             {/* ── BLACKMAIL & EXTORTION ── */}
             <View style={styles.sectionContainer}>
               <View style={styles.sectionHeaderRow}>
-                <Text style={[styles.sectionTitle, { color: '#EC4899' }]}>BLACKMAIL & EXTORTION</Text>
+                <Text style={[styles.sectionTitle, { color: palette.error }]}>BLACKMAIL & EXTORTION</Text>
                 <Text style={styles.countBadge}>{blackmailEvents.length + (parsedNarrativeSections?.blackmail.length || 0)}</Text>
               </View>
 
@@ -180,7 +180,7 @@ export function FindingsScreen() {
                   {blackmailEvents.map((ev) => (
                     <TouchableOpacity
                       key={ev.id}
-                      style={[styles.card, { borderLeftColor: '#EC4899' }]}
+                      style={[styles.card, { borderLeftColor: palette.error }]}
                       onPress={() => {
                         if (ev.evidence_ids && ev.evidence_ids.length > 0) {
                           router.push(`/evidence/${ev.evidence_ids[0]}`);
@@ -202,7 +202,7 @@ export function FindingsScreen() {
                     </TouchableOpacity>
                   ))}
                   {parsedNarrativeSections?.blackmail.map((b, idx) => (
-                    <View key={`nb-${idx}`} style={[styles.card, { borderLeftColor: '#EC4899' }]}>
+                    <View key={`nb-${idx}`} style={[styles.card, { borderLeftColor: palette.error }]}>
                       <Text style={styles.findingDesc}>{b}</Text>
                     </View>
                   ))}
@@ -213,7 +213,7 @@ export function FindingsScreen() {
             {/* ── PAYMENT / FINANCIAL DEMANDS ── */}
             <View style={styles.sectionContainer}>
               <View style={styles.sectionHeaderRow}>
-                <Text style={[styles.sectionTitle, { color: '#F59E0B' }]}>PAYMENT & FINANCIAL DEMANDS</Text>
+                <Text style={[styles.sectionTitle, { color: palette.brandAmber }]}>PAYMENT & FINANCIAL DEMANDS</Text>
                 <Text style={styles.countBadge}>{demandEvents.length + (parsedNarrativeSections?.paymentDemands.length || 0)}</Text>
               </View>
 
@@ -226,7 +226,7 @@ export function FindingsScreen() {
                   {demandEvents.map((ev) => (
                     <TouchableOpacity
                       key={ev.id}
-                      style={[styles.card, { borderLeftColor: '#F59E0B' }]}
+                      style={[styles.card, { borderLeftColor: palette.brandYellow }]}
                       onPress={() => {
                         if (ev.evidence_ids && ev.evidence_ids.length > 0) {
                           router.push(`/evidence/${ev.evidence_ids[0]}`);
@@ -248,7 +248,7 @@ export function FindingsScreen() {
                     </TouchableOpacity>
                   ))}
                   {parsedNarrativeSections?.paymentDemands.map((p, idx) => (
-                    <View key={`np-${idx}`} style={[styles.card, { borderLeftColor: '#F59E0B' }]}>
+                    <View key={`np-${idx}`} style={[styles.card, { borderLeftColor: palette.brandYellow }]}>
                       <Text style={styles.findingDesc}>{p}</Text>
                     </View>
                   ))}
@@ -259,7 +259,7 @@ export function FindingsScreen() {
             {/* ── COERCION INDICATORS ── */}
             <View style={styles.sectionContainer}>
               <View style={styles.sectionHeaderRow}>
-                <Text style={[styles.sectionTitle, { color: '#8B5CF6' }]}>COERCION INDICATORS</Text>
+                <Text style={[styles.sectionTitle, { color: palette.deepBlack }]}>COERCION INDICATORS</Text>
                 <Text style={styles.countBadge}>{coercionEvents.length + (parsedNarrativeSections?.coercion.length || 0)}</Text>
               </View>
 
@@ -272,7 +272,7 @@ export function FindingsScreen() {
                   {coercionEvents.map((ev) => (
                     <TouchableOpacity
                       key={ev.id}
-                      style={[styles.card, { borderLeftColor: '#8B5CF6' }]}
+                      style={[styles.card, { borderLeftColor: palette.deepBlack }]}
                       onPress={() => {
                         if (ev.evidence_ids && ev.evidence_ids.length > 0) {
                           router.push(`/evidence/${ev.evidence_ids[0]}`);
@@ -283,7 +283,7 @@ export function FindingsScreen() {
                     </TouchableOpacity>
                   ))}
                   {parsedNarrativeSections?.coercion.map((c, idx) => (
-                    <View key={`nc-${idx}`} style={[styles.card, { borderLeftColor: '#8B5CF6' }]}>
+                    <View key={`nc-${idx}`} style={[styles.card, { borderLeftColor: palette.deepBlack }]}>
                       <Text style={styles.findingDesc}>{c}</Text>
                     </View>
                   ))}
@@ -416,43 +416,50 @@ const styles = StyleSheet.create({
   scrollView: { flex: 1 },
   content: { padding: 16, paddingBottom: 40 },
   banner: {
-    backgroundColor: palette.surfaceVariant,
+    backgroundColor: palette.card,
     padding: 12,
     borderRadius: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: palette.primary,
+    borderWidth: 1.5,
+    borderColor: palette.borderDark,
+    borderLeftWidth: 4,
+    borderLeftColor: palette.brandYellow,
     marginBottom: 14,
   },
-  bannerTitle: { fontSize: 11, fontWeight: 'bold', color: palette.primary, marginBottom: 2, letterSpacing: 0.5 },
-  bannerText: { fontSize: 11, color: palette.textSecondary, lineHeight: 16 },
+  bannerTitle: { fontSize: 11, fontWeight: '900', color: palette.deepBlack, marginBottom: 2, letterSpacing: 0.6 },
+  bannerText: { fontSize: 11, color: palette.textSecondary, lineHeight: 16, fontWeight: '500' },
   sectionContainer: { marginBottom: 18 },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  sectionTitle: { fontSize: 12, fontWeight: 'bold', color: palette.text, letterSpacing: 0.8 },
-  countBadge: { fontSize: 11, fontWeight: 'bold', color: palette.textSecondary, backgroundColor: palette.surfaceVariant, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  sectionTitle: { fontSize: 12, fontWeight: '900', color: palette.deepBlack, letterSpacing: 0.8 },
+  countBadge: { fontSize: 11, fontWeight: '800', color: palette.deepBlack, backgroundColor: palette.surfaceVariant, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: palette.borderDark },
   card: {
     backgroundColor: palette.surface,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: palette.border,
+    borderWidth: 1.5,
+    borderColor: palette.borderDark,
     borderLeftWidth: 4,
-    borderLeftColor: palette.primary,
+    borderLeftColor: palette.brandYellow,
     padding: 14,
     marginBottom: 10,
+    elevation: 2,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
   },
-  summaryText: { fontSize: 13, color: palette.text, lineHeight: 18 },
+  summaryText: { fontSize: 13, color: palette.deepBlack, lineHeight: 18, fontWeight: '500' },
   findingCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  findingTypeBadge: { fontSize: 10, fontWeight: 'bold', color: palette.textSecondary, letterSpacing: 0.5 },
-  certaintyBadge: { fontSize: 10, fontWeight: 'bold', color: palette.primary, backgroundColor: 'rgba(0, 242, 254, 0.1)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-  findingDesc: { fontSize: 13, color: palette.text, lineHeight: 18, marginBottom: 6 },
-  evidenceLink: { fontSize: 11, color: palette.textSecondary, marginTop: 4 },
-  monoLink: { fontFamily: 'monospace', color: palette.primary, fontWeight: 'bold' },
-  emptyCategoryCard: { backgroundColor: palette.surface, borderRadius: 8, borderWidth: 1, borderColor: palette.border, padding: 12, alignItems: 'center' },
-  emptyCategoryText: { fontSize: 12, color: palette.textSecondary },
-  actorName: { fontSize: 14, fontWeight: 'bold', color: palette.text },
-  actorRoleBadge: { fontSize: 11, fontWeight: 'bold', letterSpacing: 0.5 },
-  identList: { marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' },
-  identLabel: { fontSize: 10, fontWeight: 'bold', color: palette.textSecondary, marginBottom: 2 },
-  identItem: { fontSize: 12, color: palette.text, marginBottom: 2 },
-  identType: { color: palette.secondary, fontWeight: 'bold' },
-  uncertaintyNote: { fontSize: 11, fontStyle: 'italic', color: palette.warning, marginTop: 4 },
+  findingTypeBadge: { fontSize: 10, fontWeight: '800', color: palette.textSecondary, letterSpacing: 0.5 },
+  certaintyBadge: { fontSize: 10, fontWeight: '800', color: palette.deepBlack, backgroundColor: palette.brandYellow, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  findingDesc: { fontSize: 13, color: palette.deepBlack, lineHeight: 18, marginBottom: 6, fontWeight: '500' },
+  evidenceLink: { fontSize: 11, color: palette.textSecondary, marginTop: 4, fontWeight: '600' },
+  monoLink: { fontFamily: 'monospace', color: palette.deepBlack, fontWeight: '800' },
+  emptyCategoryCard: { backgroundColor: palette.surface, borderRadius: 8, borderWidth: 1.5, borderColor: palette.borderDark, padding: 12, alignItems: 'center' },
+  emptyCategoryText: { fontSize: 12, color: palette.textSecondary, fontWeight: '600' },
+  actorName: { fontSize: 15, fontWeight: '900', color: palette.deepBlack },
+  actorRoleBadge: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
+  identList: { marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderTopColor: palette.border },
+  identLabel: { fontSize: 10, fontWeight: '800', color: palette.textSecondary, marginBottom: 2 },
+  identItem: { fontSize: 12, color: palette.deepBlack, fontWeight: '600', marginBottom: 2 },
+  identType: { color: palette.brandAmberDark, fontWeight: '800' },
+  uncertaintyNote: { fontSize: 11, fontStyle: 'italic', color: palette.warning, marginTop: 4, fontWeight: '600' },
 });

@@ -9,7 +9,7 @@ interface LoadingSpinnerProps {
 export function LoadingSpinner({ label }: LoadingSpinnerProps) {
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" color={palette.primary} />
+      <ActivityIndicator size="large" color={palette.brandYellow} />
       {label ? <Text style={styles.label}>{label}</Text> : null}
     </View>
   );

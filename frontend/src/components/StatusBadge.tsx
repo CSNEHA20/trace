@@ -10,25 +10,29 @@ interface StatusBadgeProps {
 export function StatusBadge({ status }: StatusBadgeProps) {
   let bgColor = palette.surfaceVariant;
   let textColor = palette.textSecondary;
+  let borderColor = palette.border;
 
   switch (status) {
     case 'ACTIVE':
     case 'VERIFIED':
-      bgColor = 'rgba(16, 185, 129, 0.15)';
+      bgColor = 'rgba(22, 163, 74, 0.12)';
       textColor = palette.success;
+      borderColor = 'rgba(22, 163, 74, 0.35)';
       break;
     case 'TAMPERED':
-      bgColor = 'rgba(239, 68, 68, 0.15)';
+      bgColor = 'rgba(220, 38, 38, 0.12)';
       textColor = palette.error;
+      borderColor = 'rgba(220, 38, 38, 0.35)';
       break;
     case 'CLOSED':
-      bgColor = 'rgba(148, 163, 184, 0.15)';
+      bgColor = 'rgba(107, 114, 128, 0.12)';
       textColor = palette.textSecondary;
+      borderColor = 'rgba(107, 114, 128, 0.35)';
       break;
   }
 
   return (
-    <View style={[styles.badge, { backgroundColor: bgColor }]}>
+    <View style={[styles.badge, { backgroundColor: bgColor, borderColor }]}>
       <Text style={[styles.badgeText, { color: textColor }]}>{status}</Text>
     </View>
   );
@@ -39,11 +43,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
+    borderWidth: 1,
     alignSelf: 'flex-start',
   },
   badgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
   },
 });
+

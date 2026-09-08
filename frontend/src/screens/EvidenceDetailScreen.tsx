@@ -209,7 +209,7 @@ export function EvidenceDetailScreen() {
               {item.exifData?.dateTimeOriginal || 'Not available in source EXIF'}
             </Text>
             <View style={[styles.provenanceBadge, item.exifData?.dateTimeOriginal ? styles.badgeExif : styles.badgeNone]}>
-              <Text style={styles.provenanceBadgeText}>
+              <Text style={[styles.provenanceBadgeText, { color: item.exifData?.dateTimeOriginal ? palette.success : palette.error }]}>
                 {item.exifData?.dateTimeOriginal ? 'EXIF VERIFIED' : 'NOT DETECTED'}
               </Text>
             </View>
@@ -219,7 +219,7 @@ export function EvidenceDetailScreen() {
             <Text style={styles.timestampLabel}>IMPORT TIME:</Text>
             <Text style={styles.timestampVal}>{formatDate(item.timestamp)}</Text>
             <View style={[styles.provenanceBadge, styles.badgeImport]}>
-              <Text style={styles.provenanceBadgeText}>IMPORT</Text>
+              <Text style={[styles.provenanceBadgeText, { color: palette.textSecondary }]}>IMPORT</Text>
             </View>
           </View>
 
@@ -291,7 +291,7 @@ export function EvidenceDetailScreen() {
 
         {/* ── SECTION 5: AI-DERIVED FORENSIC FINDINGS ── */}
         <View style={styles.sectionBadgeRow}>
-          <Text style={[styles.sectionBadgeText, { color: palette.primary }]}>
+          <Text style={[styles.sectionBadgeText, { color: palette.brandAmber }]}>
             AI-DERIVED FORENSIC FINDINGS (ON-DEVICE GEMMA 2B)
           </Text>
         </View>
@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
   },
   audioPreviewMeta: {
     fontSize: 12,
-    color: palette.primary,
+    color: palette.brandAmber,
     marginTop: 4,
   },
   audioPreviewNotice: {
@@ -411,27 +411,29 @@ const styles = StyleSheet.create({
   },
   docPreviewMeta: {
     fontSize: 12,
-    color: palette.secondary,
+    color: palette.brandAmber,
     marginTop: 4,
   },
   card: {
-    backgroundColor: palette.card,
+    backgroundColor: palette.surface,
     borderRadius: 10,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: palette.border,
+    borderLeftWidth: 4,
+    borderLeftColor: palette.brandYellow,
   },
   sectionTitle: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: palette.primary,
+    color: palette.text,
     marginBottom: 10,
   },
   monoLabel: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: palette.secondary,
+    color: palette.brandAmber,
     marginTop: 4,
   },
   monoVal: {
@@ -439,7 +441,9 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     color: palette.text,
     marginBottom: 6,
-    backgroundColor: 'rgba(0,0,0,0.2)',
+    backgroundColor: palette.surfaceVariant,
+    borderWidth: 1,
+    borderColor: palette.border,
     padding: 6,
     borderRadius: 4,
   },
@@ -455,9 +459,11 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   storageBox: {
-    backgroundColor: 'rgba(0, 242, 254, 0.04)',
+    backgroundColor: palette.surfaceVariant,
     borderWidth: 1,
-    borderColor: 'rgba(0, 242, 254, 0.15)',
+    borderColor: palette.brandYellowBorder,
+    borderLeftWidth: 3,
+    borderLeftColor: palette.brandYellow,
     borderRadius: 6,
     padding: 10,
     marginTop: 10,
@@ -465,7 +471,7 @@ const styles = StyleSheet.create({
   storageBoxTitle: {
     fontSize: 10,
     fontWeight: 'bold',
-    color: palette.primary,
+    color: palette.brandAmber,
     letterSpacing: 0.6,
     marginBottom: 4,
   },
@@ -486,7 +492,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 6,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.04)',
+    borderBottomColor: palette.border,
   },
   timestampLabel: {
     fontSize: 11,
@@ -501,26 +507,29 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   provenanceBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 4,
+    borderWidth: 1,
   },
   badgeExif: {
-    backgroundColor: '#064E3B',
+    backgroundColor: '#DCFCE7',
+    borderColor: '#86EFAC',
   },
   badgeImport: {
-    backgroundColor: '#1E293B',
+    backgroundColor: palette.surfaceVariant,
+    borderColor: palette.border,
   },
   badgeNone: {
-    backgroundColor: '#374151',
+    backgroundColor: '#FEE2E2',
+    borderColor: '#FECACA',
   },
   provenanceBadgeText: {
     fontSize: 9,
     fontWeight: 'bold',
-    color: '#E2E8F0',
   },
   exifDetailsBox: {
-    backgroundColor: 'rgba(255,255,255,0.02)',
+    backgroundColor: palette.surfaceVariant,
     borderRadius: 6,
     padding: 8,
     marginTop: 8,
@@ -530,7 +539,7 @@ const styles = StyleSheet.create({
   exifDetailsTitle: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: palette.secondary,
+    color: palette.brandAmber,
     marginBottom: 4,
   },
   errText: {
@@ -545,7 +554,7 @@ const styles = StyleSheet.create({
   sectionBadgeText: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: palette.secondary,
+    color: palette.brandAmber,
     letterSpacing: 0.8,
   },
   boldText: {

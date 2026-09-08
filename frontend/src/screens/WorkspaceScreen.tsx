@@ -188,6 +188,21 @@ export function WorkspaceScreen() {
     }
   };
 
+  // ── Loading State ────────────────────────────────────────────────────
+  if (loading && !activeCase) {
+    return (
+      <View style={styles.container}>
+        <AppHeader title="TRACE FORENSIC WORKSPACE" subtitle="Hardware-Backed On-Device Digital Forensics" />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={palette.brandYellow} />
+          <Text style={{ marginTop: 12, color: palette.textSecondary, fontSize: 13, fontWeight: '500' }}>
+            Initializing forensic workspace…
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
   // ── Empty State ──────────────────────────────────────────────────────
   if (!loading && cases.length === 0) {
     return (
@@ -526,9 +541,9 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   securityBanner: {
-    backgroundColor: 'rgba(0, 242, 254, 0.05)',
+    backgroundColor: 'rgba(245, 166, 35, 0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(0, 242, 254, 0.2)',
+    borderColor: 'rgba(245, 166, 35, 0.3)',
     borderRadius: 8,
     padding: 10,
     marginBottom: 14,
@@ -540,11 +555,11 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   securityBadgeDot: {
-    color: palette.primary,
+    color: palette.brandYellow,
     fontSize: 10,
   },
   securityBadgeText: {
-    color: palette.primary,
+    color: palette.deepBlack,
     fontSize: 11,
     fontWeight: 'bold',
     letterSpacing: 0.8,
@@ -556,10 +571,17 @@ const styles = StyleSheet.create({
   caseHeaderCard: {
     backgroundColor: palette.surface,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: palette.border,
+    borderWidth: 1.5,
+    borderColor: palette.borderDark,
+    borderLeftWidth: 4,
+    borderLeftColor: palette.brandYellow,
     padding: 16,
     marginBottom: 14,
+    elevation: 2,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
   },
   caseHeaderTop: {
     flexDirection: 'row',
@@ -570,27 +592,26 @@ const styles = StyleSheet.create({
   caseNumberLabel: {
     fontFamily: 'monospace',
     fontSize: 12,
-    color: palette.secondary,
-    fontWeight: 'bold',
+    color: palette.deepBlack,
+    fontWeight: '900',
     marginBottom: 2,
   },
   caseTitleText: {
-    fontSize: 17,
-    fontWeight: 'bold',
-    color: palette.text,
+    fontSize: 18,
+    fontWeight: '900',
+    color: palette.deepBlack,
   },
   switchCaseBtn: {
-    backgroundColor: palette.surfaceVariant,
-    borderWidth: 1,
-    borderColor: palette.border,
-    paddingHorizontal: 10,
+    backgroundColor: palette.deepBlack,
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
   },
   switchCaseBtnText: {
-    color: palette.primary,
-    fontSize: 12,
-    fontWeight: 'bold',
+    color: palette.white,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   caseMetaDivider: {
     height: 1,
@@ -606,14 +627,15 @@ const styles = StyleSheet.create({
   },
   metaLabel: {
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: palette.textSecondary,
     marginBottom: 2,
+    letterSpacing: 0.5,
   },
   metaValue: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: palette.text,
+    fontSize: 13,
+    fontWeight: '800',
+    color: palette.deepBlack,
   },
   overviewGrid: {
     flexDirection: 'row',
@@ -624,31 +646,37 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: palette.surface,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: palette.border,
+    borderWidth: 1.5,
+    borderColor: palette.borderDark,
     padding: 12,
     alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
   },
   overviewBoxTitle: {
     fontSize: 10,
-    fontWeight: 'bold',
-    color: palette.textSecondary,
+    fontWeight: '900',
+    color: palette.deepBlack,
     letterSpacing: 0.5,
   },
   overviewBoxBig: {
     fontSize: 22,
-    fontWeight: 'bold',
-    color: palette.text,
+    fontWeight: '900',
+    color: palette.deepBlack,
     marginVertical: 2,
   },
   overviewBoxSub: {
     fontSize: 10,
+    fontWeight: '600',
     color: palette.textSecondary,
   },
   analysisProgressCard: {
-    backgroundColor: 'rgba(0, 242, 254, 0.08)',
-    borderWidth: 1,
-    borderColor: palette.primary,
+    backgroundColor: 'rgba(245, 166, 35, 0.08)',
+    borderWidth: 1.5,
+    borderColor: palette.brandYellow,
     borderRadius: 10,
     padding: 14,
     marginBottom: 14,
@@ -661,18 +689,19 @@ const styles = StyleSheet.create({
   },
   analysisProgressTitle: {
     fontSize: 13,
-    fontWeight: 'bold',
-    color: palette.primary,
+    fontWeight: '900',
+    color: palette.deepBlack,
     fontFamily: 'monospace',
   },
   analysisProgressMsg: {
     fontSize: 12,
-    color: palette.text,
+    fontWeight: '600',
+    color: palette.textSecondary,
   },
   sectionHeader: {
     fontSize: 12,
-    fontWeight: 'bold',
-    color: palette.textSecondary,
+    fontWeight: '900',
+    color: palette.deepBlack,
     letterSpacing: 0.8,
     marginBottom: 8,
     marginTop: 4,
@@ -685,9 +714,9 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   viewAllLink: {
-    color: palette.primary,
+    color: palette.deepBlack,
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: '800',
   },
   actionsGrid: {
     flexDirection: 'row',
@@ -700,11 +729,16 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     backgroundColor: palette.surface,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: palette.border,
+    borderWidth: 1.5,
+    borderColor: palette.borderDark,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
   },
   actionBtnDisabled: {
     opacity: 0.6,
@@ -715,29 +749,37 @@ const styles = StyleSheet.create({
   },
   actionBtnText: {
     fontSize: 11,
-    fontWeight: 'bold',
-    color: palette.text,
+    fontWeight: '800',
+    color: palette.deepBlack,
   },
   card: {
     backgroundColor: palette.surface,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: palette.border,
+    borderWidth: 1.5,
+    borderColor: palette.borderDark,
+    borderLeftWidth: 4,
+    borderLeftColor: palette.brandYellow,
     padding: 14,
     marginBottom: 14,
+    elevation: 2,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
   },
   findingSummaryHeader: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: palette.primary,
-    letterSpacing: 0.6,
+    fontSize: 12,
+    fontWeight: '900',
+    color: palette.deepBlack,
+    letterSpacing: 0.8,
     marginBottom: 6,
   },
   findingNarrativeText: {
     fontSize: 13,
-    color: palette.text,
+    color: palette.deepBlack,
     lineHeight: 18,
     marginBottom: 12,
+    fontWeight: '500',
   },
   findingsCounterRow: {
     flexDirection: 'row',
@@ -752,16 +794,19 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 6,
     alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: palette.borderDark,
   },
   findingCountLabel: {
     fontSize: 9,
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: palette.textSecondary,
+    letterSpacing: 0.3,
   },
   findingCountValue: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: palette.text,
+    fontSize: 14,
+    fontWeight: '900',
+    color: palette.deepBlack,
     marginTop: 2,
   },
   emptyFindingsBox: {
@@ -770,8 +815,8 @@ const styles = StyleSheet.create({
   },
   emptyFindingsText: {
     fontSize: 13,
-    fontWeight: 'bold',
-    color: palette.textSecondary,
+    fontWeight: '800',
+    color: palette.deepBlack,
     marginBottom: 4,
   },
   emptyFindingsSub: {
@@ -779,22 +824,25 @@ const styles = StyleSheet.create({
     color: palette.textSecondary,
     textAlign: 'center',
     lineHeight: 16,
+    fontWeight: '600',
   },
   integrityRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.04)',
+    borderBottomColor: palette.border,
   },
   integrityLabel: {
     fontSize: 12,
+    fontWeight: '700',
     color: palette.textSecondary,
   },
   integrityValue: {
     fontSize: 12,
-    color: palette.text,
+    color: palette.deepBlack,
     fontFamily: 'monospace',
+    fontWeight: '700',
   },
   emptyContainer: {
     flex: 1,
@@ -808,8 +856,8 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: palette.text,
+    fontWeight: '900',
+    color: palette.deepBlack,
     marginBottom: 8,
   },
   emptyText: {
@@ -817,17 +865,22 @@ const styles = StyleSheet.create({
     color: palette.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
+    fontWeight: '500',
     marginBottom: 24,
   },
   primaryActionBtn: {
-    backgroundColor: palette.primary,
-    borderRadius: 8,
+    backgroundColor: palette.deepBlack,
+    borderRadius: 10,
     paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingVertical: 14,
+    borderLeftWidth: 4,
+    borderLeftColor: palette.brandYellow,
+    elevation: 3,
   },
   primaryActionBtnText: {
-    color: '#041018',
+    color: palette.white,
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
 });

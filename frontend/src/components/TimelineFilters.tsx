@@ -27,9 +27,9 @@ const SEVERITY_LABELS: Record<IncidentSeverity, string> = {
 
 const SEVERITY_COLORS: Record<IncidentSeverity, string> = {
   1: palette.success,
-  2: '#84cc16',
+  2: '#65A30D',
   3: palette.warning,
-  4: '#f97316',
+  4: '#EA580C',
   5: palette.error,
 };
 
@@ -48,11 +48,12 @@ const MEDIA_TYPE_ICONS: Record<MediaCategory, string> = {
 };
 
 const MEDIA_TYPE_COLORS: Record<MediaCategory, string> = {
-  IMAGE: '#00F2FE',
-  VIDEO: '#FF2A6D',
-  AUDIO: '#4FACFE',
-  DOCUMENT: '#10B981',
+  IMAGE: palette.brandYellow,
+  VIDEO: palette.error,
+  AUDIO: palette.deepBlack,
+  DOCUMENT: palette.success,
 };
+
 
 export function TimelineFilters({
   selectedSeverities,
@@ -165,13 +166,13 @@ export function TimelineFilters({
                   <View
                     style={[
                       styles.actorAvatar,
-                      { backgroundColor: selectedActors.includes(actor.id) ? palette.primary : palette.surfaceVariant },
+                      { backgroundColor: selectedActors.includes(actor.id) ? palette.deepBlack : palette.surfaceVariant },
                     ]}
                   >
                     <Text
                       style={[
                         styles.actorAvatarText,
-                        { color: selectedActors.includes(actor.id) ? '#041018' : palette.text },
+                        { color: selectedActors.includes(actor.id) ? palette.white : palette.text },
                       ]}
                     >
                       {actor.name.charAt(0).toUpperCase()}
@@ -203,6 +204,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
     borderColor: palette.border,
+    elevation: 1,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
   },
   headerRow: {
     flexDirection: 'row',
@@ -220,14 +226,16 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     backgroundColor: palette.surfaceVariant,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: palette.border,
   },
   clearBtnText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: palette.primary,
+    fontWeight: '700',
+    color: palette.brandYellow,
   },
   searchInput: {
-    backgroundColor: palette.background,
+    backgroundColor: palette.surface,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,

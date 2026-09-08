@@ -71,6 +71,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
     borderColor: palette.border,
+    borderLeftWidth: 4,
+    borderLeftColor: palette.brandYellow,
   },
   caseTitle: {
     fontSize: 16,
@@ -84,7 +86,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   exportBtn: {
-    backgroundColor: palette.primary,
+    backgroundColor: palette.deepBlack,
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -93,12 +95,14 @@ const styles = StyleSheet.create({
   exportBtnText: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: palette.background,
+    color: palette.white,
   },
   resultCard: {
-    backgroundColor: palette.surfaceVariant,
+    backgroundColor: palette.surface,
     borderRadius: 10,
     padding: 16,
+    borderWidth: 1,
+    borderColor: palette.border,
     borderLeftWidth: 4,
     borderLeftColor: palette.success,
   },

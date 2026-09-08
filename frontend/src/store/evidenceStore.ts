@@ -140,7 +140,7 @@ export const useEvidenceStore = create<EvidenceState>((set, get) => ({
         mimeType: params.mimeType,
         sha256Hash: hash,
         signature,
-        exifData,
+        exifData: exifData ?? undefined,
         aiAnalysis,
         isTampered: false,
       });

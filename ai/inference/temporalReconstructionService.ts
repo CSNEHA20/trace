@@ -282,7 +282,7 @@ export class TemporalReconstructionService {
         description: ev.description,
         trustIndicator,
         source: 'ai',
-        severity: ev.severity,
+        severity: (Math.max(1, Math.min(5, Math.round(ev.severity || 3))) as 1 | 2 | 3 | 4 | 5),
       });
     }
 
@@ -301,7 +301,7 @@ export class TemporalReconstructionService {
         description: rev.description,
         trustIndicator: 'REJECTED',
         source: 'ai',
-        severity: rev.severity || 3,
+        severity: (Math.max(1, Math.min(5, Math.round(rev.severity || 3))) as 1 | 2 | 3 | 4 | 5),
         isRejected: true,
         rejectionReason: 'Failed deterministic evidence grounding validation',
       });

@@ -93,7 +93,7 @@ export function CaseCreateModal({ visible, onClose, onCaseCreated }: CaseCreateM
 
             <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} disabled={isSubmitting}>
               {isSubmitting ? (
-                <ActivityIndicator color="#041018" size="small" />
+                <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
                 <Text style={styles.submitBtnText}>Create Case</Text>
               )}
@@ -108,47 +108,54 @@ export function CaseCreateModal({ visible, onClose, onCaseCreated }: CaseCreateM
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   dialog: {
     width: '100%',
-    maxWidth: 440,
+    maxWidth: 480,
     backgroundColor: palette.surface,
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: palette.border,
+    borderWidth: 1.5,
+    borderColor: palette.borderDark,
     padding: 20,
+    elevation: 6,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
   },
   title: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: palette.text,
+    fontWeight: '900',
+    color: palette.deepBlack,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 12,
+    fontWeight: '600',
     color: palette.textSecondary,
     marginBottom: 16,
   },
   label: {
     fontSize: 11,
-    fontWeight: 'bold',
-    color: palette.primary,
+    fontWeight: '800',
+    color: palette.deepBlack,
     marginBottom: 6,
     letterSpacing: 0.5,
   },
   input: {
-    backgroundColor: palette.background,
-    borderWidth: 1,
-    borderColor: palette.border,
+    backgroundColor: palette.surfaceVariant,
+    borderWidth: 1.5,
+    borderColor: palette.borderDark,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    color: palette.text,
+    color: palette.deepBlack,
     fontSize: 14,
+    fontWeight: '600',
     marginBottom: 14,
   },
   multiline: {
@@ -165,25 +172,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: palette.border,
+    borderWidth: 1.5,
+    borderColor: palette.borderDark,
+    backgroundColor: palette.surface,
   },
   cancelBtnText: {
-    color: palette.textSecondary,
+    color: palette.deepBlack,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   submitBtn: {
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
-    backgroundColor: palette.primary,
+    backgroundColor: palette.deepBlack,
+    borderLeftWidth: 3,
+    borderLeftColor: palette.brandYellow,
     minWidth: 100,
     alignItems: 'center',
+    elevation: 2,
   },
   submitBtnText: {
-    color: '#041018',
+    color: palette.white,
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: '800',
   },
 });
+

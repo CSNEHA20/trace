@@ -4,6 +4,7 @@ import { Button, SegmentedButtons, useTheme } from 'react-native-paper';
 import { AudioTranscriptionCard } from './AudioTranscriptionCard';
 import { whisperService } from '../services/whisperService';
 import { TranscriptionStatus, TranscriptionResult, WhisperModelType } from '../types';
+import { palette } from '../theme';
 
 export interface AudioTranscriptionModalProps {
   visible: boolean;
@@ -137,25 +138,30 @@ export const AudioTranscriptionModal: React.FC<AudioTranscriptionModalProps> = (
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
     justifyContent: 'center',
     padding: 16,
   },
   modalContent: {
-    backgroundColor: '#0f172a',
+    backgroundColor: palette.surface,
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: palette.border,
+    elevation: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#f8fafc',
+    color: palette.text,
   },
   modalSubtitle: {
     fontSize: 12,
-    color: '#94a3b8',
+    color: palette.textSecondary,
     marginBottom: 16,
   },
   modelPickerContainer: {
@@ -163,14 +169,15 @@ const styles = StyleSheet.create({
   },
   pickerLabel: {
     fontSize: 12,
-    color: '#cbd5e1',
+    color: palette.textSecondary,
     marginBottom: 6,
   },
   segmentedBtn: {
-    backgroundColor: '#1e293b',
+    backgroundColor: palette.surfaceVariant,
   },
   closeBtn: {
     marginTop: 12,
-    borderColor: '#475569',
+    borderColor: palette.border,
   },
 });
+

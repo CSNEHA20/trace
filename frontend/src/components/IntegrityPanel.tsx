@@ -10,6 +10,7 @@ import {
 import { ChainVerificationResult, LedgerNode, TamperDetectionReason } from '../types/integrity';
 import { verificationService } from '../services/verificationService';
 import { chainService } from '../services/chainService';
+import { palette } from '../theme';
 
 interface IntegrityPanelProps {
   evidenceId: string;
@@ -56,8 +57,9 @@ export const IntegrityPanel: React.FC<IntegrityPanelProps> = ({ evidenceId, file
     }
   }, [evidenceId]);
 
-  const statusColor = result === null ? '#666' : result.isValid ? '#00c853' : '#d50000';
+  const statusColor = result === null ? palette.textSecondary : result.isValid ? palette.success : palette.error;
   const statusText = result === null ? 'Not Verified' : result.isValid ? 'INTEGRITY VERIFIED' : 'TAMPERING DETECTED';
+
 
   return (
     <View style={styles.container}>
@@ -123,49 +125,65 @@ export const IntegrityPanel: React.FC<IntegrityPanelProps> = ({ evidenceId, file
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: palette.card,
     borderRadius: 12,
     padding: 16,
     margin: 12,
     borderWidth: 1,
-    borderColor: '#2a2a4a',
+    borderColor: palette.border,
+    elevation: 1,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
   },
   header: { marginBottom: 12 },
-  title: { color: '#a78bfa', fontWeight: '700', fontSize: 16, marginBottom: 4 },
-  fileName: { color: '#888', fontSize: 12 },
+  title: { color: palette.deepBlack, fontWeight: '700', fontSize: 16, marginBottom: 4 },
+  fileName: { color: palette.textSecondary, fontSize: 12 },
   statusBadge: {
     borderWidth: 1.5,
     borderRadius: 8,
     padding: 10,
     marginBottom: 12,
     alignItems: 'center',
+    backgroundColor: palette.surfaceVariant,
   },
   statusText: { fontWeight: '700', fontSize: 14, letterSpacing: 1 },
-  nodeCount: { color: '#888', fontSize: 11, marginTop: 2 },
-  tamperSection: { backgroundColor: '#2d1b1b', borderRadius: 8, padding: 10, marginBottom: 12 },
-  tamperTitle: { color: '#ff6b6b', fontWeight: '700', marginBottom: 6, fontSize: 13 },
-  tamperReason: { color: '#ffb3b3', fontSize: 12, marginBottom: 2 },
+  nodeCount: { color: palette.textSecondary, fontSize: 11, marginTop: 2 },
+  tamperSection: {
+    backgroundColor: palette.errorBg,
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(220, 38, 38, 0.3)',
+  },
+  tamperTitle: { color: palette.error, fontWeight: '700', marginBottom: 6, fontSize: 13 },
+  tamperReason: { color: '#991B1B', fontSize: 12, marginBottom: 2 },
   verifyBtn: {
-    backgroundColor: '#7c3aed',
+    backgroundColor: palette.primary,
     borderRadius: 8,
     padding: 12,
     alignItems: 'center',
     marginBottom: 8,
   },
-  verifyBtnDisabled: { backgroundColor: '#4a3070' },
-  verifyBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
-  toggleChain: { color: '#a78bfa', textAlign: 'center', fontSize: 12, marginBottom: 6 },
+  verifyBtnDisabled: { opacity: 0.6 },
+  verifyBtnText: { color: palette.white, fontWeight: '700', fontSize: 14 },
+  toggleChain: { color: palette.brandYellow, textAlign: 'center', fontSize: 12, marginBottom: 6, fontWeight: '600' },
   chainContainer: { maxHeight: 300 },
   nodeCard: {
-    backgroundColor: '#0d1117',
+    backgroundColor: palette.surfaceVariant,
     borderRadius: 6,
     padding: 8,
     marginBottom: 6,
     borderLeftWidth: 3,
-    borderLeftColor: '#22c55e',
+    borderLeftColor: palette.success,
+    borderWidth: 1,
+    borderColor: palette.border,
   },
-  nodeCardBad: { borderLeftColor: '#ef4444' },
-  nodePos: { color: '#a78bfa', fontWeight: '600', fontSize: 12, marginBottom: 2 },
-  nodeHash: { color: '#666', fontSize: 10, fontFamily: 'monospace' },
-  nodeTs: { color: '#555', fontSize: 10, marginTop: 2 },
+  nodeCardBad: { borderLeftColor: palette.error },
+  nodePos: { color: palette.deepBlack, fontWeight: '600', fontSize: 12, marginBottom: 2 },
+  nodeHash: { color: palette.textSecondary, fontSize: 10, fontFamily: 'monospace' },
+  nodeTs: { color: palette.textSecondary, fontSize: 10, marginTop: 2 },
 });
+

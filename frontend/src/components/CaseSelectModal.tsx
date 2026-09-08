@@ -40,7 +40,7 @@ export function CaseSelectModal({
           </View>
           <Text style={styles.subtitle}>Choose an authoritative case file from SQLite</Text>
 
-          <ScrollView style={styles.caseList} contentContainerStyle={styles.caseListContent}>
+          <ScrollView style={styles.list} contentContainerStyle={styles.caseListContent}>
             {cases.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>No forensic cases found.</Text>
@@ -91,7 +91,7 @@ export function CaseSelectModal({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -102,9 +102,14 @@ const styles = StyleSheet.create({
     maxHeight: '80%',
     backgroundColor: palette.surface,
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: palette.border,
+    borderWidth: 1.5,
+    borderColor: palette.borderDark,
     padding: 20,
+    elevation: 6,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
   },
   headerRow: {
     flexDirection: 'row',
@@ -113,21 +118,23 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: palette.text,
+    fontWeight: '900',
+    color: palette.deepBlack,
+    marginBottom: 4,
   },
   closeText: {
-    color: palette.textSecondary,
+    color: palette.deepBlack,
     fontSize: 18,
+    fontWeight: '800',
     padding: 4,
   },
   subtitle: {
     fontSize: 12,
+    fontWeight: '600',
     color: palette.textSecondary,
-    marginTop: 2,
     marginBottom: 16,
   },
-  caseList: {
+  list: {
     maxHeight: 340,
   },
   caseListContent: {
@@ -140,17 +147,22 @@ const styles = StyleSheet.create({
   emptyText: {
     color: palette.textSecondary,
     fontSize: 13,
+    fontWeight: '600',
   },
   caseItem: {
-    backgroundColor: palette.surfaceVariant,
+    backgroundColor: palette.surface,
+    borderWidth: 1.5,
+    borderColor: palette.borderDark,
     borderRadius: 10,
     padding: 14,
-    borderWidth: 1,
-    borderColor: palette.border,
+    marginBottom: 10,
   },
   caseItemActive: {
-    borderColor: palette.primary,
-    backgroundColor: 'rgba(0, 242, 254, 0.06)',
+    borderColor: palette.brandYellow,
+    backgroundColor: palette.brandYellowBg,
+    borderWidth: 2,
+    borderLeftWidth: 4,
+    borderLeftColor: palette.brandYellow,
   },
   caseItemHeader: {
     flexDirection: 'row',
@@ -161,26 +173,27 @@ const styles = StyleSheet.create({
   caseNumber: {
     fontFamily: 'monospace',
     fontSize: 12,
-    fontWeight: 'bold',
-    color: palette.secondary,
+    fontWeight: '900',
+    color: palette.deepBlack,
   },
   activeBadge: {
     fontSize: 10,
-    fontWeight: 'bold',
-    color: palette.primary,
-    backgroundColor: 'rgba(0, 242, 254, 0.15)',
-    paddingHorizontal: 6,
+    fontWeight: '900',
+    color: palette.deepBlack,
+    backgroundColor: palette.brandYellow,
+    paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 4,
   },
   caseTitle: {
     fontSize: 15,
-    fontWeight: '600',
-    color: palette.text,
+    fontWeight: '800',
+    color: palette.deepBlack,
     marginBottom: 4,
   },
   caseMeta: {
     fontSize: 11,
+    fontWeight: '600',
     color: palette.textSecondary,
   },
   footerRow: {
@@ -190,14 +203,18 @@ const styles = StyleSheet.create({
     paddingTop: 14,
   },
   newCaseBtn: {
-    backgroundColor: palette.primary,
-    borderRadius: 8,
-    paddingVertical: 12,
+    backgroundColor: palette.deepBlack,
+    borderRadius: 10,
+    paddingVertical: 14,
     alignItems: 'center',
+    borderLeftWidth: 4,
+    borderLeftColor: palette.brandYellow,
+    elevation: 3,
   },
   newCaseBtnText: {
-    color: '#041018',
+    color: palette.white,
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
 });

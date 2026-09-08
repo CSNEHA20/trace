@@ -7,6 +7,7 @@ interface IngestionProgressOverlayProps {
   visible: boolean;
   status: IngestionStatus | null;
   filename?: string;
+  fileName?: string;
   statusMessage?: string;
 }
 
@@ -39,10 +40,10 @@ const STEP_LABELS: Record<string, string> = {
   COPYING: 'COPY',
   VALIDATING: 'CHECK',
   HASHING: 'HASH',
-  EXTRACTING_METADATA: 'EXIF',
+  EXTRACTING_METADATA: 'META',
   PROCESSING_EXTRACT: 'EXTRACT',
   RECORDING: 'LEDGER',
-  COMPLETE: 'LOCKED',
+  COMPLETE: 'SECURED',
 };
 
 function stepIndex(status: IngestionStatus | null): number {
@@ -58,8 +59,10 @@ export function IngestionProgressOverlay({
   visible,
   status,
   filename,
+  fileName,
   statusMessage,
 }: IngestionProgressOverlayProps) {
+  const displayFilename = filename || fileName;
   const isTerminal =
     status === 'COMPLETE' || status === 'FAILED' || status === 'DUPLICATE' || status === 'CANCELLED';
   const currentStep = stepIndex(status);
@@ -91,9 +94,9 @@ export function IngestionProgressOverlay({
             {statusMessage || (status ? STATUS_MESSAGES[status] : 'Initialising…')}
           </Text>
 
-          {filename ? (
+          {displayFilename ? (
             <Text style={styles.filename} numberOfLines={2} ellipsizeMode="middle">
-              {filename}
+              {displayFilename}
             </Text>
           ) : null}
 
@@ -141,7 +144,7 @@ export function IngestionProgressOverlay({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(9, 13, 22, 0.92)',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
@@ -156,11 +159,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: palette.border,
     gap: 10,
+    elevation: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
   },
   bannerHeader: {
     fontSize: 10,
     fontWeight: 'bold',
-    color: palette.secondary,
+    color: palette.brandYellow,
     letterSpacing: 0.8,
     marginBottom: 4,
   },

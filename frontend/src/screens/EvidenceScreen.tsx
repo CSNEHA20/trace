@@ -108,23 +108,28 @@ const styles = StyleSheet.create({
     color: palette.textSecondary,
   },
   filterTextActive: {
-    color: palette.background,
+    color: palette.white,
   },
   content: {
     padding: 16,
   },
   captureBtn: {
-    backgroundColor: palette.surfaceVariant,
-    borderColor: palette.primary,
+    backgroundColor: palette.surface,
+    borderColor: palette.border,
     borderWidth: 1,
     padding: 14,
     borderRadius: 10,
     alignItems: 'center',
     marginBottom: 16,
+    elevation: 1,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
   },
   captureBtnText: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: palette.primary,
+    color: palette.deepBlack,
   },
 });

@@ -27,14 +27,14 @@ export function ImageOcrCard({
   const getStatusColor = () => {
     switch (displayStatus) {
       case 'COMPLETED':
-        return palette.success || '#10B981';
+        return palette.success;
       case 'FAILED':
-        return palette.error || '#EF4444';
+        return palette.error;
       case 'PROCESSING':
       case 'VALIDATING':
-        return palette.accent || '#F59E0B';
+        return palette.brandYellow;
       default:
-        return palette.secondary || '#94A3B8';
+        return palette.textSecondary;
     }
   };
 
@@ -54,7 +54,7 @@ export function ImageOcrCard({
 
       {isProcessing ? (
         <View style={styles.processingContainer}>
-          <ActivityIndicator size="small" color={palette.primary || '#3B82F6'} />
+          <ActivityIndicator size="small" color={palette.brandYellow} />
           <Text style={styles.processingText}>
             {status === 'VALIDATING' ? 'Validating image integrity...' : 'Recognizing text on-device...'}
           </Text>
@@ -191,15 +191,17 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
   textBox: {
-    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    backgroundColor: palette.surfaceVariant,
     padding: 12,
-    borderRadius: 6,
+    borderRadius: 8,
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: palette.border,
   },
   textLabel: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: palette.secondary,
+    color: palette.brandYellow,
     marginBottom: 4,
   },
   recognizedText: {
@@ -209,9 +211,9 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
   },
   emptyTextBox: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: palette.surfaceVariant,
     padding: 12,
-    borderRadius: 6,
+    borderRadius: 8,
     marginBottom: 8,
     borderWidth: 1,
     borderColor: palette.border,
@@ -223,7 +225,7 @@ const styles = StyleSheet.create({
   },
   emptyTextDescription: {
     fontSize: 12,
-    color: palette.secondary,
+    color: palette.textSecondary,
     marginTop: 2,
   },
   metaRow: {
@@ -233,7 +235,7 @@ const styles = StyleSheet.create({
   },
   metaLabel: {
     fontSize: 11,
-    color: palette.secondary,
+    color: palette.textSecondary,
   },
   metaValue: {
     fontSize: 11,
@@ -243,7 +245,7 @@ const styles = StyleSheet.create({
   actionBtn: {
     backgroundColor: palette.primary,
     paddingVertical: 10,
-    borderRadius: 6,
+    borderRadius: 8,
     alignItems: 'center',
     marginTop: 8,
   },
@@ -251,8 +253,9 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   actionBtnText: {
-    color: '#FFFFFF',
+    color: palette.white,
     fontWeight: 'bold',
     fontSize: 13,
   },
 });
+

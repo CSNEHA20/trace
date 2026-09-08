@@ -286,13 +286,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   statusCardSuccess: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    borderColor: '#10b981',
+    backgroundColor: '#DCFCE7',
+    borderColor: '#16A34A',
     borderWidth: 1,
   },
   statusCardWarning: {
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    borderColor: '#f59e0b',
+    backgroundColor: palette.brandYellowBg,
+    borderColor: palette.brandYellow,
     borderWidth: 1,
   },
   statusTitle: {
@@ -305,21 +305,23 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   textSuccess: {
-    color: '#10b981',
+    color: '#16A34A',
   },
   textWarning: {
-    color: '#f59e0b',
+    color: palette.brandAmber,
   },
   section: {
     marginBottom: 16,
     backgroundColor: palette.surface,
+    borderWidth: 1,
+    borderColor: palette.border,
     padding: 12,
     borderRadius: 8,
   },
   sectionTitle: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: palette.primary,
+    color: palette.brandAmber,
     marginBottom: 8,
   },
   infoRow: {
@@ -349,13 +351,17 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   sealBox: {
-    backgroundColor: '#181825',
+    backgroundColor: palette.surfaceVariant,
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderLeftWidth: 3,
+    borderLeftColor: palette.brandYellow,
     padding: 12,
     borderRadius: 8,
     marginTop: 8,
   },
   sealHeader: {
-    color: '#89b4fa',
+    color: palette.brandAmber,
     fontWeight: 'bold',
     fontSize: 11,
     marginBottom: 6,
@@ -367,11 +373,11 @@ const styles = StyleSheet.create({
   },
   sealLabel: {
     fontSize: 10,
-    color: '#a6adc8',
+    color: palette.textSecondary,
   },
   sealValue: {
     fontSize: 10,
-    color: '#cdd6f4',
+    color: palette.text,
     fontFamily: 'monospace',
     flex: 1,
     textAlign: 'right',
@@ -398,24 +404,24 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: palette.background,
+    backgroundColor: palette.card,
     borderWidth: 1,
-    borderColor: palette.primary,
+    borderColor: palette.brandYellow,
     alignItems: 'center',
   },
   tertiaryButtonText: {
-    color: palette.primary,
+    color: palette.brandAmber,
     fontWeight: '600',
   },
   primaryButton: {
     flex: 2,
     paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: palette.primary,
+    backgroundColor: palette.deepBlack,
     alignItems: 'center',
   },
   primaryButtonText: {
-    color: '#ffffff',
+    color: palette.white,
     fontWeight: 'bold',
   },
 });

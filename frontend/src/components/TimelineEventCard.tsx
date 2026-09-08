@@ -17,9 +17,9 @@ interface TimelineEventCardProps {
 
 const SEVERITY_COLORS: Record<IncidentSeverity, string> = {
   1: palette.success,
-  2: '#84cc16',
+  2: '#65A30D',
   3: palette.warning,
-  4: '#f97316',
+  4: '#EA580C',
   5: palette.error,
 };
 
@@ -42,11 +42,12 @@ const EVENT_TYPE_ICONS: Record<string, string> = {
 };
 
 const MEDIA_TYPE_COLORS: Record<MediaCategory, string> = {
-  IMAGE: '#00F2FE',
-  VIDEO: '#FF2A6D',
-  AUDIO: '#4FACFE',
-  DOCUMENT: '#10B981',
+  IMAGE: palette.brandYellow,
+  VIDEO: palette.error,
+  AUDIO: palette.deepBlack,
+  DOCUMENT: palette.success,
 };
+
 
 export function TimelineEventCard({
   event,
@@ -189,11 +190,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: palette.border,
     overflow: 'hidden',
+    elevation: 1,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
   },
   cardSelected: {
-    borderColor: palette.primary,
+    borderColor: palette.brandYellow,
     borderWidth: 2,
-    shadowColor: palette.primary,
+    shadowColor: palette.brandYellow,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -327,11 +333,13 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     backgroundColor: palette.surfaceVariant,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: palette.border,
   },
   moreEvidenceText: {
     fontSize: 10,
-    fontWeight: '600',
-    color: palette.primary,
+    fontWeight: '700',
+    color: palette.deepBlack,
   },
   annotation: {
     marginTop: 10,
@@ -345,7 +353,7 @@ const styles = StyleSheet.create({
   annotationLabel: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: palette.accent,
+    color: palette.brandYellow,
     marginBottom: 4,
   },
   annotationText: {
@@ -353,4 +361,4 @@ const styles = StyleSheet.create({
     color: palette.text,
     lineHeight: 18,
   },
-});
+});

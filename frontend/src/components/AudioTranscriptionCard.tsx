@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Card, Button, ProgressBar, Chip, useTheme } from 'react-native-paper';
 import { TranscriptionStatus, TranscriptionErrorCode, TranscriptionResult } from '../types';
+import { palette } from '../theme';
 
 export interface AudioTranscriptionCardProps {
   evidenceId: string;
@@ -32,18 +33,19 @@ export const AudioTranscriptionCard: React.FC<AudioTranscriptionCardProps> = ({
   const getStatusColor = (st: TranscriptionStatus) => {
     switch (st) {
       case 'COMPLETED':
-        return '#10b981'; // emerald green
+        return palette.success; // Build Green
       case 'PROCESSING':
       case 'LOADING_MODEL':
-        return '#3b82f6'; // blue
+        return palette.brandYellow; // iQOO Brand Yellow
       case 'FAILED':
-        return '#ef4444'; // red
+        return palette.error; // Restriction Red
       case 'CANCELLED':
-        return '#f59e0b'; // amber
+        return palette.brandYellow;
       default:
-        return '#6b7280'; // gray
+        return palette.textSecondary;
     }
   };
+
 
   const formatErrorCode = (code?: TranscriptionErrorCode) => {
     switch (code) {
@@ -102,7 +104,7 @@ export const AudioTranscriptionCard: React.FC<AudioTranscriptionCardProps> = ({
             </View>
             <ProgressBar
               progress={progressPercent / 100}
-              color="#3b82f6"
+              color={palette.brandYellow}
               style={styles.progressBar}
             />
             {onCancelTranscription && (
@@ -168,7 +170,8 @@ export const AudioTranscriptionCard: React.FC<AudioTranscriptionCardProps> = ({
             </Text>
             <Button
               mode="contained"
-              buttonColor="#ef4444"
+              buttonColor={palette.error}
+              textColor={palette.white}
               onPress={onStartTranscription}
               style={styles.retryBtn}
               testID="retry-transcription-btn"
@@ -219,9 +222,14 @@ const styles = StyleSheet.create({
   card: {
     marginVertical: 8,
     borderRadius: 12,
-    backgroundColor: '#1e293b',
+    backgroundColor: palette.card,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: palette.border,
+    elevation: 1,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
   },
   headerRow: {
     flexDirection: 'row',
@@ -235,11 +243,11 @@ const styles = StyleSheet.create({
   titleText: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: '#f8fafc',
+    color: palette.text,
   },
   subtitleText: {
     fontSize: 11,
-    color: '#94a3b8',
+    color: palette.textSecondary,
     marginTop: 2,
   },
   statusChip: {
@@ -255,17 +263,17 @@ const styles = StyleSheet.create({
   },
   progressStatusText: {
     fontSize: 12,
-    color: '#cbd5e1',
+    color: palette.textSecondary,
   },
   progressPercentText: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#3b82f6',
+    color: palette.brandYellow,
   },
   progressBar: {
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#334155',
+    backgroundColor: palette.border,
   },
   cancelBtn: {
     alignSelf: 'flex-end',
@@ -273,7 +281,7 @@ const styles = StyleSheet.create({
   },
   cancelBtnText: {
     fontSize: 12,
-    color: '#ef4444',
+    color: palette.error,
   },
   resultContainer: {
     marginTop: 4,
@@ -281,20 +289,20 @@ const styles = StyleSheet.create({
   resultHeader: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#94a3b8',
+    color: palette.textSecondary,
     marginBottom: 4,
   },
   transcriptBox: {
-    backgroundColor: '#0f172a',
+    backgroundColor: palette.surfaceVariant,
     padding: 10,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: palette.border,
     marginBottom: 8,
   },
   transcriptText: {
     fontSize: 13,
-    color: '#f1f5f9',
+    color: palette.text,
     lineHeight: 18,
   },
   hashBadge: {
@@ -302,12 +310,12 @@ const styles = StyleSheet.create({
   },
   hashLabel: {
     fontSize: 10,
-    color: '#64748b',
+    color: palette.textSecondary,
   },
   hashValue: {
     fontSize: 11,
     fontFamily: 'monospace',
-    color: '#10b981',
+    color: palette.success,
   },
   actionRow: {
     flexDirection: 'row',
@@ -315,32 +323,38 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   actionBtn: {
-    borderColor: '#475569',
+    borderColor: palette.border,
   },
   errorContainer: {
-    backgroundColor: '#451a1a',
+    backgroundColor: palette.errorBg,
     padding: 12,
     borderRadius: 8,
     marginTop: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(220, 38, 38, 0.3)',
   },
   errorTitle: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#fca5a5',
+    color: palette.error,
     marginBottom: 4,
   },
   errorText: {
     fontSize: 12,
-    color: '#f87171',
+    color: '#991B1B',
     marginBottom: 8,
   },
   cancelledContainer: {
+    backgroundColor: palette.warningBg,
+    borderRadius: 8,
     padding: 8,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 166, 35, 0.3)',
   },
   cancelledText: {
     fontSize: 12,
-    color: '#fbbf24',
+    color: '#B45309',
     marginBottom: 8,
   },
   idleContainer: {
@@ -348,13 +362,14 @@ const styles = StyleSheet.create({
   },
   idleText: {
     fontSize: 12,
-    color: '#94a3b8',
+    color: palette.textSecondary,
     marginBottom: 10,
   },
   startBtn: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: palette.primary,
   },
   retryBtn: {
     marginTop: 4,
   },
 });
+
