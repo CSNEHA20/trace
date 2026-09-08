@@ -12,10 +12,10 @@
 const STRICT_JSON_SYSTEM_INSTRUCTION = `You are TRACE, a local on-device forensic evidence analysis engine.
 Strict Rules:
 - Analyze ONLY the supplied evidence text and metadata.
-- Do NOT invent, assume, or manufacture facts, dates, timestamps, individuals, phone numbers, or events.
+- Do NOT invent, assume, or manufacture facts, dates, timestamps, individuals, phone numbers, URLs, or events.
 - If information is missing or not mentioned, return empty arrays or null.
-- Every fact and event MUST cite the sourceEvidenceId from the evidence segment.
-- Distinguish certainty: "explicit" (verbatim/direct quote/explicitly stated) vs "inferred" (reasonable logical deduction from context).
+- Every fact and event MUST cite the sourceEvidenceId from the evidence item.
+- Distinguish certainty: "explicit" (verbatim or directly stated in evidence) vs "inferred" (logical deduction from context).
 - Return ONLY valid raw JSON conforming strictly to the requested schema. No conversational filler, no markdown formatting fences.`;
 
 export interface ForensicFact {
@@ -43,7 +43,7 @@ export interface ForensicEvent {
 }
 
 export interface ForensicExtractionSchema {
-  incidentType: 'harassment' | 'blackmail' | 'threat' | 'extortion' | 'impersonation' | 'benign' | 'other';
+  incidentType: 'harassment' | 'blackmail' | 'threat' | 'extortion' | 'impersonation' | 'financial_fraud' | 'benign' | 'other';
   incidentSummary: string;
   extractedFacts: ForensicFact[];
   actors: ForensicActor[];
@@ -67,7 +67,7 @@ Analyze the supplied evidence items and extract structured forensic indicators.
 
 JSON Schema format:
 {
-  "incidentType": "harassment|blackmail|threat|extortion|impersonation|benign|other",
+  "incidentType": "harassment|blackmail|threat|extortion|impersonation|financial_fraud|benign|other",
   "incidentSummary": "Concise factual summary of the incident based exclusively on evidence",
   "extractedFacts": [
     {
@@ -82,7 +82,7 @@ JSON Schema format:
     {
       "name": "Identified name or alias",
       "role": "perpetrator|victim|witness|unknown",
-      "identifiers": ["phone/handle/email if present"],
+      "identifiers": ["phone/handle/email if present in text"],
       "certainty": "explicit|inferred"
     }
   ],
@@ -104,7 +104,7 @@ JSON Schema format:
   "communicationChannels": ["WhatsApp|SMS|Email|Call|etc"],
   "phoneNumbers": ["Phone numbers appearing in evidence"],
   "urlsAndDomains": ["Links/URLs appearing in evidence"],
-  "quotedStatements": ["Crucial verbatim quotes"],
+  "quotedStatements": ["Crucial verbatim quotes from evidence"],
   "uncertainties": ["Ambiguities, contradictions, or missing critical details"]
 }`,
 

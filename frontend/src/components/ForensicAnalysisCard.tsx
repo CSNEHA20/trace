@@ -138,6 +138,45 @@ export function ForensicAnalysisCard({
             </View>
           )}
 
+          {result.schema.paymentDemands.length > 0 && (
+            <View style={styles.subSection}>
+              <Text style={styles.paymentHeader}>Payment Demands ({result.schema.paymentDemands.length})</Text>
+              {result.schema.paymentDemands.map((demand, idx) => (
+                <Text key={idx} style={styles.paymentText}>• {demand}</Text>
+              ))}
+            </View>
+          )}
+
+          {result.schema.quotedStatements.length > 0 && (
+            <View style={styles.subSection}>
+              <Text style={styles.subHeader}>Verified Quotes ({result.schema.quotedStatements.length})</Text>
+              {result.schema.quotedStatements.map((quote, idx) => (
+                <Text key={idx} style={styles.quoteText}>"{quote}"</Text>
+              ))}
+            </View>
+          )}
+
+          {result.warnings.length > 0 && (
+            <View style={styles.subSection}>
+              <Text style={styles.warningHeader}>Grounding Validation Warnings ({result.warnings.length})</Text>
+              {result.warnings.map((warn, idx) => (
+                <Text key={idx} style={styles.warningText}>⚠ {warn}</Text>
+              ))}
+            </View>
+          )}
+
+          {result.rejectedClaims.length > 0 && (
+            <View style={styles.subSection}>
+              <Text style={styles.rejectedHeader}>Rejected Unsupported Claims ({result.rejectedClaims.length})</Text>
+              {result.rejectedClaims.map((rej, idx) => (
+                <View key={idx} style={styles.rejectedItem}>
+                  <Text style={styles.rejectedField}>[{rej.field}]: "{String(rej.value)}"</Text>
+                  <Text style={styles.rejectedReason}>{rej.reason}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
           <View style={styles.proofRow}>
             <Text style={styles.proofLabel}>Hash Chain Node:</Text>
             <Text style={styles.proofHash}>{result.hashChainNodeId}</Text>
@@ -295,6 +334,60 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#FCA5A5',
     marginBottom: 4,
+  },
+  paymentHeader: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#F59E0B',
+    marginBottom: 6,
+  },
+  paymentText: {
+    fontSize: 12,
+    color: '#FDE68A',
+    marginBottom: 4,
+  },
+  quoteText: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    color: '#E0E7FF',
+    backgroundColor: '#1E1B4B',
+    padding: 6,
+    borderRadius: 4,
+    marginBottom: 4,
+  },
+  warningHeader: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#F59E0B',
+    marginBottom: 6,
+  },
+  warningText: {
+    fontSize: 11,
+    color: '#FCD34D',
+    marginBottom: 4,
+    lineHeight: 16,
+  },
+  rejectedHeader: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#EF4444',
+    marginBottom: 6,
+  },
+  rejectedItem: {
+    backgroundColor: '#3E1F1F',
+    padding: 6,
+    borderRadius: 4,
+    marginBottom: 4,
+  },
+  rejectedField: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#FCA5A5',
+  },
+  rejectedReason: {
+    fontSize: 10,
+    color: '#F87171',
+    marginTop: 2,
   },
   factItem: {
     backgroundColor: palette.background,

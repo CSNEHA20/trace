@@ -185,4 +185,71 @@ class GemmaHardwareValidationTest {
             Log.i(TAG, "OFFLINE_INFERENCE_CLOSED")
         }
     }
+
+    @Test
+    fun executeStep8ForensicGroundingHardwareValidation() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val modelFile = File(context.filesDir, "trace-models/gemma-2b-it-cpu-int4.bin")
+
+        Log.i(TAG, "==================================================")
+        Log.i(TAG, "TRACE STEP 8: REAL HARDWARE FORENSIC EXTRACTION & GROUNDING")
+        Log.i(TAG, "Model path: ${modelFile.absolutePath}")
+        Log.i(TAG, "==================================================")
+
+        val jvmBeforeMB = getMemoryInfoMB()
+        val nativeBeforeMB = getNativeHeapAllocatedMB()
+        Log.i(TAG, "STEP8_MEMORY_BEFORE: JVM=${String.format("%.2f", jvmBeforeMB)} MB, NativeHeap=${String.format("%.2f", nativeBeforeMB)} MB")
+
+        val options = LlmInference.LlmInferenceOptions.builder()
+            .setModelPath(modelFile.absolutePath)
+            .setMaxTokens(512)
+            .setTopK(40)
+            .setTemperature(0.2f)
+            .build()
+
+        val inference = LlmInference.createFromOptions(context, options)
+
+        try {
+            val prompt = """
+You are TRACE, a local on-device forensic evidence analysis engine.
+Strict Rules:
+- Analyze ONLY the supplied evidence text and metadata.
+- Do NOT invent, assume, or manufacture facts, dates, timestamps, individuals, phone numbers, URLs, or events.
+- If information is missing or not mentioned, return empty arrays or null.
+- Every fact and event MUST cite the sourceEvidenceId from the evidence item.
+- Distinguish certainty: "explicit" vs "inferred".
+- Return ONLY valid raw JSON conforming strictly to the requested schema. No conversational filler, no markdown formatting fences.
+
+EVIDENCE CONTEXT:
+EVIDENCE_ITEM_START
+ID: ev-photo-threat-1
+TYPE: IMAGE
+FILE: threat_chat.jpg
+TIMESTAMP: 2026-09-08T08:00:00.000Z
+OCR_TEXT:
+I will publish your private photos if you do not pay me $5,000 to UPI ID victim@okbank or call 9876543210.
+TRANSCRIPT:
+[None]
+SHA256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+EVIDENCE_ITEM_END
+
+STRUCTURED FORENSIC JSON RESPONSE:
+""".trimIndent()
+
+            val genStart = System.currentTimeMillis()
+            val output = inference.generateResponse(prompt)
+            val genDurationMs = System.currentTimeMillis() - genStart
+
+            Log.i(TAG, "STEP8_FORENSIC_EXTRACTION_RESULT:")
+            Log.i(TAG, ">>> DURATION_MS: $genDurationMs")
+            Log.i(TAG, ">>> RAW_OUTPUT:\n$output\n<<< END STEP8 OUTPUT")
+
+            assertNotNull("Step 8 output must not be null", output)
+            assertTrue("Step 8 output must not be blank", output.isNotBlank())
+            Log.i(TAG, "STEP8_HARDWARE_VALIDATION_PASSED")
+        } finally {
+            inference.close()
+            Log.i(TAG, "STEP8_INFERENCE_CLOSED")
+        }
+    }
 }

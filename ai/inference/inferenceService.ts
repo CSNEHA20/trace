@@ -7,6 +7,12 @@ import {
   validateForensicExtraction,
 } from './inferenceJson';
 import {
+  validateAndGroundForensicExtraction,
+  EvidenceItemContext,
+  GroundingValidationResult,
+  RejectedClaim,
+} from './evidenceGroundingValidator';
+import {
   GEMMA_PROMPTS,
   buildForensicAnalysisPrompt,
   ForensicExtractionSchema,
@@ -16,14 +22,22 @@ export {
   chunkEvidenceText,
   parseModelJson,
   validateForensicExtraction,
+  validateAndGroundForensicExtraction,
 };
 export type { InferenceProgress, InferenceProgressStage, JsonInferenceResult } from './inferenceJson';
+export type {
+  EvidenceItemContext,
+  GroundingValidationResult,
+  RejectedClaim,
+} from './evidenceGroundingValidator';
 
 export interface ForensicExtractionResult {
   schema?: ForensicExtractionSchema;
   rawOutput: string;
   durationMs: number;
   parseError?: string;
+  warnings?: string[];
+  rejectedClaims?: RejectedClaim[];
   chunksCount: number;
 }
 
@@ -34,7 +48,7 @@ export interface ForensicExtractionResult {
  * 1. Offline capability & model checks.
  * 2. Token-budget chunking of evidence context.
  * 3. MediaPipe Gemma 2B INT4 native execution.
- * 4. Structured JSON extraction & validation.
+ * 4. Deterministic evidence-grounded validation.
  * 5. Honest failure handling without synthetic fallbacks.
  */
 export class OnDeviceInferenceService {
@@ -134,10 +148,11 @@ export class OnDeviceInferenceService {
   }
 
   /**
-   * Performs structured forensic extraction across evidence context.
+   * Performs structured forensic extraction across evidence context with deterministic grounding validation.
    */
   async inferForensicExtraction(
     evidenceContext: string,
+    evidenceItems: EvidenceItemContext[] = [],
     onProgress?: (progress: InferenceProgress) => void,
     timeoutMs = 60_000
   ): Promise<ForensicExtractionResult> {
@@ -191,27 +206,19 @@ export class OnDeviceInferenceService {
         stage: 'PARSING',
         completedChunks: 1,
         totalChunks: 1,
-        message: 'Validating structured forensic extraction…',
+        message: 'Validating evidence grounding and schema…',
       });
 
-      const parsed = parseModelJson<any>(rawOutput);
+      const validation = validateAndGroundForensicExtraction(rawOutput, evidenceItems);
       const durationMs = Date.now() - startTime;
 
-      if (parsed.parseError || !parsed.value) {
+      if (!validation.isValid || !validation.schema) {
         return {
           rawOutput,
           durationMs,
-          parseError: parsed.parseError || 'Malformed JSON returned by model.',
-          chunksCount: 1,
-        };
-      }
-
-      const validation = validateForensicExtraction(parsed.value);
-      if (!validation.isValid || !validation.normalized) {
-        return {
-          rawOutput,
-          durationMs,
-          parseError: validation.error || 'Failed schema validation.',
+          parseError: validation.parseError || 'Malformed JSON or ungrounded output returned by model.',
+          warnings: validation.warnings,
+          rejectedClaims: validation.rejectedClaims,
           chunksCount: 1,
         };
       }
@@ -224,9 +231,11 @@ export class OnDeviceInferenceService {
       });
 
       return {
-        schema: validation.normalized,
+        schema: validation.schema,
         rawOutput,
         durationMs,
+        warnings: validation.warnings,
+        rejectedClaims: validation.rejectedClaims,
         chunksCount: 1,
       };
     } catch (error) {
@@ -256,3 +265,4 @@ export class OnDeviceInferenceService {
 }
 
 export const onDeviceInferenceService = new OnDeviceInferenceService();
+

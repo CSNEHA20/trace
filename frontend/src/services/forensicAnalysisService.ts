@@ -6,6 +6,7 @@ import {
   onDeviceInferenceService,
   InferenceProgress,
   ForensicExtractionResult,
+  RejectedClaim,
 } from '../../../ai/inference/inferenceService';
 import {
   ForensicExtractionSchema,
@@ -31,6 +32,9 @@ export interface CompleteForensicAnalysisResult {
   payloadHash: string;
   durationMs: number;
   evidenceCount: number;
+  warnings: string[];
+  rejectedClaims: RejectedClaim[];
+  rawOutput: string;
 }
 
 /**
@@ -39,15 +43,15 @@ export interface CompleteForensicAnalysisResult {
  * Flow:
  * Evidence Files (OCR / Whisper / Text / Metadata)
  *   ↓
- * Normalized Forensic Evidence Context
+ * Delimited Evidence Context (EVIDENCE_ITEM_START ... EVIDENCE_ITEM_END)
  *   ↓
- * On-Device Gemma 2B INT4 (MediaPipe LLM Task)
+ * On-Device Gemma 2B INT4 (MediaPipe Tasks GenAI Runtime)
  *   ↓
- * Validated Forensic Extraction Schema (Explicit vs Inferred)
+ * Deterministic JSON Parsing & Evidence-Grounding Validation
  *   ↓
- * SQLite Persistence (Narratives, Events, Actors)
+ * SQLite Persistence (Events, Actors, Narratives)
  *   ↓
- * Cryptographic Hash Chain Ledger (Operation: ANALYZE / EXTRACT)
+ * Cryptographic Hash Chain Ledger (Operation: ANALYZE)
  */
 export class ForensicAnalysisService {
   async analyzeCaseEvidence(
@@ -85,64 +89,61 @@ export class ForensicAnalysisService {
       throw new Error(`None of the specified evidence IDs belong to case: ${caseId}`);
     }
 
-    // ── 2. Build Evidence Context from OCR / Whisper / Metadata ────────────
-    notify('CHUNKING', `Compiling extracted evidence context from ${targetEvidence.length} items…`);
+    // ── 2. Build Controlled Delimited Evidence Context ───────────────────────
+    notify('CHUNKING', `Compiling delimited evidence context from ${targetEvidence.length} items…`);
     const contextSegments: string[] = [];
 
     for (const item of targetEvidence) {
-      const textParts: string[] = [];
-      if (item.ocr_text && item.ocr_text.trim()) {
-        textParts.push(`[OCR Extracted Text]:\n"${item.ocr_text.trim()}"`);
-      }
-      if (item.transcription && item.transcription.trim()) {
-        textParts.push(`[Audio Transcription]:\n"${item.transcription.trim()}"`);
-      }
-
-      const bodyText = textParts.length > 0
-        ? textParts.join('\n\n')
-        : '[No extracted text or transcript available for this artifact]';
+      const fileName = item.file_path.split(/[/|\\]/).pop() || item.id;
+      const tsIso = new Date(item.import_ts).toISOString();
 
       const segment = [
-        `=== EVIDENCE ITEM: ${item.id} ===`,
-        `- Media Type: ${item.media_type}`,
-        `- File Path: ${item.file_path}`,
-        `- SHA-256 (Import): ${item.sha256_import}`,
-        `- Import Timestamp: ${new Date(item.import_ts).toISOString()}`,
-        item.exif_ts ? `- EXIF Timestamp: ${new Date(item.exif_ts).toISOString()}` : null,
-        `- Content:`,
-        bodyText,
-        `=== END EVIDENCE ITEM: ${item.id} ===`,
+        'EVIDENCE_ITEM_START',
+        `ID: ${item.id}`,
+        `TYPE: ${item.media_type}`,
+        `FILE: ${fileName}`,
+        `TIMESTAMP: ${tsIso}`,
+        item.exif_ts ? `EXIF_TIMESTAMP: ${new Date(item.exif_ts).toISOString()}` : null,
+        `OCR_TEXT:`,
+        item.ocr_text && item.ocr_text.trim() ? item.ocr_text.trim() : '[None]',
+        `TRANSCRIPT:`,
+        item.transcription && item.transcription.trim() ? item.transcription.trim() : '[None]',
+        `SHA256: ${item.sha256_import}`,
+        'EVIDENCE_ITEM_END',
       ].filter(Boolean).join('\n');
 
       contextSegments.push(segment);
     }
 
     const fullEvidenceContext = [
-      `CASE NUMBER: ${caseRecord.case_number}`,
-      `CASE TITLE: ${caseRecord.title}`,
-      `CASE DESCRIPTION: ${caseRecord.description || 'N/A'}`,
-      `TOTAL EVIDENCE SEGMENTS: ${targetEvidence.length}`,
+      `CASE_NUMBER: ${caseRecord.case_number}`,
+      `CASE_TITLE: ${caseRecord.title}`,
+      `CASE_DESCRIPTION: ${caseRecord.description || 'N/A'}`,
+      `TOTAL_EVIDENCE_ITEMS: ${targetEvidence.length}`,
       '',
       ...contextSegments,
     ].join('\n\n');
 
-    // ── 3. Execute On-Device Gemma LLM Inference ────────────────────────────
+    // ── 3. Execute On-Device Gemma LLM Inference with Grounding Validation ──
     const extractionResult: ForensicExtractionResult = await onDeviceInferenceService.inferForensicExtraction(
       fullEvidenceContext,
+      targetEvidence,
       options.onProgress,
       options.timeoutMs ?? 60_000
     );
 
     if (extractionResult.parseError || !extractionResult.schema) {
       throw new Error(
-        `On-device Gemma analysis failed to produce valid forensic JSON: ${extractionResult.parseError || 'Unknown parsing failure'}`
+        `On-device Gemma analysis failed to produce valid grounded forensic JSON: ${extractionResult.parseError || 'Unknown parsing failure'}`
       );
     }
 
     const schema = extractionResult.schema;
+    const warnings = extractionResult.warnings || [];
+    const rejectedClaims = extractionResult.rejectedClaims || [];
 
     // ── 4. Persist Results into SQLite ──────────────────────────────────────
-    notify('SAVING', 'Persisting extracted facts, events, and actors to SQLite…');
+    notify('SAVING', 'Persisting verified facts, events, and actors to SQLite…');
 
     const persistedEventIds: string[] = [];
     for (const ev of schema.temporalEvents) {
@@ -199,7 +200,10 @@ export class ForensicAnalysisService {
       schema.blackmailIndicators.length > 0 ? `### Blackmail / Extortion Indicators\n${schema.blackmailIndicators.map(b => `- ${b}`).join('\n')}\n` : '',
       schema.coercionIndicators.length > 0 ? `### Coercion Indicators\n${schema.coercionIndicators.map(c => `- ${c}`).join('\n')}\n` : '',
       schema.paymentDemands.length > 0 ? `### Payment / Financial Demands\n${schema.paymentDemands.map(p => `- ${p}`).join('\n')}\n` : '',
-      schema.uncertainties.length > 0 ? `### Forensic Uncertainties\n${schema.uncertainties.map(u => `- ${u}`).join('\n')}\n` : '',
+      schema.quotedStatements.length > 0 ? `### Quoted Statements\n${schema.quotedStatements.map(q => `- "${q}"`).join('\n')}\n` : '',
+      schema.phoneNumbers.length > 0 ? `### Extracted Phone Numbers\n${schema.phoneNumbers.map(p => `- ${p}`).join('\n')}\n` : '',
+      schema.urlsAndDomains.length > 0 ? `### URLs & Domains\n${schema.urlsAndDomains.map(u => `- ${u}`).join('\n')}\n` : '',
+      schema.uncertainties.length > 0 ? `### Forensic Uncertainties & Validation Rejections\n${schema.uncertainties.map(u => `- ${u}`).join('\n')}\n` : '',
     ].filter(Boolean).join('\n');
 
     const narrativeRecord: NarrativeRecord = await databaseEngine.insertNarrative({
@@ -207,7 +211,7 @@ export class ForensicAnalysisService {
       content: narrativeContent,
       generated_at: Date.now(),
       events_snapshot: JSON.stringify(persistedEventIds),
-      disclaimer: 'This structured forensic extraction was generated locally by Gemma 2B INT4 on-device. Analytical findings distinguish explicit statements from model inferences.',
+      disclaimer: 'This structured forensic extraction was generated locally by Gemma 2B INT4 on-device. Analytical findings distinguish explicit statements from model inferences. Unsupported claims were rejected by deterministic grounding validation.',
       parse_error: undefined,
       user_reviewed: false,
       user_edited: false,
@@ -228,7 +232,7 @@ export class ForensicAnalysisService {
 
     notify('COMPLETE', 'On-device forensic analysis and ledger recording complete.');
     logger.info(
-      `[ForensicAnalysisService] Gemma analysis complete: case=${caseId}, narrative=${narrativeRecord.id}, events=${persistedEventIds.length}, actors=${persistedActorIds.length}, chainNode=${chainNode.id}`
+      `[ForensicAnalysisService] Gemma analysis complete: case=${caseId}, narrative=${narrativeRecord.id}, events=${persistedEventIds.length}, actors=${persistedActorIds.length}, chainNode=${chainNode.id}, warnings=${warnings.length}, rejected=${rejectedClaims.length}`
     );
 
     return {
@@ -241,8 +245,12 @@ export class ForensicAnalysisService {
       payloadHash,
       durationMs: extractionResult.durationMs,
       evidenceCount: targetEvidence.length,
+      warnings,
+      rejectedClaims,
+      rawOutput: extractionResult.rawOutput,
     };
   }
 }
 
 export const forensicAnalysisService = new ForensicAnalysisService();
+
