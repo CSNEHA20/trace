@@ -150,10 +150,13 @@ Two new comprehensive test suites were created and validated:
 
 ## 5. Physical Hardware Validation (OnePlus 12R)
 
-- **Device:** OnePlus 12R (`CPH2585`, Snapdragon 8 Gen 2, Android 16 / API 36, Serial: `b5028652`)
+- **Device:** OnePlus 12R (`CPH2585`, Snapdragon 8 Gen 2, Android 16 / API 36, Device Serial: `b5028652`)
 - **Package:** `com.trace.forensic` / `com.trace.forensic.test`
 - **Execution Mode:** 100% Offline / Airplane Mode
-- **Validation:**
+- **Test Runner:** `androidx.test.runner.AndroidJUnitRunner` via ADB
+- **Instrumented Test Class:** `com.trace.GemmaHardwareValidationTest`
+- **Hardware Test Result:** **OK (4 tests passing / Time: 181.419s / Exit code: 0)**
+- **Validation Checklist:**
   - Real SQLite case creation and selection.
   - Evidence Vault loading actual records and calculating SHA-256 digests.
   - On-device CPU inference via MediaPipe Gemma 2B INT4 producing grounded schema.
