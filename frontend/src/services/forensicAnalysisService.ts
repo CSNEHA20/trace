@@ -125,16 +125,39 @@ export class ForensicAnalysisService {
     ].join('\n\n');
 
     // ── 3. Execute On-Device Gemma LLM Inference with Grounding Validation ──
-    const extractionResult: ForensicExtractionResult = await onDeviceInferenceService.inferForensicExtraction(
-      fullEvidenceContext,
-      targetEvidence,
-      options.onProgress,
-      options.timeoutMs ?? 60_000
-    );
+    let extractionResult: ForensicExtractionResult;
+    try {
+      extractionResult = await onDeviceInferenceService.inferForensicExtraction(
+        fullEvidenceContext,
+        targetEvidence,
+        options.onProgress,
+        options.timeoutMs ?? 60_000
+      );
+    } catch (llmErr) {
+      logger.warn(
+        `[ForensicAnalysisService] On-device Gemma LLM unavailable (${(llmErr as Error).message}). Engaging deterministic forensic engine.`
+      );
+      extractionResult = await onDeviceInferenceService.inferDeterministicForensicExtraction(
+        fullEvidenceContext,
+        targetEvidence,
+        options.onProgress
+      );
+    }
 
     if (extractionResult.parseError || !extractionResult.schema) {
+      logger.warn(
+        `[ForensicAnalysisService] Primary inference produced parse error (${extractionResult.parseError}). Engaging deterministic forensic engine.`
+      );
+      extractionResult = await onDeviceInferenceService.inferDeterministicForensicExtraction(
+        fullEvidenceContext,
+        targetEvidence,
+        options.onProgress
+      );
+    }
+
+    if (!extractionResult.schema) {
       throw new Error(
-        `On-device Gemma analysis failed to produce valid grounded forensic JSON: ${extractionResult.parseError || 'Unknown parsing failure'}`
+        `On-device forensic analysis failed to produce valid grounded forensic JSON: ${extractionResult.parseError || 'Unknown parsing failure'}`
       );
     }
 

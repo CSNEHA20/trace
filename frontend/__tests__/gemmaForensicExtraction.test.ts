@@ -532,4 +532,49 @@ describe('TRACE Step 7: Local Gemma Forensic Extraction Unit Tests', () => {
     expect(analyzeRecord).toBeDefined();
     expect(analyzeRecord?.payload_hash.length).toBe(64);
   });
+
+  // ── Scenario 12: Fallback to deterministic on-device engine when bridge is missing ────
+  it('gracefully falls back to deterministic forensic engine when MediaPipe bridge is missing', async () => {
+    mockClient.getCapability.mockResolvedValue({
+      availability: 'BRIDGE_MISSING',
+      lifecycle: 'UNLOADED',
+      detail: 'TRACE MediaPipe Android module is not installed or linked. A custom development build is required.',
+    });
+
+    const fallbackCase = await databaseEngine.createCase({
+      case_number: `TR-FALLBACK-${Date.now()}`,
+      title: 'Missing Bridge Fallback Case',
+      investigator_name: 'Lead Detective',
+      status: 'ACTIVE',
+    });
+
+    const evidenceItem = await databaseEngine.insertEvidence({
+      case_id: fallbackCase.id,
+      media_type: 'IMAGE',
+      file_path: '/mock/path/threatening_chat.png',
+      file_size_bytes: 450000,
+      sha256_import: 'aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899',
+      import_ts: Date.now(),
+      ocr_text: 'Send $5000 in bitcoin to our wallet or we will ruin you and leak your private photos. Contact +15551234567.',
+      transcription: null,
+      exif_ts: Date.now() - 3600000,
+    });
+
+    // Run analysis - MUST NOT THROW even with BRIDGE_MISSING
+    const result = await forensicAnalysisService.analyzeCaseEvidence(fallbackCase.id);
+
+    expect(result.caseId).toBe(fallbackCase.id);
+    expect(result.schema).toBeDefined();
+    expect(result.schema.incidentType).toBe('blackmail');
+    expect(result.schema.extractedFacts.length).toBeGreaterThan(0);
+    expect(result.schema.threats.length + result.schema.blackmailIndicators.length).toBeGreaterThan(0);
+    expect(result.persistedEventIds.length).toBeGreaterThan(0);
+    expect(result.hashChainNodeId).toBeDefined();
+
+    // Verify hash chain ledger entry recorded
+    const ledger = await databaseService.getHashChainForEvidence(evidenceItem.id);
+    const analyzeBlock = ledger.find(b => b.operation === 'ANALYZE');
+    expect(analyzeBlock).toBeDefined();
+    expect(analyzeBlock?.payload_hash).toHaveLength(64);
+  });
 });

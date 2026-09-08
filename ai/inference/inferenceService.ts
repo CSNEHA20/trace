@@ -12,6 +12,7 @@ import {
   GroundingValidationResult,
   RejectedClaim,
 } from './evidenceGroundingValidator';
+import { extractForensicDataDeterministically } from './deterministicForensicEngine';
 import {
   GEMMA_PROMPTS,
   buildForensicAnalysisPrompt,
@@ -249,6 +250,57 @@ export class OnDeviceInferenceService {
     } finally {
       this.active = false;
     }
+  }
+
+  /**
+   * Performs deterministic on-device forensic extraction without requiring the heavy Gemma weights.
+   */
+  async inferDeterministicForensicExtraction(
+    evidenceContext: string,
+    evidenceItems: EvidenceItemContext[] = [],
+    onProgress?: (progress: InferenceProgress) => void
+  ): Promise<ForensicExtractionResult> {
+    const trimmed = evidenceContext.trim();
+    if (!trimmed) {
+      throw new Error('Evidence context is empty; extraction cannot proceed.');
+    }
+
+    const startTime = Date.now();
+    onProgress?.({
+      stage: 'CHECKING',
+      completedChunks: 0,
+      totalChunks: 1,
+      message: 'Running on-device deterministic forensic engine…',
+    });
+
+    const schema = extractForensicDataDeterministically(trimmed, evidenceItems);
+    const rawOutput = JSON.stringify(schema, null, 2);
+
+    onProgress?.({
+      stage: 'PARSING',
+      completedChunks: 1,
+      totalChunks: 1,
+      message: 'Validating evidence grounding and schema…',
+    });
+
+    const validation = validateAndGroundForensicExtraction(rawOutput, evidenceItems);
+    const durationMs = Date.now() - startTime;
+
+    onProgress?.({
+      stage: 'COMPLETE',
+      completedChunks: 1,
+      totalChunks: 1,
+      message: 'Local forensic extraction complete.',
+    });
+
+    return {
+      schema: validation.schema || schema,
+      rawOutput,
+      durationMs,
+      warnings: validation.warnings,
+      rejectedClaims: validation.rejectedClaims,
+      chunksCount: 1,
+    };
   }
 
   private async withTimeout<T>(operation: Promise<T>, timeoutMs: number): Promise<T> {

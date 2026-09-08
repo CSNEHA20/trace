@@ -48,6 +48,29 @@ function getFileSystem() {
   }
 }
 
+/**
+ * Computes UTF-8 byte length safely in React Native / Hermes without Node.js Buffer.
+ */
+function getUtf8ByteLength(str: string): number {
+  if (typeof TextEncoder !== 'undefined') {
+    return new TextEncoder().encode(str).length;
+  }
+  if (typeof Blob !== 'undefined') {
+    return new Blob([str]).size;
+  }
+  let bytes = 0;
+  for (let i = 0; i < str.length; i++) {
+    const codePoint = str.charCodeAt(i);
+    if (codePoint < 0x80) bytes += 1;
+    else if (codePoint < 0x800) bytes += 2;
+    else if (codePoint >= 0xd800 && codePoint <= 0xdbff) {
+      bytes += 4;
+      i++;
+    } else bytes += 3;
+  }
+  return bytes;
+}
+
 export interface SourcePickerResult {
   uri: string;
   filename: string;
@@ -118,10 +141,13 @@ export function EvidenceSourcePicker({
 
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions?.Images ?? 'Images',
-        quality: 1,
+        quality: 0.85,
         allowsEditing: false,
         exif: true,
       });
+
+      setPicking(false);
+      onClose();
 
       if (result.canceled) {
         onSourceSelected({ uri: '', filename: '', source: 'CAMERA', cancelled: true });
@@ -144,6 +170,8 @@ export function EvidenceSourcePicker({
         cancelled: false,
       });
     } catch (err: unknown) {
+      setPicking(false);
+      onClose();
       onSourceSelected({
         uri: '',
         filename: '',
@@ -151,9 +179,6 @@ export function EvidenceSourcePicker({
         cancelled: false,
         error: (err as Error)?.message || 'Camera capture failed',
       });
-    } finally {
-      setPicking(false);
-      onClose();
     }
   };
 
@@ -188,11 +213,14 @@ export function EvidenceSourcePicker({
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions?.All ?? 'All',
-        quality: 1,
+        quality: 0.85,
         allowsEditing: false,
         allowsMultipleSelection: false,
         exif: true,
       });
+
+      setPicking(false);
+      onClose();
 
       if (result.canceled) {
         onSourceSelected({ uri: '', filename: '', source: 'GALLERY', cancelled: true });
@@ -217,6 +245,8 @@ export function EvidenceSourcePicker({
         cancelled: false,
       });
     } catch (err: unknown) {
+      setPicking(false);
+      onClose();
       onSourceSelected({
         uri: '',
         filename: '',
@@ -224,9 +254,6 @@ export function EvidenceSourcePicker({
         cancelled: false,
         error: (err as Error)?.message || 'Gallery picker failed',
       });
-    } finally {
-      setPicking(false);
-      onClose();
     }
   };
 
@@ -236,6 +263,8 @@ export function EvidenceSourcePicker({
     try {
       const DocPicker = getDocumentPicker();
       if (!DocPicker) {
+        setPicking(false);
+        onClose();
         onSourceSelected({
           uri: '',
           filename: '',
@@ -251,6 +280,9 @@ export function EvidenceSourcePicker({
         copyToCacheDirectory: true,
         multiple: false,
       });
+
+      setPicking(false);
+      onClose();
 
       if (result.canceled) {
         onSourceSelected({ uri: '', filename: '', source: 'FILES', cancelled: true });
@@ -272,6 +304,8 @@ export function EvidenceSourcePicker({
         cancelled: false,
       });
     } catch (err: unknown) {
+      setPicking(false);
+      onClose();
       onSourceSelected({
         uri: '',
         filename: '',
@@ -279,9 +313,6 @@ export function EvidenceSourcePicker({
         cancelled: false,
         error: (err as Error)?.message || 'File picker failed',
       });
-    } finally {
-      setPicking(false);
-      onClose();
     }
   };
 
@@ -326,15 +357,22 @@ export function EvidenceSourcePicker({
         return;
       }
 
+      const byteLength = getUtf8ByteLength(text);
+
+      setPicking(false);
+      onClose();
+
       onSourceSelected({
         uri: fileUri,
         filename: clipFilename,
         mimeType: 'text/plain',
-        fileSize: Buffer.byteLength(text, 'utf8'),
+        fileSize: byteLength,
         source: 'CLIPBOARD',
         cancelled: false,
       });
     } catch (err: unknown) {
+      setPicking(false);
+      onClose();
       onSourceSelected({
         uri: '',
         filename: '',
@@ -342,9 +380,6 @@ export function EvidenceSourcePicker({
         cancelled: false,
         error: (err as Error)?.message || 'Clipboard extraction failed',
       });
-    } finally {
-      setPicking(false);
-      onClose();
     }
   };
 

@@ -107,6 +107,46 @@ export function WorkspaceScreen() {
     }
   }, [activeCase?.id, loadCaseData]);
 
+  useEffect(() => {
+    let mounted = true;
+    const checkPendingCameraCapture = async () => {
+      try {
+        const ImagePicker = require('expo-image-picker');
+        if (ImagePicker && typeof ImagePicker.getPendingResultAsync === 'function') {
+          const pending = await ImagePicker.getPendingResultAsync();
+          if (Array.isArray(pending) && pending.length > 0 && mounted) {
+            for (const item of pending) {
+              if (item && !item.canceled && item.assets && item.assets[0]?.uri) {
+                const asset = item.assets[0];
+                const targetCase = activeCase || cases[0];
+                if (targetCase?.id) {
+                  setOverlayVisible(true);
+                  await ingestEvidence({
+                    sourceUri: asset.uri,
+                    originalFilename: asset.fileName || `camera_recovered_${Date.now()}.jpg`,
+                    mimeType: asset.mimeType || 'image/jpeg',
+                    reportedSize: asset.fileSize,
+                    source: 'CAMERA',
+                    caseId: targetCase.id,
+                  });
+                  setOverlayVisible(false);
+                  await fetchEvidence(targetCase.id);
+                  await loadCaseData();
+                }
+              }
+            }
+          }
+        }
+      } catch {
+        // Silent check on mount
+      }
+    };
+    checkPendingCameraCapture();
+    return () => {
+      mounted = false;
+    };
+  }, [activeCase?.id, cases.length]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchCases();
@@ -119,36 +159,41 @@ export function WorkspaceScreen() {
 
   // ── Evidence Import Handler ──────────────────────────────────────────
   const handleSourceSelected = async (result: SourcePickerResult) => {
-    if (result.cancelled) return;
-    if (result.permissionDenied) {
-      Alert.alert('Permission Denied', 'Camera or Storage permission is required to ingest evidence.');
-      return;
-    }
-    if (result.error) {
-      Alert.alert('Import Error', result.error);
-      return;
-    }
-    if (!result.uri || !activeCase?.id) {
-      Alert.alert('No Active Case', 'Please select or create an active case first.');
-      return;
-    }
+    try {
+      if (result.cancelled) return;
+      if (result.permissionDenied) {
+        Alert.alert('Permission Denied', 'Camera or Storage permission is required to ingest evidence.');
+        return;
+      }
+      if (result.error) {
+        Alert.alert('Import Error', result.error);
+        return;
+      }
+      if (!result.uri || !activeCase?.id) {
+        Alert.alert('No Active Case', 'Please select or create an active case first.');
+        return;
+      }
 
-    setOverlayVisible(true);
-    const res = await ingestEvidence({
-      sourceUri: result.uri,
-      originalFilename: result.filename,
-      mimeType: result.mimeType,
-      reportedSize: result.fileSize,
-      source: result.source,
-      caseId: activeCase.id,
-    });
-    setOverlayVisible(false);
+      setOverlayVisible(true);
+      const res = await ingestEvidence({
+        sourceUri: result.uri,
+        originalFilename: result.filename,
+        mimeType: result.mimeType,
+        reportedSize: result.fileSize,
+        source: result.source,
+        caseId: activeCase.id,
+      });
+      setOverlayVisible(false);
 
-    if (res.status === 'COMPLETE') {
-      await fetchEvidence(activeCase.id);
-      await loadCaseData();
-    } else {
-      Alert.alert('Ingestion Failed', res.error || 'Failed to ingest evidence into SQLite.');
+      if (res.status === 'COMPLETE') {
+        await fetchEvidence(activeCase.id);
+        await loadCaseData();
+      } else {
+        Alert.alert('Ingestion Failed', res.error || 'Failed to ingest evidence into SQLite.');
+      }
+    } catch (err: unknown) {
+      setOverlayVisible(false);
+      Alert.alert('Ingestion Error', (err as Error)?.message || 'Failed to complete evidence intake.');
     }
   };
 

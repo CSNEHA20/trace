@@ -56,6 +56,44 @@ export function EvidenceVaultScreen() {
     fetchEvidence(activeCase?.id);
   }, [activeCase?.id]);
 
+  useEffect(() => {
+    let mounted = true;
+    const checkPendingCameraCapture = async () => {
+      try {
+        const ImagePicker = require('expo-image-picker');
+        if (ImagePicker && typeof ImagePicker.getPendingResultAsync === 'function') {
+          const pending = await ImagePicker.getPendingResultAsync();
+          if (Array.isArray(pending) && pending.length > 0 && mounted) {
+            for (const item of pending) {
+              if (item && !item.canceled && item.assets && item.assets[0]?.uri) {
+                const asset = item.assets[0];
+                if (activeCase?.id) {
+                  setOverlayVisible(true);
+                  await ingestEvidence({
+                    sourceUri: asset.uri,
+                    originalFilename: asset.fileName || `camera_recovered_${Date.now()}.jpg`,
+                    mimeType: asset.mimeType || 'image/jpeg',
+                    reportedSize: asset.fileSize,
+                    source: 'CAMERA',
+                    caseId: activeCase.id,
+                  });
+                  setOverlayVisible(false);
+                  await fetchEvidence(activeCase.id);
+                }
+              }
+            }
+          }
+        }
+      } catch {
+        // Silent check
+      }
+    };
+    checkPendingCameraCapture();
+    return () => {
+      mounted = false;
+    };
+  }, [activeCase?.id]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchEvidence(activeCase?.id);
@@ -64,73 +102,81 @@ export function EvidenceVaultScreen() {
 
   // ── Source picker result handler ─────────────────────────────────────
   const handleSourceSelected = async (result: SourcePickerResult) => {
-    // Cancelled
-    if (result.cancelled) return;
+    try {
+      // Cancelled
+      if (result.cancelled) return;
 
-    // Permission denied
-    if (result.permissionDenied) {
+      // Permission denied
+      if (result.permissionDenied) {
+        Alert.alert(
+          'Permission Denied',
+          `TRACE needs ${result.source === 'CAMERA' ? 'camera' : 'media library'} access to import evidence.\n\nPlease grant permission in Settings.`,
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Picker error
+      if (result.error) {
+        Alert.alert('Import Error', result.error, [{ text: 'OK' }]);
+        return;
+      }
+
+      if (!result.uri || !activeCase?.id) {
+        Alert.alert('No Case Active', 'Please select an active case before importing evidence.');
+        return;
+      }
+
+      // Show progress overlay
+      setOverlayVisible(true);
+
+      const ingestionResult = await ingestEvidence({
+        sourceUri: result.uri,
+        originalFilename: result.filename,
+        mimeType: result.mimeType,
+        reportedSize: result.fileSize,
+        source: result.source,
+        caseId: activeCase.id,
+      });
+
+      // Brief pause so user can see COMPLETE state
+      await new Promise((r) => setTimeout(r, 800));
+      setOverlayVisible(false);
+
+      // Handle result
+      switch (ingestionResult.status) {
+        case 'COMPLETE':
+          // Vault list already refreshed by store
+          break;
+
+        case 'DUPLICATE':
+          Alert.alert(
+            'Duplicate File',
+            `This file has already been imported into the vault.\n\n${ingestionResult.error}`,
+            [{ text: 'OK' }]
+          );
+          break;
+
+        case 'FAILED':
+          Alert.alert(
+            'Import Failed',
+            ingestionResult.error || 'An unknown error occurred during import.',
+            [{ text: 'OK' }]
+          );
+          break;
+
+        case 'CANCELLED':
+          break;
+
+        default:
+          break;
+      }
+    } catch (err: unknown) {
+      setOverlayVisible(false);
       Alert.alert(
-        'Permission Denied',
-        `TRACE needs ${result.source === 'CAMERA' ? 'camera' : 'media library'} access to import evidence.\n\nPlease grant permission in Settings.`,
-        [{ text: 'OK' }]
+        'Import Error',
+        (err as Error)?.message || 'An unexpected error occurred during evidence intake.'
       );
-      return;
-    }
-
-    // Picker error
-    if (result.error) {
-      Alert.alert('Import Error', result.error, [{ text: 'OK' }]);
-      return;
-    }
-
-    if (!result.uri || !activeCase?.id) {
-      Alert.alert('No Case Active', 'Please select an active case before importing evidence.');
-      return;
-    }
-
-    // Show progress overlay
-    setOverlayVisible(true);
-
-    const ingestionResult = await ingestEvidence({
-      sourceUri: result.uri,
-      originalFilename: result.filename,
-      mimeType: result.mimeType,
-      reportedSize: result.fileSize,
-      source: result.source,
-      caseId: activeCase.id,
-    });
-
-    // Brief pause so user can see COMPLETE state
-    await new Promise((r) => setTimeout(r, 800));
-    setOverlayVisible(false);
-
-    // Handle result
-    switch (ingestionResult.status) {
-      case 'COMPLETE':
-        // Vault list already refreshed by store
-        break;
-
-      case 'DUPLICATE':
-        Alert.alert(
-          'Duplicate File',
-          `This file has already been imported into the vault.\n\n${ingestionResult.error}`,
-          [{ text: 'OK' }]
-        );
-        break;
-
-      case 'FAILED':
-        Alert.alert(
-          'Import Failed',
-          ingestionResult.error || 'An unknown error occurred during import.',
-          [{ text: 'OK' }]
-        );
-        break;
-
-      case 'CANCELLED':
-        break;
-
-      default:
-        break;
     }
   };
 
