@@ -23,12 +23,8 @@ export function ImageOcrCard({
   const currentText = result?.text !== undefined ? result.text : existingOcrText;
   const hasText = currentText && currentText.trim().length > 0;
   const hasRun = displayStatus === 'COMPLETED' || displayStatus === 'FAILED';
-  const isEngineUnavailable = displayStatus === 'FAILED' && result?.errorCode === 'ENGINE_UNAVAILABLE';
 
   const getStatusColor = () => {
-    if (isEngineUnavailable) {
-      return palette.brandYellow;
-    }
     switch (displayStatus) {
       case 'COMPLETED':
         return palette.success;
@@ -43,9 +39,6 @@ export function ImageOcrCard({
   };
 
   const getStatusLabel = () => {
-    if (isEngineUnavailable) {
-      return 'NATIVE ENGINE REQ';
-    }
     return displayStatus;
   };
 
@@ -73,19 +66,10 @@ export function ImageOcrCard({
       ) : null}
 
       {displayStatus === 'FAILED' && result?.error ? (
-        isEngineUnavailable ? (
-          <View style={styles.unavailableBox}>
-            <Text style={styles.unavailableTitle}>⚡ Native ML Kit Engine Notice</Text>
-            <Text style={styles.unavailableMsg}>
-              Google ML Kit Latin text recognition requires a custom native build. Preserved file integrity (SHA-256) and source metadata intake are verified and intact.
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorLabel}>OCR Error [{result.errorCode || 'FAILED'}]:</Text>
-            <Text style={styles.errorMsg}>{result.error}</Text>
-          </View>
-        )
+        <View style={styles.errorBox}>
+          <Text style={styles.errorLabel}>OCR Error [{result.errorCode || 'FAILED'}]:</Text>
+          <Text style={styles.errorMsg}>{result.error}</Text>
+        </View>
       ) : null}
 
       {displayStatus === 'COMPLETED' ? (
@@ -206,26 +190,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: palette.text,
     marginTop: 2,
-  },
-  unavailableBox: {
-    backgroundColor: '#FEF3C7',
-    borderColor: palette.brandYellow,
-    borderWidth: 1,
-    borderLeftWidth: 4,
-    padding: 12,
-    borderRadius: 6,
-    marginVertical: 8,
-  },
-  unavailableTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#92400E',
-    marginBottom: 4,
-  },
-  unavailableMsg: {
-    fontSize: 12,
-    color: '#78350F',
-    lineHeight: 16,
   },
   resultContainer: {
     marginVertical: 8,

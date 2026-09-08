@@ -128,11 +128,13 @@ export const useReportStore = create<ReportState>((set, get) => ({
 
   shareCurrentReport: async () => {
     const lastResult = get().lastExportResult;
-    if (!lastResult || !lastResult.pdfUri) {
+    const lastManifest = get().lastManifest;
+    const targetUri = lastResult?.pdfUri || lastManifest?.pdfUri;
+    if (!targetUri) {
       set({ error: 'No generated report available to share' });
       return false;
     }
-    return exportService.shareReport(lastResult.pdfUri);
+    return exportService.shareReport(targetUri, lastManifest);
   },
 
   resetReportState: () => {

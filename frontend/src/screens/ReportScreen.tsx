@@ -49,6 +49,12 @@ export function ReportScreen() {
             <Text style={styles.resultItem}>PDF Report: {exportResult.pdfUri}</Text>
             <Text style={styles.resultItem}>Encrypted ZIP: {exportResult.zipUri}</Text>
             <Text style={styles.resultItem}>Manifest SHA-256: {exportResult.manifestHash}</Text>
+            <TouchableOpacity
+              style={styles.shareBtn}
+              onPress={() => exportService.shareReport(exportResult.pdfUri)}
+            >
+              <Text style={styles.shareBtnText}>📄 Export / Share PDF</Text>
+            </TouchableOpacity>
           </View>
         ) : null}
       </ScrollView>
@@ -117,5 +123,17 @@ const styles = StyleSheet.create({
     color: palette.text,
     fontFamily: 'monospace',
     marginBottom: 4,
+  },
+  shareBtn: {
+    backgroundColor: palette.brandYellow,
+    marginTop: 12,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  shareBtnText: {
+    color: palette.deepBlack,
+    fontWeight: 'bold',
+    fontSize: 14,
   },
 });

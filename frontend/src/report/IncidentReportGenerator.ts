@@ -20,6 +20,7 @@ import {
 } from '../types/report';
 import { databaseService } from '../services/databaseService';
 import { cryptoService } from '../services/cryptoService';
+import { generateForensicPdf } from '../services/pdfGenerator';
 import { logger } from '../utils/logger';
 
 export interface IncidentReportGenerationResult {
@@ -82,9 +83,16 @@ class IncidentReportGenerator {
       // 6. Compute digital signature
       const digitalSignature = await cryptoService.signPayload(manifestHash);
 
-      // 7. Generate PDF using react-native-html-to-pdf
+      // 7. Generate PDF using pure TypeScript PDF 1.4 or native printer
       const caseNumber = ('case_number' in caseData ? caseData.case_number : caseData.caseNumber) as string;
-      const pdfUri = await this.generatePdf(htmlContent, caseNumber);
+      const pdfUri = await this.generatePdf(
+        htmlContent,
+        caseNumber,
+        caseData,
+        evidenceItems,
+        manifestHash,
+        digitalSignature
+      );
 
       // 8. Save manifest.txt to file system
       const manifestUri = await this.saveManifestTxt(manifestTxt, caseNumber);
@@ -988,10 +996,25 @@ class IncidentReportGenerator {
     return content;
   }
 
-  private async generatePdf(htmlContent: string, caseNumber: string): Promise<string> {
+  private async generatePdf(
+    htmlContent: string,
+    caseNumber: string,
+    caseData?: any,
+    evidenceItems?: any[],
+    manifestHash?: string,
+    digitalSignature?: string
+  ): Promise<string> {
     const filename = `TRACE_Incident_Report_${caseNumber}_${Date.now()}.pdf`;
-    
-    // 1. Try expo-print first
+    const dir = `${FileSystem.documentDirectory}exports`;
+
+    // Ensure exports directory exists
+    try {
+      await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+    } catch {
+      // ignore if dir already exists
+    }
+
+    // 1. Try native expo-print first
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const printModule = require('expo-print');
@@ -1005,7 +1028,7 @@ class IncidentReportGenerator {
         }
       }
     } catch {
-      // Continue to secondary attempt
+      // Continue to pure TS generation
     }
 
     // 2. Try RNHTMLtoPDF if available
@@ -1023,17 +1046,51 @@ class IncidentReportGenerator {
         }
       }
     } catch {
-      // Fall through to sandbox HTML
+      // Continue to pure TS generation
     }
 
-    // 3. Resilient fallback: save HTML file in sandbox exports directory
-    const dir = `${FileSystem.documentDirectory}exports`;
-    const htmlUri = `${dir}/${filename.replace('.pdf', '.html')}`;
+    // 3. Pure TypeScript PDF 1.4 generation
+    const pdfPath = `${dir}/${filename}`;
     try {
-      await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+      const caseObj: Case = {
+        id: caseData?.id || 'CASE-01',
+        caseNumber,
+        title: caseData?.title || 'Incident Report',
+        investigatorName: caseData?.investigatorName || this.options.agencyName || 'Lead Investigator',
+        status: caseData?.status || 'ACTIVE',
+        createdAt: caseData?.createdAt || Date.now(),
+        updatedAt: Date.now(),
+        evidenceIds: [],
+      };
+
+      const evList: EvidenceItem[] = (evidenceItems || []).map((e: any) => ({
+        id: e.id,
+        caseId: e.caseId || caseObj.id,
+        title: e.title || e.fileName || e.file_name || 'Evidence Item',
+        fileName: e.fileName || e.file_name || 'evidence.bin',
+        fileUri: e.fileUri || e.file_path || '',
+        fileSize: e.fileSize || e.file_size || 0,
+        mimeType: e.mimeType || e.mime_type || 'application/octet-stream',
+        sha256Hash: e.sha256Hash || e.sha256_hash || '',
+        type: e.type || 'DOCUMENT',
+        timestamp: e.timestamp || Date.now(),
+        isTampered: !!e.isTampered,
+      }));
+
+      const pdfBinary = generateForensicPdf(caseObj, evList, {
+        agencyName: this.options.agencyName,
+        investigatorNotes: this.options.investigatorNotes,
+        manifestHash,
+        digitalSignature,
+        generatedAt: new Date().toISOString(),
+      });
+
+      await FileSystem.writeAsStringAsync(pdfPath, pdfBinary, { encoding: 'utf8' });
+      return pdfPath;
+    } catch (err) {
+      logger.error('Failed to generate pure PDF in IncidentReportGenerator', err);
+      const htmlUri = `${dir}/${filename.replace('.pdf', '.html')}`;
       await FileSystem.writeAsStringAsync(htmlUri, htmlContent, { encoding: 'utf8' });
-      return htmlUri;
-    } catch {
       return htmlUri;
     }
   }
