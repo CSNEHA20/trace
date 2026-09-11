@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -22,25 +21,25 @@ import {
 import { AppHeader } from '../components/AppHeader';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
-import { palette } from '../theme';
-import { formatDate } from '../utils/crypto';
+import { Colors, Spacing, Typography, Radius, Shadows } from '../theme';
+import { formatEventDate, formatEventTime } from '../utils/crypto';
 
-const TRUST_COLORS: Record<TrustIndicator, { bg: string; text: string; border: string }> = {
-  VERIFIED: { bg: palette.successBg, text: palette.success, border: palette.success },
-  INFERRED: { bg: palette.brandYellowBg, text: palette.brandYellow, border: palette.brandYellow },
-  UNCERTAIN: { bg: palette.warningBg, text: palette.warning, border: palette.warning },
-  REJECTED: { bg: palette.errorBg, text: palette.error, border: palette.error },
+const TRUST_CONFIG: Record<TrustIndicator, { bg: string; text: string; border: string }> = {
+  VERIFIED: { bg: 'rgba(16, 185, 129, 0.12)', text: Colors.emerald, border: Colors.emerald },
+  INFERRED: { bg: Colors.primarySubtle, text: Colors.primary, border: Colors.primary },
+  UNCERTAIN: { bg: 'rgba(245, 158, 11, 0.12)', text: Colors.amber, border: Colors.amber },
+  REJECTED: { bg: 'rgba(239, 68, 68, 0.12)', text: Colors.crimson, border: Colors.crimson },
 };
 
 const EVENT_TYPE_COLORS: Record<ForensicEventType, string> = {
-  THREAT: palette.error,
-  PAYMENT_DEMAND: palette.brandYellow,
-  BLACKMAIL: palette.error,
-  COERCION: palette.deepBlack,
-  COMMUNICATION: palette.deepBlack,
-  MEDIA_CAPTURE: palette.brandYellow,
-  MEDIA_UPLOAD: palette.success,
-  OTHER: palette.textSecondary,
+  THREAT: Colors.crimson,
+  PAYMENT_DEMAND: Colors.amber,
+  BLACKMAIL: Colors.crimson,
+  COERCION: Colors.crimson,
+  COMMUNICATION: Colors.primary,
+  MEDIA_CAPTURE: Colors.emerald,
+  MEDIA_UPLOAD: Colors.primary,
+  OTHER: Colors.textMuted,
 };
 
 export function TimelineScreen() {
@@ -131,22 +130,22 @@ export function TimelineScreen() {
   return (
     <View style={styles.container}>
       <AppHeader
-        title="INCIDENT TIMELINE"
-        subtitle={`Deterministic Reconstruction · Case ${activeCase?.caseNumber || 'N/A'}`}
+        title="Incident Timeline"
+        subtitle={`Deterministic Chain · Case ${activeCase?.caseNumber || 'Active'}`}
       />
 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.primary]} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
         }
       >
         {/* Forensics Principles Banner */}
         <View style={styles.banner}>
           <Text style={styles.bannerTitle}>DETERMINISTIC TEMPORAL RECONSTRUCTION</Text>
           <Text style={styles.bannerText}>
-            Chronology strictly governed by verified timestamps. LLM/Gemma provides semantic candidates only. Missing timestamps are isolated and never fabricated.
+            Chronology strictly ordered by cryptographically verified timestamps. Unverified items remain isolated.
           </Text>
         </View>
 
@@ -158,25 +157,25 @@ export function TimelineScreen() {
               <Text style={styles.statLbl}>TOTAL</Text>
             </View>
             <View style={styles.statCol}>
-              <Text style={[styles.statVal, { color: palette.success }]}>
+              <Text style={[styles.statVal, { color: Colors.emerald }]}>
                 {reconstructed.verifiedCount}
               </Text>
               <Text style={styles.statLbl}>VERIFIED</Text>
             </View>
             <View style={styles.statCol}>
-              <Text style={[styles.statVal, { color: palette.primary }]}>
+              <Text style={[styles.statVal, { color: Colors.primary }]}>
                 {reconstructed.inferredCount}
               </Text>
               <Text style={styles.statLbl}>INFERRED</Text>
             </View>
             <View style={styles.statCol}>
-              <Text style={[styles.statVal, { color: palette.warning }]}>
+              <Text style={[styles.statVal, { color: Colors.amber }]}>
                 {reconstructed.uncertainCount}
               </Text>
               <Text style={styles.statLbl}>UNCERTAIN</Text>
             </View>
             <View style={styles.statCol}>
-              <Text style={[styles.statVal, { color: palette.error }]}>
+              <Text style={[styles.statVal, { color: Colors.crimson }]}>
                 {reconstructed.rejectedCount}
               </Text>
               <Text style={styles.statLbl}>REJECTED</Text>
@@ -188,8 +187,8 @@ export function TimelineScreen() {
         <View style={styles.filterSection}>
           <TextInput
             style={styles.searchInput}
-            placeholder="Search events, descriptions, evidence IDs…"
-            placeholderTextColor={palette.textSecondary}
+            placeholder="Search timeline events, IDs, entities..."
+            placeholderTextColor={Colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -197,7 +196,7 @@ export function TimelineScreen() {
           <View style={styles.trustFilterRow}>
             {(['VERIFIED', 'INFERRED', 'UNCERTAIN', 'REJECTED'] as TrustIndicator[]).map((t) => {
               const active = selectedTrust.includes(t);
-              const colorInfo = TRUST_COLORS[t];
+              const colorInfo = TRUST_CONFIG[t];
               return (
                 <TouchableOpacity
                   key={t}
@@ -206,8 +205,9 @@ export function TimelineScreen() {
                     active && { backgroundColor: colorInfo.bg, borderColor: colorInfo.border },
                   ]}
                   onPress={() => toggleTrust(t)}
+                  activeOpacity={0.7}
                 >
-                  <Text style={[styles.trustChipText, { color: active ? colorInfo.text : palette.textSecondary }]}>
+                  <Text style={[styles.trustChipText, { color: active ? colorInfo.text : Colors.textMuted }]}>
                     {t}
                   </Text>
                 </TouchableOpacity>
@@ -244,23 +244,22 @@ export function TimelineScreen() {
             ) : (
               <View style={styles.timelineSpineContainer}>
                 {filteredChronological.map((ev, idx) => {
-                  const trustStyle = TRUST_COLORS[ev.trustIndicator];
-                  const typeColor = EVENT_TYPE_COLORS[ev.eventType] || palette.primary;
+                  const trustStyle = TRUST_CONFIG[ev.trustIndicator] || TRUST_CONFIG.UNCERTAIN;
+                  const typeColor = EVENT_TYPE_COLORS[ev.eventType] || Colors.primary;
                   const isLast = idx === filteredChronological.length - 1;
+
+                  const timeDisplay = formatEventTime(ev.timestamp);
+                  const dateDisplay = formatEventDate(ev.timestamp);
 
                   return (
                     <View key={ev.id} style={styles.timelineRow}>
                       {/* Left: Time column */}
                       <View style={styles.timeCol}>
-                        <Text style={styles.timeText}>
-                          {ev.timestamp ? formatDate(ev.timestamp).split(' ')[1] || formatDate(ev.timestamp) : 'N/A'}
-                        </Text>
-                        <Text style={styles.dateText}>
-                          {ev.timestamp ? formatDate(ev.timestamp).split(' ')[0] : ''}
-                        </Text>
-                        <Text style={styles.provenanceTag}>
-                          [{ev.timestampProvenance}]
-                        </Text>
+                        <Text style={styles.timeText}>{timeDisplay}</Text>
+                        <Text style={styles.dateText}>{dateDisplay}</Text>
+                        <View style={styles.provenancePill}>
+                          <Text style={styles.provenanceTag}>{ev.timestampProvenance}</Text>
+                        </View>
                       </View>
 
                       {/* Center: Spine & Node */}
@@ -280,7 +279,7 @@ export function TimelineScreen() {
                         }}
                       >
                         <View style={styles.eventCardHeader}>
-                          <View style={[styles.eventTypeBadge, { backgroundColor: palette.surfaceVariant }]}>
+                          <View style={styles.eventTypeBadge}>
                             <Text style={[styles.eventTypeText, { color: typeColor }]}>
                               {ev.eventType}
                             </Text>
@@ -301,10 +300,19 @@ export function TimelineScreen() {
                         <Text style={styles.eventDesc}>{ev.description}</Text>
 
                         <View style={styles.eventCardFooter}>
-                          <Text style={styles.evidenceRef}>
-                            Evidence: <Text style={styles.evidenceRefLink}>{ev.evidenceId || 'N/A'}</Text>
+                          <Text style={styles.evidenceRef} numberOfLines={1} ellipsizeMode="middle">
+                            Ref:{' '}
+                            <Text style={styles.evidenceRefLink}>
+                              {ev.evidenceId
+                                ? ev.evidenceId.length > 20
+                                  ? `${ev.evidenceId.slice(0, 8)}...${ev.evidenceId.slice(-6)}`
+                                  : ev.evidenceId
+                                : 'N/A'}
+                            </Text>
                           </Text>
-                          <Text style={styles.tapToView}>Tap to view →</Text>
+                          <View style={styles.inspectBtnWrap}>
+                            <Text style={styles.tapToView}>Inspect →</Text>
+                          </View>
                         </View>
                       </TouchableOpacity>
                     </View>
@@ -317,20 +325,21 @@ export function TimelineScreen() {
             {filteredUnknown.length > 0 && (
               <View style={styles.isolatedSection}>
                 <View style={styles.isolatedHeader}>
-                  <Text style={styles.isolatedTitle}>⚠️ TIMESTAMP UNKNOWN / UNRESOLVED</Text>
+                  <Text style={styles.isolatedTitle}>⚠️ UNRESOLVED TIMESTAMPS ({filteredUnknown.length})</Text>
                   <Text style={styles.isolatedSub}>
-                    Events with missing or conflicting timestamps. Chronological placement is not fabricated.
+                    Events with missing or conflicting metadata. Chronology is not guessed.
                   </Text>
                 </View>
 
                 {filteredUnknown.map((ev) => {
-                  const trustStyle = TRUST_COLORS[ev.trustIndicator];
-                  const typeColor = EVENT_TYPE_COLORS[ev.eventType] || palette.warning;
+                  const trustStyle = TRUST_CONFIG[ev.trustIndicator] || TRUST_CONFIG.UNCERTAIN;
+                  const typeColor = EVENT_TYPE_COLORS[ev.eventType] || Colors.amber;
 
                   return (
                     <TouchableOpacity
                       key={ev.id}
                       style={[styles.isolatedCard, { borderLeftColor: typeColor }]}
+                      activeOpacity={0.8}
                       onPress={() => {
                         if (ev.evidenceId && !ev.evidenceId.startsWith('UNGROUNDED')) {
                           router.push(`/evidence/${ev.evidenceId}`);
@@ -351,8 +360,15 @@ export function TimelineScreen() {
                         </View>
                       </View>
                       <Text style={styles.eventDesc}>{ev.description}</Text>
-                      <Text style={styles.evidenceRef}>
-                        Evidence: <Text style={styles.evidenceRefLink}>{ev.evidenceId}</Text> · Chronology: Unverified
+                      <Text style={styles.evidenceRef} numberOfLines={1} ellipsizeMode="middle">
+                        Evidence:{' '}
+                        <Text style={styles.evidenceRefLink}>
+                          {ev.evidenceId
+                            ? ev.evidenceId.length > 20
+                              ? `${ev.evidenceId.slice(0, 8)}...${ev.evidenceId.slice(-6)}`
+                              : ev.evidenceId
+                            : 'N/A'}
+                        </Text>
                       </Text>
                     </TouchableOpacity>
                   );
@@ -362,31 +378,31 @@ export function TimelineScreen() {
 
             {/* ── 3. REJECTED CLAIMS AUDIT ── */}
             {filteredRejected.length > 0 && (
-              <View style={[styles.isolatedSection, { borderColor: palette.error }]}>
+              <View style={[styles.isolatedSection, { borderColor: Colors.crimson }]}>
                 <View style={styles.isolatedHeader}>
-                  <Text style={[styles.isolatedTitle, { color: palette.error }]}>
-                    🚫 REJECTED CLAIMS (AUDIT TRAIL)
+                  <Text style={[styles.isolatedTitle, { color: Colors.crimson }]}>
+                    🚫 REJECTED CLAIMS ({filteredRejected.length})
                   </Text>
                   <Text style={styles.isolatedSub}>
-                    Generated candidate claims rejected by deterministic evidence-grounding validation.
+                    Claims rejected during strict evidence-grounding audit.
                   </Text>
                 </View>
 
                 {filteredRejected.map((ev) => (
-                  <View key={ev.id} style={[styles.isolatedCard, { borderLeftColor: palette.error }]}>
+                  <View key={ev.id} style={[styles.isolatedCard, { borderLeftColor: Colors.crimson }]}>
                     <View style={styles.eventCardHeader}>
-                      <Text style={[styles.eventTypeText, { color: palette.error }]}>{ev.eventType}</Text>
+                      <Text style={[styles.eventTypeText, { color: Colors.crimson }]}>{ev.eventType}</Text>
                       <View
                         style={[
                           styles.trustBadge,
-                          { backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: palette.error },
+                          { backgroundColor: 'rgba(239, 68, 68, 0.12)', borderColor: Colors.crimson },
                         ]}
                       >
-                        <Text style={[styles.trustBadgeText, { color: palette.error }]}>REJECTED</Text>
+                        <Text style={[styles.trustBadgeText, { color: Colors.crimson }]}>REJECTED</Text>
                       </View>
                     </View>
                     <Text style={styles.eventDesc}>{ev.description}</Text>
-                    <Text style={[styles.evidenceRef, { color: palette.error }]}>
+                    <Text style={[styles.evidenceRef, { color: Colors.crimson }]} numberOfLines={2}>
                       Reason: {ev.rejectionReason || 'Ungrounded in evidence context'}
                     </Text>
                   </View>
@@ -403,82 +419,78 @@ export function TimelineScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: palette.background,
+    backgroundColor: Colors.canvas,
   },
   scrollView: {
     flex: 1,
   },
   content: {
-    padding: 16,
+    padding: Spacing.md,
     paddingBottom: 40,
   },
   banner: {
-    backgroundColor: palette.card,
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: palette.borderDark,
-    borderLeftWidth: 4,
-    borderLeftColor: palette.brandYellow,
-    marginBottom: 14,
+    backgroundColor: Colors.cardBg,
+    padding: Spacing.md,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: Spacing.md,
+    ...Shadows.subtle,
   },
   bannerTitle: {
+    ...Typography.subtopLabel,
     fontSize: 11,
-    fontWeight: '900',
-    color: palette.deepBlack,
-    marginBottom: 2,
-    letterSpacing: 0.6,
+    fontWeight: '800',
+    color: Colors.textMuted,
+    marginBottom: 4,
   },
   bannerText: {
-    fontSize: 11,
-    color: palette.textSecondary,
-    lineHeight: 16,
-    fontWeight: '500',
+    ...Typography.body,
+    fontSize: 13,
+    color: Colors.textSecondary,
+    lineHeight: 18,
   },
   statsStrip: {
     flexDirection: 'row',
-    backgroundColor: palette.surface,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: palette.borderDark,
-    paddingVertical: 10,
-    marginBottom: 14,
-    elevation: 2,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 2,
+    backgroundColor: Colors.cardBg,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingVertical: Spacing.md,
+    marginBottom: Spacing.md,
+    ...Shadows.subtle,
   },
   statCol: {
     flex: 1,
     alignItems: 'center',
   },
   statVal: {
-    fontSize: 16,
+    ...Typography.displayMd,
+    fontSize: 18,
     fontWeight: '900',
-    color: palette.deepBlack,
+    color: Colors.text,
   },
   statLbl: {
+    ...Typography.subtopLabel,
     fontSize: 9,
     fontWeight: '800',
-    color: palette.textSecondary,
+    color: Colors.textMuted,
     marginTop: 2,
-    letterSpacing: 0.5,
   },
   filterSection: {
-    marginBottom: 14,
+    marginBottom: Spacing.md,
     gap: 8,
   },
   searchInput: {
-    backgroundColor: palette.surface,
-    borderWidth: 1.5,
-    borderColor: palette.borderDark,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    color: palette.deepBlack,
+    ...Typography.body,
+    backgroundColor: Colors.cardBg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 10,
+    color: Colors.text,
     fontSize: 13,
-    fontWeight: '600',
   },
   trustFilterRow: {
     flexDirection: 'row',
@@ -487,74 +499,85 @@ const styles = StyleSheet.create({
   trustChip: {
     flex: 1,
     paddingVertical: 6,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: palette.borderDark,
-    backgroundColor: palette.surface,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.cardBg,
     alignItems: 'center',
   },
   trustChipText: {
+    ...Typography.bodyStrong,
     fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 0.3,
   },
   timelineSectionHeader: {
-    marginBottom: 12,
-    marginTop: 4,
+    marginBottom: Spacing.sm,
+    marginTop: Spacing.xs,
   },
   timelineSectionTitle: {
+    ...Typography.subtopLabel,
     fontSize: 12,
-    fontWeight: '900',
-    color: palette.deepBlack,
-    letterSpacing: 0.8,
+    fontWeight: '800',
+    color: Colors.textMuted,
   },
   timelineSectionCount: {
-    fontSize: 11,
+    ...Typography.body,
+    fontSize: 12,
     fontWeight: '600',
-    color: palette.textSecondary,
+    color: Colors.textMuted,
+    marginTop: 2,
   },
   timelineSpineContainer: {
-    paddingLeft: 4,
-    marginBottom: 20,
+    paddingLeft: 2,
+    marginBottom: Spacing.lg,
   },
   timelineRow: {
     flexDirection: 'row',
     marginBottom: 14,
   },
   timeCol: {
-    width: 64,
+    width: 74,
     paddingRight: 6,
     alignItems: 'flex-end',
-    paddingTop: 4,
+    paddingTop: 2,
   },
   timeText: {
-    fontFamily: 'monospace',
-    fontSize: 11,
+    ...Typography.mono,
+    fontSize: 11.5,
     fontWeight: '800',
-    color: palette.deepBlack,
+    color: Colors.text,
   },
   dateText: {
-    fontSize: 9,
-    fontWeight: '600',
-    color: palette.textSecondary,
+    ...Typography.body,
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: Colors.textMuted,
+    marginTop: 1,
+  },
+  provenancePill: {
+    marginTop: 3,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.surface,
   },
   provenanceTag: {
-    fontSize: 8,
+    ...Typography.mono,
+    fontSize: 7.5,
     fontWeight: '800',
-    color: palette.deepBlack,
-    marginTop: 2,
+    color: Colors.textMuted,
   },
   spineCol: {
-    width: 20,
+    width: 16,
     alignItems: 'center',
     position: 'relative',
   },
   spineNode: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: palette.background,
-    borderWidth: 3,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Colors.cardBg,
+    borderWidth: 2.5,
     marginTop: 5,
     zIndex: 2,
   },
@@ -562,136 +585,152 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 15,
     bottom: -20,
-    width: 2,
-    backgroundColor: palette.borderDark,
+    width: 1.5,
+    backgroundColor: Colors.border,
     zIndex: 1,
   },
   eventCard: {
     flex: 1,
-    backgroundColor: palette.surface,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: palette.borderDark,
-    borderLeftWidth: 4,
+    backgroundColor: Colors.cardBg,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderLeftWidth: 3.5,
     padding: 12,
-    marginLeft: 6,
-    elevation: 2,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
+    marginLeft: 4,
+    overflow: 'hidden',
+    ...Shadows.subtle,
   },
   eventCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 6,
+    gap: 6,
   },
   eventTypeBadge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 7,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.surface,
+    flexShrink: 1,
   },
   eventTypeText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
+    ...Typography.bodyStrong,
+    fontSize: 10.5,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   trustBadge: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 7,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: Radius.full,
     borderWidth: 1,
+    flexShrink: 0,
   },
   trustBadgeText: {
-    fontSize: 9,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
+    ...Typography.subtopLabel,
+    fontSize: 8.5,
+    fontWeight: '800',
   },
   eventDesc: {
-    fontSize: 13,
-    color: palette.text,
+    ...Typography.body,
+    fontSize: 12.5,
+    color: Colors.text,
     lineHeight: 18,
     marginBottom: 8,
+    flexShrink: 1,
   },
   eventCardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: palette.border,
-    paddingTop: 6,
+    borderTopColor: Colors.border,
+    paddingTop: 8,
+    marginTop: 2,
+    gap: 8,
   },
   evidenceRef: {
-    fontSize: 11,
-    color: palette.textSecondary,
+    ...Typography.body,
+    flex: 1,
+    fontSize: 10.5,
+    color: Colors.textMuted,
   },
   evidenceRefLink: {
-    fontFamily: 'monospace',
-    color: palette.brandYellow,
-    fontWeight: 'bold',
+    ...Typography.mono,
+    color: Colors.primary,
+    fontWeight: '700',
+    fontSize: 10,
+  },
+  inspectBtnWrap: {
+    flexShrink: 0,
   },
   tapToView: {
-    fontSize: 10,
-    color: palette.deepBlack,
-    fontWeight: '600',
+    ...Typography.bodyStrong,
+    fontSize: 10.5,
+    color: Colors.primary,
+    fontWeight: '700',
   },
   isolatedSection: {
-    backgroundColor: palette.surfaceVariant,
-    borderRadius: 10,
+    backgroundColor: Colors.cardBg,
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: palette.warning,
-    padding: 14,
-    marginTop: 14,
-    marginBottom: 14,
+    borderColor: Colors.border,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    ...Shadows.subtle,
   },
   isolatedHeader: {
     marginBottom: 10,
   },
   isolatedTitle: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: palette.warning,
-    letterSpacing: 0.6,
+    ...Typography.subtopLabel,
+    fontSize: 11,
+    fontWeight: '900',
+    color: Colors.amber,
   },
   isolatedSub: {
+    ...Typography.body,
     fontSize: 11,
-    color: palette.textSecondary,
+    color: Colors.textMuted,
     marginTop: 2,
-    lineHeight: 15,
+    lineHeight: 16,
   },
   isolatedCard: {
-    backgroundColor: palette.surface,
-    borderRadius: 8,
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: palette.border,
-    borderLeftWidth: 4,
-    padding: 10,
+    borderColor: Colors.border,
+    borderLeftWidth: 3,
+    padding: Spacing.sm,
     marginBottom: 8,
   },
   emptyFilterBox: {
-    padding: 16,
+    padding: Spacing.lg,
     alignItems: 'center',
-    backgroundColor: palette.surface,
-    borderRadius: 8,
+    backgroundColor: Colors.cardBg,
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: palette.border,
-    marginBottom: 14,
+    borderColor: Colors.border,
+    marginBottom: Spacing.md,
   },
   emptyFilterText: {
-    fontSize: 12,
-    color: palette.textSecondary,
+    ...Typography.body,
+    fontSize: 13,
+    color: Colors.textMuted,
   },
   errorBox: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
     borderWidth: 1,
-    borderColor: palette.error,
-    borderRadius: 8,
-    padding: 14,
-    marginVertical: 10,
+    borderColor: 'rgba(239, 68, 68, 0.2)',
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    marginVertical: Spacing.sm,
   },
   errorText: {
-    color: palette.error,
+    ...Typography.bodyStrong,
+    color: Colors.crimson,
     fontSize: 13,
   },
 });
