@@ -14,10 +14,11 @@ import { verificationService } from '../services/verificationService';
 import { AppHeader } from '../components/AppHeader';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
-import { palette } from '../theme';
+import { Colors, Spacing, Radius, Typography, Shadows } from '../theme';
 import { formatDate, formatHashShort } from '../utils/crypto';
 import { HashChainRecord, EvidenceItem } from '../types';
 import { ChainVerificationResult } from '../types/integrity';
+import { Ionicons } from '@expo/vector-icons';
 
 export function IntegrityScreen() {
   const activeCase = useCaseStore((state) => state.activeCase);
@@ -99,7 +100,7 @@ export function IntegrityScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.content}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.primary]} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
         }
       >
         {/* Banner */}
@@ -129,10 +130,16 @@ export function IntegrityScreen() {
                     {
                       borderColor:
                         overallValid === true
-                          ? palette.success
+                          ? Colors.emerald
                           : overallValid === false
-                          ? palette.error
-                          : palette.textSecondary,
+                          ? Colors.crimson
+                          : Colors.textMuted,
+                      backgroundColor:
+                        overallValid === true
+                          ? 'rgba(5, 150, 105, 0.12)'
+                          : overallValid === false
+                          ? 'rgba(220, 38, 38, 0.12)'
+                          : Colors.surface,
                     },
                   ]}
                 >
@@ -142,10 +149,10 @@ export function IntegrityScreen() {
                       {
                         color:
                           overallValid === true
-                            ? palette.success
+                            ? Colors.emerald
                             : overallValid === false
-                            ? palette.error
-                            : palette.textSecondary,
+                            ? Colors.crimson
+                            : Colors.textMuted,
                       },
                     ]}
                   >
@@ -168,7 +175,7 @@ export function IntegrityScreen() {
                   <Text
                     style={[
                       styles.statBoxValue,
-                      { color: overallValid ? palette.success : palette.error },
+                      { color: overallValid ? Colors.emerald : Colors.crimson },
                     ]}
                   >
                     {overallValid ? 'VALID' : 'ALERT'}
@@ -178,7 +185,7 @@ export function IntegrityScreen() {
 
                 <View style={styles.statBox}>
                   <Text style={styles.statBoxLabel}>LAST EVENT</Text>
-                  <Text style={[styles.statBoxValue, { fontSize: 13, marginTop: 4 }]}>
+                  <Text style={[styles.statBoxValue, { fontSize: 13, marginTop: 4 }]} numberOfLines={1}>
                     {lastNode?.operation || 'NONE'}
                   </Text>
                   <Text style={styles.statBoxSub}>Position #{chainNodes.length}</Text>
@@ -189,9 +196,10 @@ export function IntegrityScreen() {
                 style={styles.verifyBtn}
                 onPress={handleVerifyAll}
                 disabled={isVerifyingAll}
+                activeOpacity={0.85}
               >
                 {isVerifyingAll ? (
-                  <ActivityIndicator size="small" color={palette.white} />
+                  <ActivityIndicator size="small" color="#ffffff" />
                 ) : (
                   <Text style={styles.verifyBtnText}>Re-Verify Entire Hash Chain</Text>
                 )}
@@ -216,10 +224,13 @@ export function IntegrityScreen() {
                     <View
                       style={[
                         styles.miniBadge,
-                        { borderColor: isValid ? palette.success : palette.error },
+                        {
+                          borderColor: isValid ? Colors.emerald : Colors.crimson,
+                          backgroundColor: isValid ? 'rgba(5, 150, 105, 0.12)' : 'rgba(220, 38, 38, 0.12)',
+                        },
                       ]}
                     >
-                      <Text style={{ color: isValid ? palette.success : palette.error, fontSize: 10, fontWeight: 'bold' }}>
+                      <Text style={{ color: isValid ? Colors.emerald : Colors.crimson, fontSize: 10, fontWeight: 'bold' }}>
                         {isValid ? 'VALID' : 'TAMPERED'}
                       </Text>
                     </View>
@@ -259,7 +270,7 @@ export function IntegrityScreen() {
                   <Text style={styles.nodeMono} selectable>{node.chain_hash}</Text>
 
                   <Text style={styles.nodeEvidenceRef}>
-                    Evidence ID: <Text style={{ color: palette.brandAmber }}>{node.evidence_id}</Text>
+                    Evidence ID: <Text style={{ color: Colors.primary }}>{node.evidence_id}</Text>
                   </Text>
                 </View>
               ))
@@ -272,35 +283,38 @@ export function IntegrityScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: palette.background },
+  container: { flex: 1, backgroundColor: Colors.canvasParchment },
   scrollView: { flex: 1 },
-  content: { padding: 16, paddingBottom: 40 },
+  content: { padding: Spacing.md, paddingBottom: 40 },
   banner: {
-    backgroundColor: palette.card,
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: Colors.cardBg,
+    padding: 14,
+    borderRadius: Radius.lg,
     borderWidth: 1.5,
-    borderColor: palette.borderDark,
-    borderLeftWidth: 4,
-    borderLeftColor: palette.brandYellow,
-    marginBottom: 14,
-  },
-  bannerTitle: { fontSize: 11, fontWeight: '900', color: palette.deepBlack, marginBottom: 2, letterSpacing: 0.6 },
-  bannerText: { fontSize: 11, color: palette.textSecondary, lineHeight: 16, fontWeight: '500' },
-  overviewCard: {
-    backgroundColor: palette.surface,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: palette.borderDark,
-    borderLeftWidth: 4,
-    borderLeftColor: palette.brandYellow,
-    padding: 16,
+    borderColor: Colors.border,
     marginBottom: 16,
-    elevation: 2,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
+    ...Shadows.subtle,
+  },
+  bannerTitle: {
+    ...Typography.subtopLabel,
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginBottom: 3,
+  },
+  bannerText: {
+    ...Typography.body,
+    fontSize: 12,
+    color: Colors.textSecondary,
+    lineHeight: 18,
+  },
+  overviewCard: {
+    backgroundColor: Colors.cardBg,
+    borderRadius: Radius.lg,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    padding: 18,
+    marginBottom: 16,
+    ...Shadows.elevated,
   },
   statusHeaderRow: {
     flexDirection: 'row',
@@ -308,97 +322,172 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 14,
   },
-  overviewTitle: { fontSize: 12, fontWeight: '900', color: palette.deepBlack, letterSpacing: 0.8 },
-  statusBadge: {
-    borderWidth: 1.5,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
+  overviewTitle: {
+    ...Typography.subtopLabel,
+    fontSize: 13,
+    color: Colors.textMuted,
   },
-  statusBadgeText: { fontSize: 11, fontWeight: '900', letterSpacing: 0.6 },
-  statGrid: { flexDirection: 'row', gap: 8, marginBottom: 14 },
+  statusBadge: {
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: Radius.full,
+  },
+  statusBadgeText: {
+    ...Typography.subtopLabel,
+    fontSize: 11,
+  },
+  statGrid: { flexDirection: 'row', gap: 8, marginBottom: 16 },
   statBox: {
     flex: 1,
-    backgroundColor: palette.surfaceVariant,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: palette.borderDark,
-    padding: 10,
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 12,
     alignItems: 'center',
   },
-  statBoxLabel: { fontSize: 9, fontWeight: '800', color: palette.textSecondary, letterSpacing: 0.5 },
-  statBoxValue: { fontSize: 18, fontWeight: '900', color: palette.deepBlack, marginVertical: 2 },
-  statBoxSub: { fontSize: 9, fontWeight: '600', color: palette.textSecondary },
+  statBoxLabel: {
+    ...Typography.subtopLabel,
+    fontSize: 9,
+    color: Colors.textMuted,
+  },
+  statBoxValue: {
+    ...Typography.heroDisplay,
+    fontSize: 18,
+    color: Colors.ink,
+    marginVertical: 2,
+  },
+  statBoxSub: {
+    ...Typography.body,
+    fontSize: 10,
+    color: Colors.textMuted,
+  },
   verifyBtn: {
-    backgroundColor: palette.deepBlack,
-    borderRadius: 10,
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.md,
     paddingVertical: 14,
     alignItems: 'center',
-    borderLeftWidth: 4,
-    borderLeftColor: palette.brandYellow,
-    elevation: 3,
+    ...Shadows.subtle,
   },
-  verifyBtnText: { color: palette.white, fontSize: 13, fontWeight: '800', letterSpacing: 0.5 },
-  sectionHeader: { fontSize: 12, fontWeight: '900', color: palette.deepBlack, letterSpacing: 0.8, marginBottom: 8, marginTop: 4 },
-  evidenceAuditCard: {
-    backgroundColor: palette.surface,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: palette.borderDark,
-    borderLeftWidth: 4,
-    borderLeftColor: palette.brandYellow,
-    padding: 12,
+  verifyBtnText: {
+    ...Typography.bodyStrong,
+    color: '#ffffff',
+    fontSize: 14,
+  },
+  sectionHeader: {
+    ...Typography.subtopLabel,
+    fontSize: 13,
+    color: Colors.textMuted,
     marginBottom: 10,
-    elevation: 2,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
+    marginTop: 6,
+  },
+  evidenceAuditCard: {
+    backgroundColor: Colors.cardBg,
+    borderRadius: Radius.lg,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    padding: 14,
+    marginBottom: 10,
+    ...Shadows.card,
   },
   evidenceAuditTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  evidenceAuditTitle: { fontSize: 14, fontWeight: '900', color: palette.deepBlack },
-  evidenceAuditId: { fontSize: 10, fontFamily: 'monospace', color: palette.textSecondary, fontWeight: '600' },
-  miniBadge: { borderWidth: 1.5, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-  monoHashLabel: { fontSize: 10, fontWeight: '800', color: palette.deepBlack, marginTop: 4 },
-  monoHashValue: { fontSize: 11, fontFamily: 'monospace', color: palette.deepBlack, fontWeight: '600', marginBottom: 4 },
-  evidenceAuditFooter: { borderTopWidth: 1, borderTopColor: palette.border, paddingTop: 6, marginTop: 4 },
-  evidenceAuditMeta: { fontSize: 10, fontWeight: '600', color: palette.textSecondary },
+  evidenceAuditTitle: {
+    ...Typography.headline,
+    fontSize: 15,
+    color: Colors.ink,
+  },
+  evidenceAuditId: {
+    ...Typography.mono,
+    fontSize: 11,
+    color: Colors.textMuted,
+  },
+  miniBadge: { borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2, borderRadius: Radius.full },
+  monoHashLabel: {
+    ...Typography.subtopLabel,
+    fontSize: 10,
+    color: Colors.textMuted,
+    marginTop: 4,
+  },
+  monoHashValue: {
+    ...Typography.mono,
+    fontSize: 11,
+    color: Colors.ink,
+    marginBottom: 4,
+  },
+  evidenceAuditFooter: { borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: 8, marginTop: 4 },
+  evidenceAuditMeta: {
+    ...Typography.body,
+    fontSize: 11,
+    color: Colors.textMuted,
+  },
   nodeCard: {
-    backgroundColor: palette.surface,
-    borderRadius: 10,
+    backgroundColor: Colors.cardBg,
+    borderRadius: Radius.lg,
     borderWidth: 1.5,
-    borderColor: palette.borderDark,
-    padding: 12,
+    borderColor: Colors.border,
+    padding: 14,
     marginBottom: 10,
-    elevation: 2,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
+    ...Shadows.card,
   },
   nodeCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   nodePosBadge: {
-    backgroundColor: palette.brandYellow,
-    color: palette.deepBlack,
-    fontWeight: '900',
+    backgroundColor: Colors.surface,
+    ...Typography.subtopLabel,
+    color: Colors.ink,
     fontSize: 10,
-    paddingHorizontal: 6,
+    paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: 'hidden',
   },
   nodeOpBadge: {
-    backgroundColor: palette.deepBlack,
-    color: palette.white,
-    fontWeight: '800',
+    backgroundColor: Colors.primarySubtle,
+    ...Typography.subtopLabel,
+    color: Colors.primary,
     fontSize: 11,
-    paddingHorizontal: 6,
+    paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: Radius.full,
+    overflow: 'hidden',
   },
-  nodeTime: { fontSize: 10, color: palette.textSecondary, marginLeft: 'auto', fontWeight: '600' },
-  nodeLabel: { fontSize: 9, fontWeight: '800', color: palette.textSecondary, marginTop: 4 },
-  nodeMono: { fontSize: 10, fontFamily: 'monospace', color: palette.deepBlack, marginBottom: 2, fontWeight: '600' },
-  nodeEvidenceRef: { fontSize: 10, color: palette.textSecondary, marginTop: 4, fontWeight: '600' },
-  emptyCategoryCard: { backgroundColor: palette.surface, borderRadius: 8, borderWidth: 1.5, borderColor: palette.borderDark, padding: 12, alignItems: 'center' },
-  emptyCategoryText: { fontSize: 12, color: palette.textSecondary, fontWeight: '600' },
+  nodeTime: {
+    ...Typography.body,
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginLeft: 'auto',
+  },
+  nodeLabel: {
+    ...Typography.subtopLabel,
+    fontSize: 9,
+    color: Colors.textMuted,
+    marginTop: 4,
+  },
+  nodeMono: {
+    ...Typography.mono,
+    fontSize: 11,
+    color: Colors.ink,
+    marginBottom: 2,
+  },
+  nodeEvidenceRef: {
+    ...Typography.body,
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginTop: 4,
+  },
+  emptyCategoryCard: {
+    backgroundColor: Colors.cardBg,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 14,
+    alignItems: 'center',
+  },
+  emptyCategoryText: {
+    ...Typography.body,
+    fontSize: 12,
+    color: Colors.textMuted,
+  },
 });

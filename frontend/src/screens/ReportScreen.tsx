@@ -6,7 +6,8 @@ import { exportService } from '../services/exportService';
 import { ExportPackageResult } from '../types';
 import { AppHeader } from '../components/AppHeader';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { palette } from '../theme';
+import { Colors, Spacing, Radius, Typography, Shadows } from '../theme';
+import { Ionicons } from '@expo/vector-icons';
 
 export function ReportScreen() {
   const activeCase = useCaseStore((state) => state.activeCase);
@@ -30,18 +31,20 @@ export function ReportScreen() {
       <AppHeader title="Forensic Export" subtitle="Generate Tamper-Proof PDF & Encrypted ZIP" />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.card}>
+          <Text style={styles.caseBadge}>TARGET CASE</Text>
           <Text style={styles.caseTitle}>{activeCase?.title || 'Case TR-2026-0089'}</Text>
           <Text style={styles.caseMeta}>Case Number: {activeCase?.caseNumber || 'TR-2026-0089'}</Text>
           <Text style={styles.caseMeta}>Evidence Count: {evidenceList.length} items logged</Text>
         </View>
 
-        <TouchableOpacity style={styles.exportBtn} onPress={handleExport} disabled={isExporting}>
+        <TouchableOpacity style={styles.exportBtn} onPress={handleExport} disabled={isExporting} activeOpacity={0.85}>
+          <Ionicons name="document-text-outline" size={18} color="#ffffff" style={{ marginRight: 6 }} />
           <Text style={styles.exportBtnText}>
             {isExporting ? 'Generating Report...' : 'Build Forensic Evidence Package'}
           </Text>
         </TouchableOpacity>
 
-        {isExporting ? <LoadingSpinner label="Building PDF report and compute SHA-256 ZIP package..." /> : null}
+        {isExporting ? <LoadingSpinner label="Building PDF report and computing SHA-256 ZIP package..." /> : null}
 
         {exportResult ? (
           <View style={styles.resultCard}>
@@ -52,6 +55,7 @@ export function ReportScreen() {
             <TouchableOpacity
               style={styles.shareBtn}
               onPress={() => exportService.shareReport(exportResult.pdfUri)}
+              activeOpacity={0.85}
             >
               <Text style={styles.shareBtnText}>📄 Export / Share PDF</Text>
             </TouchableOpacity>
@@ -65,75 +69,86 @@ export function ReportScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: palette.background,
+    backgroundColor: Colors.canvasParchment,
   },
   content: {
-    padding: 16,
+    padding: Spacing.md,
+    paddingBottom: 40,
   },
   card: {
-    backgroundColor: palette.card,
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: Colors.cardBg,
+    borderRadius: Radius.lg,
+    padding: 18,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: palette.border,
-    borderLeftWidth: 4,
-    borderLeftColor: palette.brandYellow,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    ...Shadows.elevated,
+  },
+  caseBadge: {
+    ...Typography.subtopLabel,
+    fontSize: 10,
+    color: Colors.primary,
+    marginBottom: 6,
   },
   caseTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: palette.text,
+    ...Typography.headline,
+    fontSize: 20,
+    color: Colors.ink,
     marginBottom: 6,
   },
   caseMeta: {
+    ...Typography.body,
     fontSize: 13,
-    color: palette.textSecondary,
-    marginBottom: 2,
+    color: Colors.textMuted,
+    marginBottom: 3,
   },
   exportBtn: {
-    backgroundColor: palette.deepBlack,
+    flexDirection: 'row',
+    backgroundColor: Colors.primary,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: Radius.md,
     alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 20,
+    ...Shadows.subtle,
   },
   exportBtnText: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: palette.white,
+    ...Typography.bodyStrong,
+    fontSize: 14,
+    color: '#ffffff',
   },
   resultCard: {
-    backgroundColor: palette.surface,
-    borderRadius: 10,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: palette.border,
-    borderLeftWidth: 4,
-    borderLeftColor: palette.success,
+    backgroundColor: Colors.cardBg,
+    borderRadius: Radius.lg,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    borderLeftWidth: 3.5,
+    borderLeftColor: Colors.emerald,
+    ...Shadows.elevated,
   },
   resultHeader: {
+    ...Typography.subtopHeading,
     fontSize: 15,
-    fontWeight: 'bold',
-    color: palette.success,
-    marginBottom: 8,
+    color: Colors.emerald,
+    marginBottom: 10,
   },
   resultItem: {
+    ...Typography.mono,
     fontSize: 12,
-    color: palette.text,
-    fontFamily: 'monospace',
-    marginBottom: 4,
+    color: Colors.ink,
+    marginBottom: 6,
   },
   shareBtn: {
-    backgroundColor: palette.brandYellow,
-    marginTop: 12,
-    paddingVertical: 12,
-    borderRadius: 8,
+    backgroundColor: Colors.primary,
+    marginTop: 14,
+    paddingVertical: 14,
+    borderRadius: Radius.md,
     alignItems: 'center',
   },
   shareBtnText: {
-    color: palette.deepBlack,
-    fontWeight: 'bold',
+    ...Typography.bodyStrong,
+    color: '#ffffff',
     fontSize: 14,
   },
 });

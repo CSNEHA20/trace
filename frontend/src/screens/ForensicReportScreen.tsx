@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { palette } from '../theme';
+import { Colors, Spacing, Radius, Typography, Shadows } from '../theme';
 import { useCaseStore } from '../store/caseStore';
 import { useEvidenceStore } from '../store/evidenceStore';
 import { useReportStore } from '../store/reportStore';
@@ -124,7 +124,7 @@ export const ForensicReportScreen: React.FC = () => {
               value={options.agencyName}
               onChangeText={(text) => updateOptions({ agencyName: text })}
               placeholder="e.g. TRACE Digital Forensics Lab"
-              placeholderTextColor={palette.textSecondary}
+              placeholderTextColor={Colors.textMuted}
             />
           </View>
 
@@ -135,7 +135,7 @@ export const ForensicReportScreen: React.FC = () => {
               value={options.investigatorNotes || ''}
               onChangeText={(text) => updateOptions({ investigatorNotes: text })}
               placeholder="Add findings, scene notes, or legal observations..."
-              placeholderTextColor={palette.textSecondary}
+              placeholderTextColor={Colors.textMuted}
               multiline
               numberOfLines={3}
             />
@@ -149,7 +149,7 @@ export const ForensicReportScreen: React.FC = () => {
             <Switch
               value={options.includeAiSummaries}
               onValueChange={(val) => updateOptions({ includeAiSummaries: val })}
-              trackColor={{ false: palette.border, true: palette.brandYellow }}
+              trackColor={{ false: Colors.border, true: Colors.primary }}
             />
           </View>
 
@@ -161,7 +161,7 @@ export const ForensicReportScreen: React.FC = () => {
             <Switch
               value={options.includeExifMetadata}
               onValueChange={(val) => updateOptions({ includeExifMetadata: val })}
-              trackColor={{ false: palette.border, true: palette.brandYellow }}
+              trackColor={{ false: Colors.border, true: Colors.primary }}
             />
           </View>
 
@@ -173,7 +173,7 @@ export const ForensicReportScreen: React.FC = () => {
             <Switch
               value={options.includeHashChain}
               onValueChange={(val) => updateOptions({ includeHashChain: val })}
-              trackColor={{ false: palette.border, true: palette.brandYellow }}
+              trackColor={{ false: Colors.border, true: Colors.primary }}
             />
           </View>
         </View>
@@ -241,49 +241,28 @@ export const ForensicReportScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: palette.background,
+    backgroundColor: Colors.canvasParchment,
   },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    padding: Spacing.md,
     paddingBottom: 40,
   },
-  header: {
-    marginBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: palette.text,
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: palette.textSecondary,
-    marginTop: 4,
-  },
   card: {
-    backgroundColor: palette.surface,
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: Colors.cardBg,
+    borderRadius: Radius.lg,
+    padding: 18,
     marginBottom: 16,
     borderWidth: 1.5,
-    borderColor: palette.borderDark,
-    borderLeftWidth: 4,
-    borderLeftColor: palette.brandYellow,
-    elevation: 2,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
+    borderColor: Colors.border,
+    ...Shadows.elevated,
   },
   cardTitle: {
-    fontSize: 13,
-    fontWeight: '900',
-    color: palette.deepBlack,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
+    ...Typography.subtopLabel,
+    fontSize: 12,
+    color: Colors.textMuted,
     marginBottom: 12,
   },
   caseRow: {
@@ -293,28 +272,28 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   caseNumber: {
-    fontSize: 17,
-    fontWeight: '900',
-    color: palette.deepBlack,
-    fontFamily: 'monospace',
+    ...Typography.headline,
+    fontSize: 18,
+    color: Colors.ink,
   },
   caseTitleStr: {
+    ...Typography.body,
     fontSize: 13,
-    fontWeight: '600',
-    color: palette.textSecondary,
+    color: Colors.textMuted,
     marginTop: 2,
   },
   badgeContainer: {
-    backgroundColor: palette.brandYellow,
-    paddingHorizontal: 8,
+    backgroundColor: 'rgba(5, 150, 105, 0.12)',
+    paddingHorizontal: 10,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(5, 150, 105, 0.35)',
   },
   badgeText: {
+    ...Typography.subtopLabel,
     fontSize: 10,
-    fontWeight: '900',
-    color: palette.deepBlack,
-    letterSpacing: 0.5,
+    color: Colors.emerald,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -322,48 +301,48 @@ const styles = StyleSheet.create({
   },
   statBox: {
     flex: 1,
-    backgroundColor: palette.surfaceVariant,
-    padding: 10,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: palette.borderDark,
+    backgroundColor: Colors.surface,
+    padding: 12,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
     alignItems: 'center',
   },
   statVal: {
-    fontSize: 15,
-    fontWeight: '900',
-    color: palette.deepBlack,
+    ...Typography.heroDisplay,
+    fontSize: 16,
+    color: Colors.ink,
   },
   statLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: palette.textSecondary,
+    ...Typography.subtopLabel,
+    fontSize: 9,
+    color: Colors.textMuted,
     marginTop: 2,
   },
   textGreen: {
-    color: '#16A34A',
+    color: Colors.emerald,
   },
   textRed: {
-    color: '#DC2626',
+    color: Colors.crimson,
   },
   fieldGroup: {
     marginBottom: 14,
   },
   fieldLabel: {
+    ...Typography.subtopHeading,
     fontSize: 12,
-    fontWeight: '700',
-    color: palette.deepBlack,
+    color: Colors.ink,
     marginBottom: 6,
   },
   input: {
-    backgroundColor: palette.surfaceVariant,
-    borderWidth: 1.5,
-    borderColor: palette.borderDark,
-    borderRadius: 8,
-    padding: 10,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    padding: 12,
+    ...Typography.body,
     fontSize: 13,
-    fontWeight: '600',
-    color: palette.deepBlack,
+    color: Colors.ink,
   },
   textArea: {
     height: 70,
@@ -373,47 +352,41 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: palette.border,
+    borderTopColor: Colors.border,
   },
   switchTextGroup: {
     flex: 1,
     paddingRight: 10,
   },
   switchLabel: {
+    ...Typography.bodyStrong,
     fontSize: 13,
-    fontWeight: '700',
-    color: palette.deepBlack,
+    color: Colors.ink,
   },
   switchSublabel: {
+    ...Typography.body,
     fontSize: 11,
-    fontWeight: '500',
-    color: palette.textSecondary,
+    color: Colors.textMuted,
     marginTop: 2,
+    lineHeight: 16,
   },
   generateButton: {
-    backgroundColor: palette.deepBlack,
+    backgroundColor: Colors.primary,
     paddingVertical: 14,
-    borderRadius: 10,
+    borderRadius: Radius.md,
     alignItems: 'center',
     marginBottom: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: palette.brandYellow,
-    elevation: 3,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
+    ...Shadows.subtle,
   },
   disabledButton: {
-    opacity: 0.7,
+    opacity: 0.6,
   },
   generateButtonText: {
-    color: palette.white,
-    fontWeight: '800',
+    ...Typography.bodyStrong,
+    color: '#ffffff',
     fontSize: 14,
-    letterSpacing: 0.5,
   },
   loadingRow: {
     flexDirection: 'row',
@@ -425,29 +398,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: palette.border,
+    borderBottomColor: Colors.border,
   },
   historyTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: palette.deepBlack,
+    ...Typography.headline,
+    fontSize: 14,
+    color: Colors.ink,
   },
   historyMeta: {
+    ...Typography.body,
     fontSize: 11,
-    fontWeight: '600',
-    color: palette.textSecondary,
+    color: Colors.textMuted,
     marginTop: 2,
   },
   viewButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 6,
-    backgroundColor: palette.brandYellow,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.primarySubtle,
   },
   viewButtonText: {
+    ...Typography.subtopLabel,
     fontSize: 11,
-    fontWeight: '800',
-    color: palette.deepBlack,
-    letterSpacing: 0.3,
+    color: Colors.primary,
   },
 });

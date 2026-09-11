@@ -7,538 +7,343 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { palette } from '../theme';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors, Spacing, Radius, Shadows, Typography } from '../theme';
 import { useCaseStore } from '../store/caseStore';
 import { useEvidenceStore } from '../store/evidenceStore';
 import { databaseService } from '../services/databaseService';
 import { verificationService } from '../services/verificationService';
-import { forensicAnalysisService, CompleteForensicAnalysisResult } from '../services/forensicAnalysisService';
-import { InferenceProgress } from '../../../ai/inference/inferenceService';
 import { AppHeader } from '../components/AppHeader';
 import { CaseCreateModal } from '../components/CaseCreateModal';
 import { CaseSelectModal } from '../components/CaseSelectModal';
-import { EvidenceSourcePicker, SourcePickerResult } from '../components/EvidenceSourcePicker';
-import { IngestionProgressOverlay } from '../components/IngestionProgressOverlay';
-import { NarrativeRecord, EventRecord, HashChainRecord, EvidenceItem } from '../types';
+
+interface CaseStats {
+  [caseId: string]: {
+    evidenceCount: number;
+    integrityValid: boolean | null;
+  };
+}
 
 export function WorkspaceScreen() {
   const router = useRouter();
   const { cases, activeCase, fetchCases, selectCase } = useCaseStore();
-  const { evidenceList, fetchEvidence, ingestEvidence, ingestionStatus, ingestionFilename } = useEvidenceStore();
+  const { fetchEvidence } = useEvidenceStore();
 
   const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  // Modals
+  const [loading, setLoading] = useState(false);
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [selectModalVisible, setSelectModalVisible] = useState(false);
-  const [pickerVisible, setPickerVisible] = useState(false);
-  const [overlayVisible, setOverlayVisible] = useState(false);
+  const [casesStats, setCasesStats] = useState<CaseStats>({});
 
-  // Analysis State
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisProgress, setAnalysisProgress] = useState<InferenceProgress | null>(null);
-
-  // Case Data from SQLite
-  const [events, setEvents] = useState<EventRecord[]>([]);
-  const [narrative, setNarrative] = useState<NarrativeRecord | null>(null);
-  const [chainRecords, setChainRecords] = useState<HashChainRecord[]>([]);
-  const [chainIntegrityValid, setChainIntegrityValid] = useState<boolean | null>(null);
-  const [verifiedEvidenceCount, setVerifiedEvidenceCount] = useState<number>(0);
-
-  const loadCaseData = useCallback(async () => {
-    if (!activeCase?.id) {
-      setEvents([]);
-      setNarrative(null);
-      setChainRecords([]);
-      setChainIntegrityValid(null);
-      setVerifiedEvidenceCount(0);
-      setLoading(false);
-      return;
-    }
-
+  const loadAllCasesStats = useCallback(async () => {
     try {
-      const [caseEvidence, caseEvents, caseNarrative, caseChain] = await Promise.all([
-        databaseService.getEvidenceForCase(activeCase.id),
-        databaseService.getEventsForCase(activeCase.id),
-        databaseService.getLatestNarrativeForCase(activeCase.id),
-        databaseService.getHashChainForCase(activeCase.id),
-      ]);
-
-      setEvents(caseEvents);
-      setNarrative(caseNarrative);
-      setChainRecords(caseChain);
-
-      // Verify integrity for all evidence items
-      let validCount = 0;
-      let allValid = caseEvidence.length > 0;
-      for (const ev of caseEvidence) {
-        const v = await verificationService.verifyChain(ev.id);
-        if (v.isValid) {
-          validCount++;
-        } else {
-          allValid = false;
+      const stats: CaseStats = {};
+      for (const c of cases) {
+        const evidence = await databaseService.getEvidenceForCase(c.id);
+        let valid = evidence.length > 0;
+        for (const ev of evidence) {
+          const v = await verificationService.verifyChain(ev.id);
+          if (!v.isValid) {
+            valid = false;
+            break;
+          }
         }
+        stats[c.id] = {
+          evidenceCount: evidence.length,
+          integrityValid: evidence.length > 0 ? valid : null,
+        };
       }
-
-      setVerifiedEvidenceCount(validCount);
-      setChainIntegrityValid(caseEvidence.length > 0 ? allValid : null);
+      setCasesStats(stats);
     } catch (err) {
-      console.error('[WorkspaceScreen] Error loading case data:', err);
+      console.error('[WorkspaceScreen] Error loading stats:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [activeCase?.id]);
+  }, [cases]);
 
   useEffect(() => {
     fetchCases();
-  }, []);
+  }, [fetchCases]);
 
   useEffect(() => {
-    if (activeCase?.id) {
-      fetchEvidence(activeCase.id);
-      loadCaseData();
+    if (cases.length > 0) {
+      loadAllCasesStats();
     } else {
       setLoading(false);
     }
-  }, [activeCase?.id, loadCaseData]);
-
-  useEffect(() => {
-    let mounted = true;
-    const checkPendingCameraCapture = async () => {
-      try {
-        const ImagePicker = require('expo-image-picker');
-        if (ImagePicker && typeof ImagePicker.getPendingResultAsync === 'function') {
-          const pending = await ImagePicker.getPendingResultAsync();
-          if (Array.isArray(pending) && pending.length > 0 && mounted) {
-            for (const item of pending) {
-              if (item && !item.canceled && item.assets && item.assets[0]?.uri) {
-                const asset = item.assets[0];
-                const targetCase = activeCase || cases[0];
-                if (targetCase?.id) {
-                  setOverlayVisible(true);
-                  await ingestEvidence({
-                    sourceUri: asset.uri,
-                    originalFilename: asset.fileName || `camera_recovered_${Date.now()}.jpg`,
-                    mimeType: asset.mimeType || 'image/jpeg',
-                    reportedSize: asset.fileSize,
-                    source: 'CAMERA',
-                    caseId: targetCase.id,
-                  });
-                  setOverlayVisible(false);
-                  await fetchEvidence(targetCase.id);
-                  await loadCaseData();
-                }
-              }
-            }
-          }
-        }
-      } catch {
-        // Silent check on mount
-      }
-    };
-    checkPendingCameraCapture();
-    return () => {
-      mounted = false;
-    };
-  }, [activeCase?.id, cases.length]);
+  }, [cases, loadAllCasesStats]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchCases();
     if (activeCase?.id) {
       await fetchEvidence(activeCase.id);
-      await loadCaseData();
     }
-    setRefreshing(false);
-  }, [activeCase?.id, fetchCases, fetchEvidence, loadCaseData]);
+    await loadAllCasesStats();
+  }, [activeCase?.id, fetchCases, fetchEvidence, loadAllCasesStats]);
 
-  // ── Evidence Import Handler ──────────────────────────────────────────
-  const handleSourceSelected = async (result: SourcePickerResult) => {
-    try {
-      if (result.cancelled) return;
-      if (result.permissionDenied) {
-        Alert.alert('Permission Denied', 'Camera or Storage permission is required to ingest evidence.');
-        return;
-      }
-      if (result.error) {
-        Alert.alert('Import Error', result.error);
-        return;
-      }
-      if (!result.uri || !activeCase?.id) {
-        Alert.alert('No Active Case', 'Please select or create an active case first.');
-        return;
-      }
-
-      setOverlayVisible(true);
-      const res = await ingestEvidence({
-        sourceUri: result.uri,
-        originalFilename: result.filename,
-        mimeType: result.mimeType,
-        reportedSize: result.fileSize,
-        source: result.source,
-        caseId: activeCase.id,
-      });
-      setOverlayVisible(false);
-
-      if (res.status === 'COMPLETE') {
-        await fetchEvidence(activeCase.id);
-        await loadCaseData();
-      } else {
-        Alert.alert('Ingestion Failed', res.error || 'Failed to ingest evidence into SQLite.');
-      }
-    } catch (err: unknown) {
-      setOverlayVisible(false);
-      Alert.alert('Ingestion Error', (err as Error)?.message || 'Failed to complete evidence intake.');
-    }
+  const handleSelectCase = async (id: string) => {
+    await selectCase(id);
+    await fetchEvidence(id);
   };
 
-  // ── Run On-Device Case Analysis ──────────────────────────────────────
-  const handleAnalyzeCase = async () => {
-    if (!activeCase?.id) {
-      Alert.alert('No Case Selected', 'Select a case to analyze.');
-      return;
-    }
-    if (evidenceList.length === 0) {
-      Alert.alert('No Evidence', 'Add at least one piece of evidence before running analysis.');
-      return;
-    }
-
-    setIsAnalyzing(true);
-    setAnalysisProgress({
-      stage: 'CHECKING',
-      completedChunks: 0,
-      totalChunks: 1,
-      message: 'Checking local Gemma 2B model availability…',
-    });
-
-    try {
-      await forensicAnalysisService.analyzeCaseEvidence(activeCase.id, {
-        onProgress: (p) => setAnalysisProgress(p),
-      });
-
-      await fetchEvidence(activeCase.id);
-      await loadCaseData();
-      setIsAnalyzing(false);
-      setAnalysisProgress(null);
-      Alert.alert('Analysis Complete', 'Local forensic extraction finished and hash chain updated.');
-    } catch (err: unknown) {
-      setIsAnalyzing(false);
-      setAnalysisProgress(null);
-      const msg = (err as Error)?.message || '';
-      Alert.alert('Analysis Failed', msg || 'On-device forensic analysis failed.');
-    }
-  };
-
-  // ── Loading State ────────────────────────────────────────────────────
-  if (loading && !activeCase) {
+  if (loading && cases.length === 0) {
     return (
       <View style={styles.container}>
-        <AppHeader title="TRACE FORENSIC WORKSPACE" subtitle="Hardware-Backed On-Device Digital Forensics" />
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={palette.brandYellow} />
-          <Text style={{ marginTop: 12, color: palette.textSecondary, fontSize: 13, fontWeight: '500' }}>
-            Initializing forensic workspace…
-          </Text>
+        <AppHeader title="Forensic Cases" subtitle="Air-Gapped Mobile Suite" />
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Loading forensic cases…</Text>
         </View>
       </View>
     );
   }
-
-  // ── Empty State ──────────────────────────────────────────────────────
-  if (!loading && cases.length === 0) {
-    return (
-      <View style={styles.container}>
-        <AppHeader title="TRACE FORENSIC WORKSPACE" subtitle="Offline On-Device Digital Forensics" />
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyIcon}>🛡️</Text>
-          <Text style={styles.emptyTitle}>No Forensic Case Created</Text>
-          <Text style={styles.emptyText}>
-            TRACE requires an authoritative SQLite case file to securely ingest evidence and record hash-chain ledger events.
-          </Text>
-          <TouchableOpacity style={styles.primaryActionBtn} onPress={() => setCreateModalVisible(true)}>
-            <Text style={styles.primaryActionBtnText}>+ Initialize Forensic Case</Text>
-          </TouchableOpacity>
-        </View>
-
-        <CaseCreateModal
-          visible={createModalVisible}
-          onClose={() => setCreateModalVisible(false)}
-          onCaseCreated={async (id) => {
-            await selectCase(id);
-            await fetchCases();
-          }}
-        />
-      </View>
-    );
-  }
-
-  const lastChainNode = chainRecords.length > 0 ? chainRecords[chainRecords.length - 1] : null;
 
   return (
     <View style={styles.container}>
       <AppHeader
-        title="TRACE FORENSIC WORKSPACE"
-        subtitle="Hardware-Backed On-Device Digital Forensics"
+        title="Forensic Cases"
+        subtitle="Air-Gapped Cryptographic Registry"
+        rightAction={
+          <TouchableOpacity
+            style={styles.headerAddBtn}
+            onPress={() => setCreateModalVisible(true)}
+            accessibilityLabel="Create New Case"
+          >
+            <Ionicons name="add" size={24} color="#ffffff" />
+          </TouchableOpacity>
+        }
       />
 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[palette.primary]} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
         }
       >
-        {/* Offline & Architecture Banner */}
-        <View style={styles.securityBanner}>
-          <View style={styles.securityBadge}>
-            <Text style={styles.securityBadgeDot}>●</Text>
-            <Text style={styles.securityBadgeText}>100% OFFLINE / LOCAL AI</Text>
-          </View>
-          <Text style={styles.securitySubtext}>
-            Gemma 2B CPU INT4 · MediaPipe GenAI Runtime · SQLite Hash-Chain
-          </Text>
-        </View>
-
-        {/* ── CASE HEADER ── */}
-        <View style={styles.caseHeaderCard}>
-          <View style={styles.caseHeaderTop}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.caseNumberLabel}>{activeCase?.caseNumber || 'NO CASE'}</Text>
-              <Text style={styles.caseTitleText} numberOfLines={2}>
-                {activeCase?.title || 'Untitled Case'}
-              </Text>
-            </View>
-            <TouchableOpacity style={styles.switchCaseBtn} onPress={() => setSelectModalVisible(true)}>
-              <Text style={styles.switchCaseBtnText}>Switch Case</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.caseMetaDivider} />
-
-          <View style={styles.caseMetaRow}>
-            <View style={styles.metaCol}>
-              <Text style={styles.metaLabel}>INVESTIGATOR</Text>
-              <Text style={styles.metaValue}>{activeCase?.investigatorName || 'Unknown'}</Text>
-            </View>
-            <View style={styles.metaCol}>
-              <Text style={styles.metaLabel}>EVIDENCE ITEMS</Text>
-              <Text style={styles.metaValue}>{evidenceList.length} items</Text>
-            </View>
-            <View style={styles.metaCol}>
-              <Text style={styles.metaLabel}>INTEGRITY</Text>
-              <Text
-                style={[
-                  styles.metaValue,
-                  {
-                    color:
-                      chainIntegrityValid === true
-                        ? palette.success
-                        : chainIntegrityValid === false
-                        ? palette.error
-                        : palette.textSecondary,
-                  },
-                ]}
+        {/* Active Case Hero Banner */}
+        {activeCase && (
+          <View style={styles.heroCard}>
+            <View style={styles.heroTopRow}>
+              <View style={styles.heroBadge}>
+                <Ionicons name="radio-button-on" size={13} color={Colors.primary} />
+                <Text style={styles.heroBadgeText}>ACTIVE CASE</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.switchButton}
+                onPress={() => setSelectModalVisible(true)}
+                activeOpacity={0.7}
               >
-                {chainIntegrityValid === true
-                  ? 'VERIFIED'
-                  : chainIntegrityValid === false
-                  ? 'TAMPERED'
-                  : 'PENDING'}
-              </Text>
+                <Ionicons name="swap-horizontal" size={15} color={Colors.primary} />
+                <Text style={styles.switchButtonText}>Switch</Text>
+              </TouchableOpacity>
             </View>
-          </View>
-        </View>
 
-        {/* ── CASE OVERVIEW 3-TIER ── */}
-        <View style={styles.overviewGrid}>
-          <View style={styles.overviewBox}>
-            <Text style={styles.overviewBoxTitle}>EVIDENCE</Text>
-            <Text style={styles.overviewBoxBig}>{evidenceList.length}</Text>
-            <Text style={styles.overviewBoxSub}>
-              {verifiedEvidenceCount} / {evidenceList.length} verified
-            </Text>
-          </View>
-
-          <View style={styles.overviewBox}>
-            <Text style={styles.overviewBoxTitle}>ANALYSIS</Text>
-            <Text
-              style={[
-                styles.overviewBoxBig,
-                { color: narrative ? palette.primary : palette.warning, fontSize: 16, marginTop: 4 },
-              ]}
-            >
-              {narrative ? 'COMPLETE' : 'PENDING'}
-            </Text>
-            <Text style={styles.overviewBoxSub}>
-              {narrative ? 'Gemma extracted' : 'Awaiting run'}
-            </Text>
-          </View>
-
-          <View style={styles.overviewBox}>
-            <Text style={styles.overviewBoxTitle}>CHAIN</Text>
-            <Text
-              style={[
-                styles.overviewBoxBig,
-                {
-                  color:
-                    chainIntegrityValid === true
-                      ? palette.success
-                      : chainIntegrityValid === false
-                      ? palette.error
-                      : palette.textSecondary,
-                  fontSize: 16,
-                  marginTop: 4,
-                },
-              ]}
-            >
-              {chainIntegrityValid === true ? 'VALID' : chainIntegrityValid === false ? 'ALERT' : 'EMPTY'}
-            </Text>
-            <Text style={styles.overviewBoxSub}>{chainRecords.length} nodes</Text>
-          </View>
-        </View>
-
-        {/* ── ANALYSIS IN PROGRESS NOTIFICATION ── */}
-        {isAnalyzing && (
-          <View style={styles.analysisProgressCard}>
-            <View style={styles.analysisProgressHeader}>
-              <ActivityIndicator size="small" color={palette.primary} />
-              <Text style={styles.analysisProgressTitle}>
-                STAGE: {analysisProgress?.stage || 'ANALYZING'}
+            <Text style={styles.heroCaseNumber}>{activeCase.caseNumber || activeCase.id}</Text>
+            <Text style={styles.heroTitle}>{activeCase.title || 'Untitled Investigation'}</Text>
+            {activeCase.description ? (
+              <Text style={styles.heroDescription} numberOfLines={2}>
+                {activeCase.description}
               </Text>
-            </View>
-            <Text style={styles.analysisProgressMsg}>{analysisProgress?.message}</Text>
-          </View>
-        )}
+            ) : null}
 
-        {/* ── QUICK ACTIONS ── */}
-        <Text style={styles.sectionHeader}>QUICK ACTIONS</Text>
-        <View style={styles.actionsGrid}>
-          <TouchableOpacity style={styles.actionBtn} onPress={() => setPickerVisible(true)}>
-            <Text style={styles.actionBtnIcon}>➕</Text>
-            <Text style={styles.actionBtnText}>Add Evidence</Text>
-          </TouchableOpacity>
+            <View style={styles.heroDivider} />
 
-          <TouchableOpacity
-            style={[styles.actionBtn, isAnalyzing && styles.actionBtnDisabled]}
-            onPress={handleAnalyzeCase}
-            disabled={isAnalyzing}
-          >
-            <Text style={styles.actionBtnIcon}>⚡</Text>
-            <Text style={styles.actionBtnText}>
-              {isAnalyzing ? 'Analyzing…' : 'Analyze Case'}
-            </Text>
-          </TouchableOpacity>
+            <View style={styles.heroStatsRow}>
+              <View style={[styles.heroStatCol, { flex: 1.2 }]}>
+                <Text style={styles.heroStatLabel}>INVESTIGATOR</Text>
+                <Text style={styles.heroStatValue} numberOfLines={2}>
+                  {activeCase.investigatorName || 'Lead Examiner'}
+                </Text>
+              </View>
 
-          <TouchableOpacity style={styles.actionBtn} onPress={() => router.push('/(tabs)/timeline')}>
-            <Text style={styles.actionBtnIcon}>⏳</Text>
-            <Text style={styles.actionBtnText}>View Timeline</Text>
-          </TouchableOpacity>
+              <View style={styles.heroStatCol}>
+                <Text style={styles.heroStatLabel}>EVIDENCE</Text>
+                <Text style={styles.heroStatValue}>
+                  {casesStats[activeCase.id]?.evidenceCount ?? 0} items
+                </Text>
+              </View>
 
-          <TouchableOpacity style={styles.actionBtn} onPress={() => router.push('/(tabs)/findings')}>
-            <Text style={styles.actionBtnIcon}>🔍</Text>
-            <Text style={styles.actionBtnText}>View Findings</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionBtn} onPress={() => router.push('/(tabs)/integrity')}>
-            <Text style={styles.actionBtnIcon}>🔐</Text>
-            <Text style={styles.actionBtnText}>Integrity Ledger</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionBtn} onPress={() => router.push('/(tabs)/report')}>
-            <Text style={styles.actionBtnIcon}>📄</Text>
-            <Text style={styles.actionBtnText}>Export Report</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── LATEST FORENSIC FINDINGS SUMMARY ── */}
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionHeader}>LATEST FINDINGS</Text>
-          {narrative && (
-            <TouchableOpacity onPress={() => router.push('/(tabs)/findings')}>
-              <Text style={styles.viewAllLink}>View All Findings →</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <View style={styles.card}>
-          {narrative ? (
-            <View>
-              <Text style={styles.findingSummaryHeader}>INCIDENT NARRATIVE SUMMARY</Text>
-              <Text style={styles.findingNarrativeText} numberOfLines={4}>
-                {narrative.content.split('### Extracted Facts')[0].replace(/### Incident Summary/g, '').trim()}
-              </Text>
-              <View style={styles.findingsCounterRow}>
-                <View style={styles.findingCountTag}>
-                  <Text style={styles.findingCountLabel}>EVENTS</Text>
-                  <Text style={styles.findingCountValue}>{events.length}</Text>
-                </View>
-                <View style={styles.findingCountTag}>
-                  <Text style={styles.findingCountLabel}>LEDGER PROOFS</Text>
-                  <Text style={styles.findingCountValue}>{chainRecords.length}</Text>
-                </View>
-                <View style={styles.findingCountTag}>
-                  <Text style={styles.findingCountLabel}>MODEL</Text>
-                  <Text style={styles.findingCountValue}>GEMMA 2B</Text>
+              <View style={styles.heroStatCol}>
+                <Text style={styles.heroStatLabel}>INTEGRITY</Text>
+                <View style={styles.integrityBadge}>
+                  <Ionicons
+                    name={
+                      casesStats[activeCase.id]?.integrityValid === true
+                        ? 'shield-checkmark'
+                        : casesStats[activeCase.id]?.integrityValid === false
+                        ? 'alert-circle'
+                        : 'time-outline'
+                    }
+                    size={15}
+                    color={
+                      casesStats[activeCase.id]?.integrityValid === true
+                        ? Colors.emerald
+                        : casesStats[activeCase.id]?.integrityValid === false
+                        ? Colors.crimson
+                        : Colors.textMuted
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.integrityText,
+                      {
+                        color:
+                          casesStats[activeCase.id]?.integrityValid === true
+                            ? Colors.emerald
+                            : casesStats[activeCase.id]?.integrityValid === false
+                            ? Colors.crimson
+                            : Colors.textMuted,
+                      },
+                    ]}
+                  >
+                    {casesStats[activeCase.id]?.integrityValid === true
+                      ? 'VERIFIED'
+                      : casesStats[activeCase.id]?.integrityValid === false
+                      ? 'COMPROMISED'
+                      : 'NO DATA'}
+                  </Text>
                 </View>
               </View>
             </View>
-          ) : (
-            <View style={styles.emptyFindingsBox}>
-              <Text style={styles.emptyFindingsText}>No forensic analysis generated yet.</Text>
-              <Text style={styles.emptyFindingsSub}>
-                Execute on-device Gemma analysis to extract verified timeline events and threats.
-              </Text>
-            </View>
-          )}
+
+            <TouchableOpacity
+              style={styles.viewDetailsBtn}
+              onPress={() => router.push(`/case/${activeCase.id}`)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.viewDetailsBtnText}>Open Case Details</Text>
+              <Ionicons name="arrow-forward" size={16} color="#ffffff" />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* All Cases Header */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>ALL INVESTIGATIONS</Text>
+          <Text style={styles.sectionCount}>{cases.length} Total</Text>
         </View>
 
-        {/* ── INTEGRITY SUMMARY ── */}
-        <Text style={styles.sectionHeader}>INTEGRITY & PROVENANCE</Text>
-        <View style={styles.card}>
-          <View style={styles.integrityRow}>
-            <Text style={styles.integrityLabel}>Evidence Hashes:</Text>
-            <Text style={styles.integrityValue}>
-              {verifiedEvidenceCount} / {evidenceList.length} SHA-256 Verified
+        {/* Cases List */}
+        {cases.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Ionicons name="folder-open-outline" size={40} color={Colors.textMuted} />
+            <Text style={styles.emptyTitle}>No Forensic Cases Found</Text>
+            <Text style={styles.emptySubtitle}>
+              Initialize an air-gapped cryptographic case to begin evidence logging.
             </Text>
-          </View>
-          <View style={styles.integrityRow}>
-            <Text style={styles.integrityLabel}>Last Chain Event:</Text>
-            <Text style={styles.integrityValue}>
-              {lastChainNode ? `${lastChainNode.operation} (#${chainRecords.length})` : 'None recorded'}
-            </Text>
-          </View>
-          <View style={styles.integrityRow}>
-            <Text style={styles.integrityLabel}>Ledger Status:</Text>
-            <Text
-              style={[
-                styles.integrityValue,
-                {
-                  color:
-                    chainIntegrityValid === true
-                      ? palette.success
-                      : chainIntegrityValid === false
-                      ? palette.error
-                      : palette.textSecondary,
-                  fontWeight: 'bold',
-                },
-              ]}
+            <TouchableOpacity
+              style={styles.createCaseBtn}
+              onPress={() => setCreateModalVisible(true)}
+              activeOpacity={0.8}
             >
-              {chainIntegrityValid === true
-                ? 'CRYPTOGRAPHICALLY VALID'
-                : chainIntegrityValid === false
-                ? 'INTEGRITY MISMATCH DETECTED'
-                : 'AWAITING EVIDENCE'}
-            </Text>
+              <Ionicons name="add" size={18} color="#ffffff" />
+              <Text style={styles.createCaseBtnText}>Create Forensic Case</Text>
+            </TouchableOpacity>
           </View>
-        </View>
+        ) : (
+          cases.map((c) => {
+            const isActive = c.id === activeCase?.id;
+            const stats = casesStats[c.id];
+            const evidenceCount = stats?.evidenceCount ?? 0;
+            const isVerified = stats?.integrityValid === true;
+            const isTampered = stats?.integrityValid === false;
+
+            return (
+              <TouchableOpacity
+                key={c.id}
+                style={[styles.caseCard, isActive && styles.caseCardActive]}
+                onPress={() => handleSelectCase(c.id)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.caseCardTop}>
+                  <View style={styles.caseInfo}>
+                    <View style={styles.caseNumberBadge}>
+                      <Text style={styles.caseNumberText}>{c.caseNumber || c.id}</Text>
+                    </View>
+                    <Text style={styles.caseNameText} numberOfLines={1}>
+                      {c.title || 'Untitled Case'}
+                    </Text>
+                    <Text style={styles.caseInvestigatorText}>
+                      Investigator: {c.investigatorName || 'Unassigned'}
+                    </Text>
+                  </View>
+
+                  {isActive ? (
+                    <View style={styles.activeTag}>
+                      <Text style={styles.activeTagText}>CURRENT</Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.selectTag}
+                      onPress={() => handleSelectCase(c.id)}
+                    >
+                      <Text style={styles.selectTagText}>Select</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                <View style={styles.caseCardDivider} />
+
+                <View style={styles.caseCardFooter}>
+                  <View style={styles.footerItem}>
+                    <Ionicons name="document-text-outline" size={16} color={Colors.textMuted} />
+                    <Text style={styles.footerText}>{evidenceCount} Evidences</Text>
+                  </View>
+
+                  <View style={styles.footerItem}>
+                    <Ionicons
+                      name={
+                        isVerified
+                          ? 'shield-checkmark'
+                          : isTampered
+                          ? 'alert-circle'
+                          : 'shield-outline'
+                      }
+                      size={16}
+                      color={
+                        isVerified
+                          ? Colors.emerald
+                          : isTampered
+                          ? Colors.crimson
+                          : Colors.textMuted
+                      }
+                    />
+                    <Text
+                      style={[
+                        styles.footerText,
+                        {
+                          color: isVerified
+                            ? Colors.emerald
+                            : isTampered
+                            ? Colors.crimson
+                            : Colors.textMuted,
+                          fontWeight: 'bold',
+                        },
+                      ]}
+                    >
+                      {isVerified ? 'SHA-256 Valid' : isTampered ? 'Tampered' : 'Unchecked'}
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={() => router.push(`/case/${c.id}`)}
+                    style={styles.cardArrowBtn}
+                  >
+                    <Ionicons name="chevron-forward" size={18} color={Colors.primary} />
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            );
+          })
+        )}
       </ScrollView>
 
-      {/* Modals & Pickers */}
+      {/* Case Creation Modal */}
       <CaseCreateModal
         visible={createModalVisible}
         onClose={() => setCreateModalVisible(false)}
@@ -548,6 +353,7 @@ export function WorkspaceScreen() {
         }}
       />
 
+      {/* Case Switcher Modal */}
       <CaseSelectModal
         visible={selectModalVisible}
         cases={cases}
@@ -555,20 +361,12 @@ export function WorkspaceScreen() {
         onClose={() => setSelectModalVisible(false)}
         onSelectCase={async (id) => {
           await selectCase(id);
+          await fetchEvidence(id);
         }}
-        onCreateNewPress={() => setCreateModalVisible(true)}
-      />
-
-      <EvidenceSourcePicker
-        visible={pickerVisible}
-        onClose={() => setPickerVisible(false)}
-        onSourceSelected={handleSourceSelected}
-      />
-
-      <IngestionProgressOverlay
-        visible={overlayVisible}
-        status={ingestionStatus || 'PENDING'}
-        fileName={ingestionFilename || 'evidence file'}
+        onCreateNewPress={() => {
+          setSelectModalVisible(false);
+          setCreateModalVisible(true);
+        }}
       />
     </View>
   );
@@ -577,356 +375,301 @@ export function WorkspaceScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: palette.background,
+    backgroundColor: Colors.canvasParchment,
+  },
+  centerContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+  },
+  loadingText: {
+    ...Typography.body,
+    fontSize: 14,
+    color: Colors.textMuted,
+  },
+  headerAddBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadows.subtle,
   },
   scrollView: {
     flex: 1,
   },
   content: {
-    padding: 16,
+    padding: Spacing.md,
     paddingBottom: 40,
   },
-  securityBanner: {
-    backgroundColor: 'rgba(245, 166, 35, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(245, 166, 35, 0.3)',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 14,
+  heroCard: {
+    backgroundColor: Colors.cardBg,
+    borderRadius: Radius.lg,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 102, 204, 0.35)',
+    padding: Spacing.lg,
+    marginBottom: Spacing.lg,
+    ...Shadows.elevated,
   },
-  securityBadge: {
+  heroTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  heroBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 2,
+    backgroundColor: Colors.primarySubtle,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: Radius.full,
   },
-  securityBadgeDot: {
-    color: palette.brandYellow,
+  heroBadgeText: {
+    ...Typography.subtopLabel,
     fontSize: 10,
+    color: Colors.primary,
   },
-  securityBadgeText: {
-    color: palette.deepBlack,
-    fontSize: 11,
-    fontWeight: 'bold',
-    letterSpacing: 0.8,
+  switchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: Colors.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  securitySubtext: {
-    color: palette.textSecondary,
-    fontSize: 10,
+  switchButtonText: {
+    ...Typography.body,
+    fontSize: 12,
+    color: Colors.primary,
   },
-  caseHeaderCard: {
-    backgroundColor: palette.surface,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: palette.borderDark,
-    borderLeftWidth: 4,
-    borderLeftColor: palette.brandYellow,
-    padding: 16,
-    marginBottom: 14,
-    elevation: 2,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
+  heroCaseNumber: {
+    ...Typography.mono,
+    fontSize: 12,
+    color: Colors.primary,
+    marginBottom: 4,
   },
-  caseHeaderTop: {
+  heroTitle: {
+    ...Typography.heroDisplay,
+    fontSize: 27,
+    color: Colors.ink,
+    letterSpacing: 0.2,
+  },
+  heroDescription: {
+    ...Typography.body,
+    fontSize: 13,
+    color: Colors.textSecondary,
+    marginTop: 6,
+    lineHeight: 20,
+  },
+  heroDivider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginVertical: Spacing.md,
+  },
+  heroStatsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    gap: 12,
-  },
-  caseNumberLabel: {
-    fontFamily: 'monospace',
-    fontSize: 12,
-    color: palette.deepBlack,
-    fontWeight: '900',
-    marginBottom: 2,
-  },
-  caseTitleText: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: palette.deepBlack,
-  },
-  switchCaseBtn: {
-    backgroundColor: palette.deepBlack,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  switchCaseBtnText: {
-    color: palette.white,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-  },
-  caseMetaDivider: {
-    height: 1,
-    backgroundColor: palette.border,
-    marginVertical: 12,
-  },
-  caseMetaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  metaCol: {
-    flex: 1,
-  },
-  metaLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: palette.textSecondary,
-    marginBottom: 2,
-    letterSpacing: 0.5,
-  },
-  metaValue: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: palette.deepBlack,
-  },
-  overviewGrid: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 14,
-  },
-  overviewBox: {
-    flex: 1,
-    backgroundColor: palette.surface,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: palette.borderDark,
-    padding: 12,
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 2,
-  },
-  overviewBoxTitle: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: palette.deepBlack,
-    letterSpacing: 0.5,
-  },
-  overviewBoxBig: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: palette.deepBlack,
-    marginVertical: 2,
-  },
-  overviewBoxSub: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: palette.textSecondary,
-  },
-  analysisProgressCard: {
-    backgroundColor: 'rgba(245, 166, 35, 0.08)',
-    borderWidth: 1.5,
-    borderColor: palette.brandYellow,
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 14,
-  },
-  analysisProgressHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    marginBottom: Spacing.md,
     gap: 8,
-    marginBottom: 4,
   },
-  analysisProgressTitle: {
+  heroStatCol: {
+    flex: 1,
+  },
+  heroStatLabel: {
+    ...Typography.subtopLabel,
+    fontSize: 10,
+    color: Colors.textMuted,
+    marginBottom: 3,
+  },
+  heroStatValue: {
+    ...Typography.bodyStrong,
     fontSize: 13,
-    fontWeight: '900',
-    color: palette.deepBlack,
-    fontFamily: 'monospace',
+    lineHeight: 18,
+    color: Colors.ink,
   },
-  analysisProgressMsg: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: palette.textSecondary,
+  integrityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
-  sectionHeader: {
+  integrityText: {
+    ...Typography.bodyStrong,
     fontSize: 12,
-    fontWeight: '900',
-    color: palette.deepBlack,
-    letterSpacing: 0.8,
-    marginBottom: 8,
-    marginTop: 4,
+  },
+  viewDetailsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.md,
+    paddingVertical: 13,
+    ...Shadows.subtle,
+  },
+  viewDetailsBtnText: {
+    ...Typography.bodyStrong,
+    fontSize: 14,
+    color: '#ffffff',
   },
   sectionHeaderRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-    marginTop: 4,
+    marginBottom: Spacing.sm,
+    marginTop: Spacing.xs,
   },
-  viewAllLink: {
-    color: palette.deepBlack,
+  sectionTitle: {
+    ...Typography.subtopLabel,
+    fontSize: 13,
+    color: Colors.textMuted,
+  },
+  sectionCount: {
+    ...Typography.body,
     fontSize: 12,
-    fontWeight: '800',
+    color: Colors.textMuted,
   },
-  actionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 16,
-  },
-  actionBtn: {
-    flexBasis: '31%',
-    flexGrow: 1,
-    backgroundColor: palette.surface,
-    borderRadius: 10,
+  caseCard: {
+    backgroundColor: Colors.cardBg,
+    borderRadius: Radius.lg,
     borderWidth: 1.5,
-    borderColor: palette.borderDark,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 2,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 2,
+    borderColor: Colors.border,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+    ...Shadows.card,
   },
-  actionBtnDisabled: {
-    opacity: 0.6,
+  caseCardActive: {
+    borderColor: Colors.primary,
+    backgroundColor: '#ffffff',
   },
-  actionBtnIcon: {
+  caseCardTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
+  caseInfo: {
+    flex: 1,
+    marginRight: Spacing.sm,
+  },
+  caseNumberBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.surface,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: Radius.sm,
+    marginBottom: 5,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  caseNumberText: {
+    ...Typography.mono,
+    fontSize: 10,
+    color: Colors.textMuted,
+  },
+  caseNameText: {
+    ...Typography.displayMd,
     fontSize: 18,
-    marginBottom: 4,
+    color: Colors.ink,
+    letterSpacing: 0.2,
   },
-  actionBtnText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: palette.deepBlack,
-  },
-  card: {
-    backgroundColor: palette.surface,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: palette.borderDark,
-    borderLeftWidth: 4,
-    borderLeftColor: palette.brandYellow,
-    padding: 14,
-    marginBottom: 14,
-    elevation: 2,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-  },
-  findingSummaryHeader: {
+  caseInvestigatorText: {
+    ...Typography.body,
     fontSize: 12,
-    fontWeight: '900',
-    color: palette.deepBlack,
-    letterSpacing: 0.8,
-    marginBottom: 6,
+    color: Colors.textMuted,
+    marginTop: 3,
   },
-  findingNarrativeText: {
-    fontSize: 13,
-    color: palette.deepBlack,
-    lineHeight: 18,
-    marginBottom: 12,
-    fontWeight: '500',
+  activeTag: {
+    backgroundColor: Colors.primarySubtle,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: Radius.full,
   },
-  findingsCounterRow: {
-    flexDirection: 'row',
-    gap: 8,
-    borderTopWidth: 1,
-    borderTopColor: palette.border,
-    paddingTop: 10,
-  },
-  findingCountTag: {
-    flex: 1,
-    backgroundColor: palette.surfaceVariant,
-    padding: 8,
-    borderRadius: 6,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: palette.borderDark,
-  },
-  findingCountLabel: {
+  activeTagText: {
+    ...Typography.subtopLabel,
     fontSize: 9,
-    fontWeight: '800',
-    color: palette.textSecondary,
-    letterSpacing: 0.3,
+    color: Colors.primary,
   },
-  findingCountValue: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: palette.deepBlack,
-    marginTop: 2,
+  selectTag: {
+    backgroundColor: Colors.surface,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  emptyFindingsBox: {
-    padding: 16,
-    alignItems: 'center',
+  selectTagText: {
+    ...Typography.bodyStrong,
+    fontSize: 12,
+    color: Colors.primary,
   },
-  emptyFindingsText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: palette.deepBlack,
-    marginBottom: 4,
+  caseCardDivider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginVertical: Spacing.sm,
   },
-  emptyFindingsSub: {
-    fontSize: 11,
-    color: palette.textSecondary,
-    textAlign: 'center',
-    lineHeight: 16,
-    fontWeight: '600',
-  },
-  integrityRow: {
+  caseCardFooter: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: palette.border,
-  },
-  integrityLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: palette.textSecondary,
-  },
-  integrityValue: {
-    fontSize: 12,
-    color: palette.deepBlack,
-    fontFamily: 'monospace',
-    fontWeight: '700',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    justifyContent: 'space-between',
   },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 16,
+  footerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  footerText: {
+    ...Typography.body,
+    fontSize: 12,
+    color: Colors.textMuted,
+  },
+  cardArrowBtn: {
+    padding: 4,
+  },
+  emptyCard: {
+    backgroundColor: Colors.cardBg,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.md,
+    ...Shadows.subtle,
   },
   emptyTitle: {
+    ...Typography.headline,
     fontSize: 18,
-    fontWeight: '900',
-    color: palette.deepBlack,
-    marginBottom: 8,
+    color: Colors.ink,
+    marginTop: Spacing.md,
   },
-  emptyText: {
+  emptySubtitle: {
+    ...Typography.body,
     fontSize: 13,
-    color: palette.textSecondary,
+    color: Colors.textMuted,
     textAlign: 'center',
-    lineHeight: 20,
-    fontWeight: '500',
-    marginBottom: 24,
+    marginTop: 4,
+    marginBottom: Spacing.lg,
+    lineHeight: 18,
   },
-  primaryActionBtn: {
-    backgroundColor: palette.deepBlack,
-    borderRadius: 10,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderLeftWidth: 4,
-    borderLeftColor: palette.brandYellow,
-    elevation: 3,
+  createCaseBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: 12,
+    borderRadius: Radius.md,
   },
-  primaryActionBtnText: {
-    color: palette.white,
+  createCaseBtnText: {
+    ...Typography.bodyStrong,
     fontSize: 14,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+    color: '#ffffff',
   },
 });

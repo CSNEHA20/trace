@@ -4,8 +4,9 @@ import { useCaseStore } from '../store/caseStore';
 import { AppHeader } from '../components/AppHeader';
 import { CaseCard } from '../components/CaseCard';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { palette } from '../theme';
+import { Colors, Spacing, Radius, Typography, Shadows } from '../theme';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 export function HomeScreen() {
   const { cases, isLoading, fetchCases, selectCase } = useCaseStore();
@@ -20,18 +21,21 @@ export function HomeScreen() {
       <AppHeader title="TRACE Forensic Hub" subtitle="Tamper-Resistant AI Case Evidence" />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.banner}>
-          <Text style={styles.bannerTitle}>Hardware Security Active</Text>
+          <Text style={styles.bannerTitle}>HARDWARE SECURITY ACTIVE</Text>
           <Text style={styles.bannerSubtitle}>
             Local SQLite database encrypted with hardware keys. On-Device AI ready.
           </Text>
         </View>
-        <TouchableOpacity style={styles.aiLink} onPress={() => router.push('/ai-status')}>
-          <Text style={styles.aiLinkTitle}>On Device AI Capability</Text>
-          <Text style={styles.aiLinkSubtitle}>Verify Gemma model availability before analyzing evidence</Text>
+        <TouchableOpacity style={styles.aiLink} onPress={() => router.push('/ai-status')} activeOpacity={0.8}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.aiLinkTitle}>On-Device AI Capability</Text>
+            <Text style={styles.aiLinkSubtitle}>Verify Gemma model availability before analyzing evidence</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={Colors.primary} />
         </TouchableOpacity>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Active Cases</Text>
+          <Text style={styles.sectionTitle}>ACTIVE CASES</Text>
           <TouchableOpacity
             onPress={() => {
               useCaseStore.getState().createCase(
@@ -67,52 +71,57 @@ export function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: palette.background,
+    backgroundColor: Colors.canvasParchment,
   },
   content: {
-    padding: 16,
+    padding: Spacing.md,
+    paddingBottom: 40,
   },
   banner: {
-    backgroundColor: palette.surface,
+    backgroundColor: Colors.cardBg,
     padding: 16,
-    borderRadius: 12,
-    marginBottom: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: palette.brandYellow,
-    borderWidth: 1,
-    borderColor: palette.border,
-    elevation: 1,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
+    borderRadius: Radius.lg,
+    marginBottom: 16,
+    borderLeftWidth: 3.5,
+    borderLeftColor: Colors.primary,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    ...Shadows.subtle,
   },
   bannerTitle: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: palette.deepBlack,
+    ...Typography.subtopLabel,
+    fontSize: 11,
+    color: Colors.primary,
     marginBottom: 4,
   },
   bannerSubtitle: {
+    ...Typography.body,
     fontSize: 12,
-    color: palette.textSecondary,
+    color: Colors.textSecondary,
     lineHeight: 18,
   },
   aiLink: {
-    backgroundColor: palette.surface,
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: palette.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.cardBg,
+    padding: 16,
+    borderRadius: Radius.lg,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
     marginBottom: 20,
-    elevation: 1,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
+    ...Shadows.card,
   },
-  aiLinkTitle: { fontSize: 15, fontWeight: 'bold', color: palette.text },
-  aiLinkSubtitle: { fontSize: 12, color: palette.textSecondary, marginTop: 4 },
+  aiLinkTitle: {
+    ...Typography.headline,
+    fontSize: 15,
+    color: Colors.ink,
+  },
+  aiLinkSubtitle: {
+    ...Typography.body,
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -120,14 +129,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: palette.text,
+    ...Typography.subtopLabel,
+    fontSize: 13,
+    color: Colors.textMuted,
   },
   addBtnText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: palette.deepBlack,
+    ...Typography.bodyStrong,
+    fontSize: 13,
+    color: Colors.primary,
   },
 });
 

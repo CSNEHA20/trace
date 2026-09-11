@@ -8,12 +8,13 @@ import { ForensicAnalysisCard } from '../components/ForensicAnalysisCard';
 import { IntegrityPanel } from '../components/IntegrityPanel';
 import { whisperService } from '../services/whisperService';
 import { ocrService } from '../services/ocrService';
-import { palette } from '../theme';
-import { useLocalSearchParams } from 'expo-router';
+import { Colors, Spacing, Radius, Typography, Shadows } from '../theme';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { formatDate, formatFileSize } from '../utils/crypto';
 import { TranscriptionStatus, TranscriptionResult, OcrStatus, OcrResult } from '../types';
 
 export function EvidenceDetailScreen() {
+  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const item = useEvidenceStore((state) => state.evidenceList.find((e) => e.id === id) || state.selectedEvidence);
   const fetchEvidence = useEvidenceStore((state) => state.fetchEvidence);
@@ -116,7 +117,12 @@ export function EvidenceDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <AppHeader title={item.title || item.fileName} subtitle={`ID: ${item.id.substring(0, 12)}… · ${item.type}`} />
+      <AppHeader
+        title={item.title || item.fileName}
+        subtitle={`ID: ${item.id.substring(0, 12)}… · ${item.type}`}
+        showBack
+        onBack={() => router.back()}
+      />
       <ScrollView contentContainerStyle={styles.content}>
         
         {/* ── MEDIA PREVIEW SECTION ── */}
@@ -209,7 +215,7 @@ export function EvidenceDetailScreen() {
               {item.exifData?.dateTimeOriginal || 'Not available in source EXIF'}
             </Text>
             <View style={[styles.provenanceBadge, item.exifData?.dateTimeOriginal ? styles.badgeExif : styles.badgeNone]}>
-              <Text style={[styles.provenanceBadgeText, { color: item.exifData?.dateTimeOriginal ? palette.success : palette.error }]}>
+              <Text style={[styles.provenanceBadgeText, { color: item.exifData?.dateTimeOriginal ? Colors.emerald : Colors.crimson }]}>
                 {item.exifData?.dateTimeOriginal ? 'EXIF VERIFIED' : 'NOT DETECTED'}
               </Text>
             </View>
@@ -219,7 +225,7 @@ export function EvidenceDetailScreen() {
             <Text style={styles.timestampLabel}>IMPORT TIME:</Text>
             <Text style={styles.timestampVal}>{formatDate(item.timestamp)}</Text>
             <View style={[styles.provenanceBadge, styles.badgeImport]}>
-              <Text style={[styles.provenanceBadgeText, { color: palette.textSecondary }]}>IMPORT</Text>
+              <Text style={[styles.provenanceBadgeText, { color: Colors.textMuted }]}>IMPORT</Text>
             </View>
           </View>
 
@@ -291,7 +297,7 @@ export function EvidenceDetailScreen() {
 
         {/* ── SECTION 5: AI-DERIVED FORENSIC FINDINGS ── */}
         <View style={styles.sectionBadgeRow}>
-          <Text style={[styles.sectionBadgeText, { color: palette.brandAmber }]}>
+          <Text style={[styles.sectionBadgeText, { color: Colors.amber }]}>
             AI-DERIVED FORENSIC FINDINGS (ON-DEVICE GEMMA 2B)
           </Text>
         </View>
@@ -304,7 +310,7 @@ export function EvidenceDetailScreen() {
 
         {/* ── SECTION 6: INTEGRITY LEDGER ── */}
         <View style={styles.sectionBadgeRow}>
-          <Text style={[styles.sectionBadgeText, { color: palette.success }]}>
+          <Text style={[styles.sectionBadgeText, { color: Colors.emerald }]}>
             CRYPTOGRAPHIC INTEGRITY LEDGER
           </Text>
         </View>
@@ -321,21 +327,22 @@ export function EvidenceDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: palette.background,
+    backgroundColor: Colors.canvasParchment,
   },
   content: {
-    padding: 16,
+    padding: Spacing.md,
     paddingBottom: 40,
   },
   previewCard: {
-    backgroundColor: palette.card,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: palette.border,
-    padding: 12,
+    backgroundColor: Colors.cardBg,
+    borderRadius: Radius.lg,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    padding: 14,
     marginBottom: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    ...Shadows.card,
   },
   imageContainer: {
     width: '100%',
@@ -344,16 +351,17 @@ const styles = StyleSheet.create({
   imagePreview: {
     width: '100%',
     height: 240,
-    borderRadius: 8,
-    backgroundColor: palette.surfaceVariant,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.surface,
   },
   previewSubtext: {
-    fontSize: 10,
-    color: palette.textSecondary,
-    marginTop: 6,
+    ...Typography.body,
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginTop: 8,
   },
   fallbackContainer: {
-    padding: 24,
+    padding: 28,
     alignItems: 'center',
   },
   fallbackIcon: {
@@ -361,17 +369,18 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   fallbackTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: palette.text,
+    ...Typography.headline,
+    fontSize: 15,
+    color: Colors.ink,
   },
   fallbackSub: {
-    fontSize: 11,
-    color: palette.textSecondary,
-    marginTop: 2,
+    ...Typography.body,
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginTop: 4,
   },
   audioPreviewContainer: {
-    padding: 20,
+    padding: 24,
     alignItems: 'center',
     width: '100%',
   },
@@ -380,23 +389,26 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   audioPreviewTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: palette.text,
+    ...Typography.headline,
+    fontSize: 15,
+    color: Colors.ink,
   },
   audioPreviewMeta: {
+    ...Typography.bodyStrong,
     fontSize: 12,
-    color: palette.brandAmber,
+    color: Colors.primary,
     marginTop: 4,
   },
   audioPreviewNotice: {
-    fontSize: 10,
-    color: palette.textSecondary,
+    ...Typography.body,
+    fontSize: 11,
+    color: Colors.textMuted,
     marginTop: 8,
     textAlign: 'center',
+    lineHeight: 16,
   },
   docPreviewContainer: {
-    padding: 20,
+    padding: 24,
     alignItems: 'center',
     width: '100%',
   },
@@ -405,103 +417,106 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   docPreviewTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: palette.text,
+    ...Typography.headline,
+    fontSize: 15,
+    color: Colors.ink,
   },
   docPreviewMeta: {
+    ...Typography.bodyStrong,
     fontSize: 12,
-    color: palette.brandAmber,
+    color: Colors.primary,
     marginTop: 4,
   },
   card: {
-    backgroundColor: palette.surface,
-    borderRadius: 10,
-    padding: 16,
+    backgroundColor: Colors.cardBg,
+    borderRadius: Radius.lg,
+    padding: 18,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: palette.border,
-    borderLeftWidth: 4,
-    borderLeftColor: palette.brandYellow,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    ...Shadows.elevated,
   },
   sectionTitle: {
+    ...Typography.subtopHeading,
     fontSize: 15,
-    fontWeight: 'bold',
-    color: palette.text,
-    marginBottom: 10,
+    color: Colors.ink,
+    marginBottom: 12,
   },
   monoLabel: {
+    ...Typography.subtopLabel,
     fontSize: 11,
-    fontWeight: 'bold',
-    color: palette.brandAmber,
-    marginTop: 4,
+    color: Colors.textMuted,
+    marginTop: 6,
+    marginBottom: 3,
   },
   monoVal: {
+    ...Typography.mono,
     fontSize: 11,
-    fontFamily: 'monospace',
-    color: palette.text,
+    color: Colors.ink,
     marginBottom: 6,
-    backgroundColor: palette.surfaceVariant,
+    backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: palette.border,
-    padding: 6,
-    borderRadius: 4,
+    borderColor: Colors.border,
+    padding: 10,
+    borderRadius: Radius.sm,
   },
   hashNote: {
-    fontSize: 10,
-    color: palette.textSecondary,
+    ...Typography.body,
+    fontSize: 11,
+    color: Colors.textMuted,
     fontStyle: 'italic',
     marginTop: 2,
   },
   metaLine: {
+    ...Typography.body,
     fontSize: 13,
-    color: palette.text,
-    marginBottom: 4,
+    color: Colors.ink,
+    marginBottom: 6,
+    lineHeight: 19,
   },
   storageBox: {
-    backgroundColor: palette.surfaceVariant,
+    backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: palette.brandYellowBorder,
-    borderLeftWidth: 3,
-    borderLeftColor: palette.brandYellow,
-    borderRadius: 6,
-    padding: 10,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    padding: 12,
     marginTop: 10,
   },
   storageBoxTitle: {
+    ...Typography.subtopLabel,
     fontSize: 10,
-    fontWeight: 'bold',
-    color: palette.brandAmber,
-    letterSpacing: 0.6,
+    color: Colors.textMuted,
     marginBottom: 4,
   },
   storageBoxPath: {
-    fontSize: 10,
-    fontFamily: 'monospace',
-    color: palette.textSecondary,
+    ...Typography.mono,
+    fontSize: 11,
+    color: Colors.textSecondary,
     marginBottom: 4,
   },
   storageBoxNote: {
-    fontSize: 10,
-    color: palette.textSecondary,
+    ...Typography.body,
+    fontSize: 11,
+    color: Colors.textMuted,
     fontStyle: 'italic',
   },
   timestampRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: palette.border,
+    borderBottomColor: Colors.border,
   },
   timestampLabel: {
+    ...Typography.subtopLabel,
     fontSize: 11,
-    fontWeight: 'bold',
-    color: palette.textSecondary,
+    color: Colors.textMuted,
   },
   timestampVal: {
+    ...Typography.body,
     fontSize: 12,
-    color: palette.text,
+    color: Colors.ink,
     flex: 1,
     marginHorizontal: 8,
     textAlign: 'right',
@@ -509,41 +524,42 @@ const styles = StyleSheet.create({
   provenanceBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 4,
+    borderRadius: Radius.full,
     borderWidth: 1,
   },
   badgeExif: {
-    backgroundColor: '#DCFCE7',
-    borderColor: '#86EFAC',
+    backgroundColor: 'rgba(5, 150, 105, 0.12)',
+    borderColor: 'rgba(5, 150, 105, 0.35)',
   },
   badgeImport: {
-    backgroundColor: palette.surfaceVariant,
-    borderColor: palette.border,
+    backgroundColor: Colors.surface,
+    borderColor: Colors.border,
   },
   badgeNone: {
-    backgroundColor: '#FEE2E2',
-    borderColor: '#FECACA',
+    backgroundColor: 'rgba(220, 38, 38, 0.12)',
+    borderColor: 'rgba(220, 38, 38, 0.35)',
   },
   provenanceBadgeText: {
+    ...Typography.subtopLabel,
     fontSize: 9,
-    fontWeight: 'bold',
   },
   exifDetailsBox: {
-    backgroundColor: palette.surfaceVariant,
-    borderRadius: 6,
-    padding: 8,
-    marginTop: 8,
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md,
+    padding: 12,
+    marginTop: 10,
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: Colors.border,
   },
   exifDetailsTitle: {
+    ...Typography.subtopLabel,
     fontSize: 11,
-    fontWeight: 'bold',
-    color: palette.brandAmber,
-    marginBottom: 4,
+    color: Colors.textMuted,
+    marginBottom: 6,
   },
   errText: {
-    color: palette.error,
+    ...Typography.bodyStrong,
+    color: Colors.crimson,
     padding: 20,
     textAlign: 'center',
   },
@@ -552,13 +568,13 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   sectionBadgeText: {
+    ...Typography.subtopLabel,
     fontSize: 11,
-    fontWeight: 'bold',
-    color: palette.brandAmber,
-    letterSpacing: 0.8,
+    color: Colors.textMuted,
   },
   boldText: {
-    fontWeight: 'bold',
-    color: palette.textSecondary,
+    ...Typography.subtopHeading,
+    fontSize: 12,
+    color: Colors.textMuted,
   },
 });

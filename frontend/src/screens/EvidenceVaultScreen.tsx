@@ -16,21 +16,15 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EvidenceVaultCard } from '../components/EvidenceVaultCard';
 import { EvidenceSourcePicker, SourcePickerResult } from '../components/EvidenceSourcePicker';
 import { IngestionProgressOverlay } from '../components/IngestionProgressOverlay';
-import { palette } from '../theme';
+import { Colors, Spacing, Radius, Typography, Shadows } from '../theme';
 import { EvidenceType } from '../types';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 const FILTER_TYPES: (EvidenceType | 'ALL')[] = ['ALL', 'IMAGE', 'VIDEO', 'AUDIO', 'DOCUMENT'];
 
 /**
- * Evidence Vault Screen — Step 4
- *
- * Full evidence vault with:
- *   - Filter chips by media type
- *   - Add Evidence button → EvidenceSourcePicker bottom sheet
- *   - IngestionProgressOverlay during pipeline
- *   - EvidenceVaultCard list showing filename, type, hash, status, timestamp, thumbnail
- *   - Error alerts for all failure modes
+ * Evidence Vault Screen — Apple & 3-Tier Typography Upgrade
  */
 export function EvidenceVaultScreen() {
   const {
@@ -42,7 +36,6 @@ export function EvidenceVaultScreen() {
     ingestEvidence,
     ingestionStatus,
     ingestionFilename,
-    lastIngestionResult,
   } = useEvidenceStore();
 
   const activeCase = useCaseStore((state) => state.activeCase);
@@ -100,13 +93,10 @@ export function EvidenceVaultScreen() {
     setRefreshing(false);
   }, [activeCase?.id]);
 
-  // ── Source picker result handler ─────────────────────────────────────
   const handleSourceSelected = async (result: SourcePickerResult) => {
     try {
-      // Cancelled
       if (result.cancelled) return;
 
-      // Permission denied
       if (result.permissionDenied) {
         Alert.alert(
           'Permission Denied',
@@ -116,7 +106,6 @@ export function EvidenceVaultScreen() {
         return;
       }
 
-      // Picker error
       if (result.error) {
         Alert.alert('Import Error', result.error, [{ text: 'OK' }]);
         return;
@@ -127,7 +116,6 @@ export function EvidenceVaultScreen() {
         return;
       }
 
-      // Show progress overlay
       setOverlayVisible(true);
 
       const ingestionResult = await ingestEvidence({
@@ -139,16 +127,12 @@ export function EvidenceVaultScreen() {
         caseId: activeCase.id,
       });
 
-      // Brief pause so user can see COMPLETE state
       await new Promise((r) => setTimeout(r, 800));
       setOverlayVisible(false);
 
-      // Handle result
       switch (ingestionResult.status) {
         case 'COMPLETE':
-          // Vault list already refreshed by store
           break;
-
         case 'DUPLICATE':
           Alert.alert(
             'Duplicate File',
@@ -156,7 +140,6 @@ export function EvidenceVaultScreen() {
             [{ text: 'OK' }]
           );
           break;
-
         case 'FAILED':
           Alert.alert(
             'Import Failed',
@@ -164,10 +147,6 @@ export function EvidenceVaultScreen() {
             [{ text: 'OK' }]
           );
           break;
-
-        case 'CANCELLED':
-          break;
-
         default:
           break;
       }
@@ -180,12 +159,10 @@ export function EvidenceVaultScreen() {
     }
   };
 
-  // ── Filter ────────────────────────────────────────────────────────────
   const filtered = evidenceList.filter(
     (item) => filterType === 'ALL' || item.type === filterType
   );
 
-  // ── Render ────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
       <AppHeader
@@ -205,6 +182,7 @@ export function EvidenceVaultScreen() {
             key={t}
             style={[styles.filterChip, filterType === t ? styles.filterChipActive : null]}
             onPress={() => setFilterType(t)}
+            activeOpacity={0.7}
           >
             <Text style={[styles.filterText, filterType === t ? styles.filterTextActive : null]}>
               {t}
@@ -220,8 +198,8 @@ export function EvidenceVaultScreen() {
         activeOpacity={0.85}
         disabled={isLoading}
       >
-        <Text style={styles.addBtnIcon}>＋</Text>
-        <Text style={styles.addBtnText}>Add Evidence</Text>
+        <Ionicons name="add" size={20} color="#ffffff" />
+        <Text style={styles.addBtnText}>Add Preserved Evidence</Text>
       </TouchableOpacity>
 
       {/* Vault list */}
@@ -231,26 +209,29 @@ export function EvidenceVaultScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={palette.primary}
+            tintColor={Colors.primary}
           />
         }
       >
         {isLoading && !refreshing ? (
-          <LoadingSpinner label="Loading vault…" />
+          <LoadingSpinner label="Auditing cryptographic vault…" />
         ) : filtered.length === 0 ? (
           <EmptyState
             title="Vault Empty"
             message={
               filterType === 'ALL'
-                ? 'No evidence has been imported yet.\nTap Add Evidence to get started.'
-                : `No ${filterType} evidence found.`
+                ? 'No evidence has been imported yet.\nTap Add Preserved Evidence to intake files.'
+                : `No ${filterType} evidence found in this case.`
             }
           />
         ) : (
           <>
-            <Text style={styles.countLabel}>
-              {filtered.length} item{filtered.length !== 1 ? 's' : ''}
-            </Text>
+            <View style={styles.headerInfoRow}>
+              <Text style={styles.countLabel}>
+                {filtered.length} EVIDENCE ITEM{filtered.length !== 1 ? 'S' : ''}
+              </Text>
+              <Text style={styles.filterActiveLabel}>Filter: {filterType}</Text>
+            </View>
             {filtered.map((item) => (
               <EvidenceVaultCard
                 key={item.id}
@@ -283,84 +264,81 @@ export function EvidenceVaultScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: palette.background,
+    backgroundColor: Colors.canvasParchment,
   },
   filterRow: {
-    backgroundColor: palette.surface,
+    backgroundColor: Colors.cardBg,
     borderBottomWidth: 1,
-    borderBottomColor: palette.border,
-    maxHeight: 50,
+    borderBottomColor: Colors.border,
+    maxHeight: 52,
   },
   filterContent: {
-    paddingHorizontal: 12,
+    paddingHorizontal: Spacing.md,
     paddingVertical: 10,
     gap: 8,
     flexDirection: 'row',
     alignItems: 'center',
   },
   filterChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: palette.surface,
-    borderWidth: 1.5,
-    borderColor: palette.borderDark,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   filterChipActive: {
-    backgroundColor: palette.deepBlack,
-    borderColor: palette.deepBlack,
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   filterText: {
+    ...Typography.subtopLabel,
     fontSize: 11,
-    fontWeight: '700',
-    color: palette.textSecondary,
-    letterSpacing: 0.3,
+    color: Colors.textMuted,
   },
   filterTextActive: {
-    color: palette.white,
-    fontWeight: '800',
+    ...Typography.subtopLabel,
+    fontSize: 11,
+    color: '#ffffff',
   },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: palette.deepBlack,
+    backgroundColor: Colors.primary,
     paddingVertical: 14,
-    marginHorizontal: 16,
+    marginHorizontal: Spacing.md,
     marginTop: 14,
     marginBottom: 6,
-    borderRadius: 10,
+    borderRadius: Radius.md,
     gap: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: palette.brandYellow,
-    elevation: 3,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-  },
-  addBtnIcon: {
-    fontSize: 18,
-    color: palette.brandYellow,
-    lineHeight: 22,
-    fontWeight: '900',
+    ...Shadows.subtle,
   },
   addBtnText: {
+    ...Typography.bodyStrong,
     fontSize: 14,
-    fontWeight: '800',
-    color: palette.white,
-    letterSpacing: 0.5,
+    color: '#ffffff',
   },
   content: {
-    padding: 16,
+    padding: Spacing.md,
     paddingTop: 10,
+    paddingBottom: 40,
+  },
+  headerInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+    marginTop: 4,
   },
   countLabel: {
+    ...Typography.subtopLabel,
     fontSize: 11,
-    color: palette.deepBlack,
-    marginBottom: 10,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    color: Colors.textMuted,
+  },
+  filterActiveLabel: {
+    ...Typography.body,
+    fontSize: 11,
+    color: Colors.textMuted,
   },
 });
