@@ -1,86 +1,119 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { palette } from '../theme';
+import { Colors, Spacing, Radius, Typography } from '../theme';
+import { SidebarDrawer } from './SidebarDrawer';
 
 interface AppHeaderProps {
   title: string;
   subtitle?: string;
   showBack?: boolean;
   onBack?: () => void;
+  showMenu?: boolean;
   rightAction?: React.ReactNode;
 }
 
-export function AppHeader({ title, subtitle, showBack, onBack, rightAction }: AppHeaderProps) {
+export function AppHeader({ 
+  title, 
+  subtitle, 
+  showBack, 
+  onBack, 
+  showMenu = true,
+  rightAction 
+}: AppHeaderProps) {
   const insets = useSafeAreaInsets();
-  // Ensure we safely clear the mobile status bar / notch / punch hole
-  const safeTop = Math.max(insets.top + 10, 22);
+  const safeTop = Math.max(insets.top + 8, 20);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
-    <View style={[styles.header, { paddingTop: safeTop }]}>
-      <View style={styles.contentRow}>
-        {showBack ? (
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={onBack}
-            activeOpacity={0.7}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="arrow-back" size={22} color={palette.deepBlack} />
-          </TouchableOpacity>
-        ) : null}
-        <View style={styles.titleContainer}>
-          <Text style={styles.title} numberOfLines={1}>{title}</Text>
-          {subtitle ? <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text> : null}
+    <>
+      <View style={[styles.header, { paddingTop: safeTop }]}>
+        <View style={styles.contentRow}>
+          {showBack ? (
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={onBack}
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityLabel="Back"
+            >
+              <Ionicons name="chevron-back" size={20} color={Colors.text} />
+            </TouchableOpacity>
+          ) : showMenu ? (
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() => setDrawerOpen(true)}
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityLabel="Open Navigation Menu"
+            >
+              <Ionicons name="menu-outline" size={22} color={Colors.text} />
+            </TouchableOpacity>
+          ) : null}
+
+          <View style={styles.titleContainer}>
+            <Text style={styles.title} numberOfLines={1}>{title}</Text>
+            {subtitle ? <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text> : null}
+          </View>
+
+          {rightAction ? (
+            <View style={styles.rightActionContainer}>{rightAction}</View>
+          ) : (
+            <View style={styles.rightPlaceholder} />
+          )}
         </View>
-        {rightAction ? <View style={styles.rightActionContainer}>{rightAction}</View> : null}
       </View>
-    </View>
+
+      <SidebarDrawer visible={drawerOpen} onClose={() => setDrawerOpen(false)} />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   header: {
-    paddingHorizontal: 16,
-    paddingBottom: 14,
-    backgroundColor: palette.surface,
-    borderBottomWidth: 1.5,
-    borderBottomColor: palette.border,
-    borderLeftWidth: 4,
-    borderLeftColor: palette.brandYellow,
-    elevation: 2,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
+    paddingHorizontal: Spacing.md,
+    paddingBottom: 12,
+    backgroundColor: Colors.cardBg,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
   contentRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  backButton: {
-    padding: 4,
-    borderRadius: 6,
+  actionBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   titleContainer: {
     flex: 1,
   },
   title: {
-    fontSize: 19,
+    ...Typography.headline,
+    fontSize: 21,
     fontWeight: '900',
-    color: palette.deepBlack,
-    letterSpacing: 0.5,
+    color: Colors.text,
+    letterSpacing: -0.4,
   },
   subtitle: {
+    ...Typography.subtopHeading,
     fontSize: 12,
-    fontWeight: '600',
-    color: palette.textSecondary,
-    marginTop: 2,
-    letterSpacing: 0.2,
+    fontWeight: '700',
+    color: Colors.textMuted,
+    marginTop: 1,
   },
   rightActionContainer: {
     marginLeft: 8,
+  },
+  rightPlaceholder: {
+    width: 4,
   },
 });
