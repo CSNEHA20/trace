@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, Pressable } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Modal, ScrollView, Pressable } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Radius, Shadows, Typography } from '../theme';
@@ -25,13 +25,13 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ visible, onClose }
   const evidenceList = useEvidenceStore((state) => state.evidenceList);
 
   const navItems: NavItem[] = [
-    { label: 'Cases & Workspace', route: '/(tabs)', icon: 'briefcase-outline' },
-    { label: 'Evidence Vault', route: '/(tabs)/evidence', icon: 'server-outline', badge: evidenceList.length },
-    { label: 'Forensic Timeline', route: '/(tabs)/timeline', icon: 'git-network-outline' },
-    { label: 'AI Findings', route: '/(tabs)/findings', icon: 'sparkles-outline' },
-    { label: 'Chain of Custody', route: '/(tabs)/integrity', icon: 'shield-checkmark-outline' },
-    { label: 'Final Report', route: '/(tabs)/report', icon: 'document-text-outline' },
-    { label: 'AI Runtime Status', route: '/ai-status', icon: 'hardware-chip-outline' },
+    { label: 'Forensic Workspace', route: '/(tabs)', icon: 'grid-outline' },
+    { label: 'Evidence Vault', route: '/(tabs)/vault', icon: 'shield-checkmark-outline', badge: evidenceList.length },
+    { label: 'Incident Timeline', route: '/(tabs)/timeline', icon: 'time-outline' },
+    { label: 'Forensic Findings', route: '/(tabs)/analysis', icon: 'finger-print-outline' },
+    { label: 'Integrity Ledger', route: '/(tabs)/ledger', icon: 'link-outline' },
+    { label: 'Court Reports', route: '/(tabs)/reports', icon: 'document-text-outline' },
+    { label: 'On-Device AI Engine', route: '/ai-status', icon: 'hardware-chip-outline' },
   ];
 
   const handleNavigate = (route: string) => {
@@ -55,9 +55,11 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ visible, onClose }
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.brandRow}>
-              <View style={styles.logoBadge}>
-                <Ionicons name="shield" size={22} color={Colors.primary} />
-              </View>
+              <Image 
+                source={require('../../assets/icon.png')} 
+                style={styles.logoBadgeImg} 
+                resizeMode="contain" 
+              />
               <View>
                 <Text style={styles.brandTitle}>TRACE FORENSICS</Text>
                 <Text style={styles.brandSub}>Air-Gapped Mobile Suite</Text>
@@ -184,13 +186,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.sm,
   },
-  logoBadge: {
+  logoBadgeImg: {
     width: 38,
     height: 38,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.primarySubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderRadius: Radius.sm,
   },
   brandTitle: {
     ...Typography.heroDisplay,

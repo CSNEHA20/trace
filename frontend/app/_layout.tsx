@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { LogBox } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -9,10 +9,13 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
 import { theme, navigationTheme } from '../src/theme';
+import { AnimatedSplashScreen } from '../src/components/AnimatedSplashScreen';
 
 LogBox.ignoreAllLogs(true);
 
 export default function RootLayout() {
+  const [showSplash, setShowSplash] = useState(true);
+
   useEffect(() => {
     async function loadResources() {
       try {
@@ -46,6 +49,9 @@ export default function RootLayout() {
               <Stack.Screen name="evidence/[id]" options={{ headerShown: false }} />
               <Stack.Screen name="ai-status" options={{ headerShown: false }} />
             </Stack>
+            {showSplash && (
+              <AnimatedSplashScreen onFinish={() => setShowSplash(false)} />
+            )}
           </ThemeProvider>
         </PaperProvider>
       </SafeAreaProvider>
