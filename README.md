@@ -103,25 +103,25 @@ TRACE is engineered under a strict **Zero-Mock, Real-World Guarantee**:
 
 Captured directly from an active Android physical device running TRACE (Case **`TR-2026-9886: Online abusing`**):
 
-### 1. Case Management & Authentic Evidence Intake
+### 1. Case Management, Vault & Evidence Intake
 <div align="center">
   <table>
     <tr>
-      <td width="33%" align="center" valign="top">
+      <td width="33.33%" align="center" valign="top">
         <img src="docs/screenshots/01_forensic_workspace.jpg" alt="TRACE Forensic Workspace Dashboard" width="100%" /><br />
         <b>1. Forensic Workspace Dashboard</b><br /><br />
         <div align="left">
           <sub>Central operational hub displaying active case (<code>TR-2026-9886</code>), lead investigator (<code>Sneha C</code>), <code>VERIFIED</code> integrity state, evidence counters, Gemma 2B analysis completion status, 4-node ledger audit, and quick action tiles.</sub>
         </div>
       </td>
-      <td width="33%" align="center" valign="top">
+      <td width="33.33%" align="center" valign="top">
         <img src="docs/screenshots/01b_navigation_drawer_menu.jpg" alt="Navigation Drawer Menu" width="100%" /><br />
         <b>2. Navigation Drawer Menu</b><br /><br />
         <div align="left">
           <sub>Slide-out navigation drawer providing instant access to all forensic modules (Vault, Timeline, Analysis, Ledger, Reports) and active case switcher.</sub>
         </div>
       </td>
-      <td width="33%" align="center" valign="top">
+      <td width="33.33%" align="center" valign="top">
         <img src="docs/screenshots/02_case_selection_modal.jpg" alt="SQLite Authoritative Case Selection Modal" width="100%" /><br />
         <b>3. Authoritative Case Switcher</b><br /><br />
         <div align="left">
@@ -130,96 +130,79 @@ Captured directly from an active Android physical device running TRACE (Case **`
       </td>
     </tr>
     <tr>
-      <td width="50%" align="center" valign="top" colspan="2">
-        <img src="docs/screenshots/02b_case_details_dashboard.jpg" alt="Case Details & Target Metrics Dashboard" width="65%" /><br />
+      <td width="33.33%" align="center" valign="top">
+        <img src="docs/screenshots/02b_case_details_dashboard.jpg" alt="Case Details & Target Metrics Dashboard" width="100%" /><br />
         <b>4. Case Details & Target Metrics</b><br /><br />
         <div align="left">
           <sub>Concise case details dashboard presenting active investigation metadata, identified suspect targets (<code>darkshadow2005@okaxis</code>), incident type (<code>Online abusing</code>), and evidence counts.</sub>
         </div>
       </td>
-      <td width="50%" align="center" valign="top">
+      <td width="33.33%" align="center" valign="top">
         <img src="docs/screenshots/03_evidence_intake_sources.jpg" alt="Multi-Source Evidence Ingestion Sheet" width="100%" /><br />
         <b>5. Evidence Ingestion Sheet</b><br /><br />
         <div align="left">
           <sub>Secure intake modal presenting 4 authentic evidence sources: in-app Camera capture with hardware timestamps, Photo Gallery media picker, Filesystem picker (PDF / Doc / Audio), and direct Clipboard text pasting.</sub>
         </div>
       </td>
+      <td width="33.33%" align="center" valign="top">
+        <img src="docs/screenshots/04_evidence_vault_tamper_detection.jpg" alt="Evidence Vault with Real-Time Tamper Detection" width="100%" /><br />
+        <b>6. Evidence Vault & Tamper Detection</b><br /><br />
+        <div align="left">
+          <sub>Vault listing registered evidence items with their calculated SHA-256 digests. Demonstrates real-time tamper detection: flags an altered screenshot with a prominent red <code>[TAMPERED]</code> alert while validating authentic audio recordings with a green <code>[VERIFIED]</code> badge.</sub>
+        </div>
+      </td>
     </tr>
   </table>
 </div>
 
 ---
 
-### 2. Evidence Vault, Storage Provenance & Tamper Detection
+### 2. Storage Provenance, On-Device OCR & Multimodal AI
 <div align="center">
   <table>
     <tr>
-      <td width="50%" align="center" valign="top">
-        <img src="docs/screenshots/04_evidence_vault_tamper_detection.jpg" alt="Evidence Vault with Real-Time Tamper Detection" width="85%" /><br />
-        <b>6. Evidence Vault & Real-Time Tamper Detection</b><br /><br />
-        <div align="left">
-          <sub>Vault listing registered evidence items with their calculated SHA-256 digests. Demonstrates real-time tamper detection: flags an altered screenshot with a prominent red <code>[TAMPERED]</code> alert while validating authentic audio recordings with a green <code>[VERIFIED]</code> badge.</sub>
-        </div>
-      </td>
-      <td width="50%" align="center" valign="top">
-        <img src="docs/screenshots/05_evidence_detail_provenance.jpg" alt="Authoritative Evidence Detail & Storage Provenance" width="85%" /><br />
+      <td width="33.33%" align="center" valign="top">
+        <img src="docs/screenshots/05_evidence_detail_provenance.jpg" alt="Authoritative Evidence Detail & Storage Provenance" width="100%" /><br />
         <b>7. Authoritative Storage Provenance</b><br /><br />
         <div align="left">
           <sub>Evidence audit view displaying preserved evidence preview (blackmail chat transcript), immutable app-private sandbox URI (<code>file:///data/user/0/com.trace.forensic/files/trace_vault/...</code>), MIME type, zero-mutation storage guarantee, and timestamp provenance.</sub>
         </div>
       </td>
-    </tr>
-  </table>
-</div>
-
----
-
-### 3. On-Device OCR & Multimodal AI Forensic Extraction
-<div align="center">
-  <table>
-    <tr>
-      <td width="33%" align="center" valign="top">
+      <td width="33.33%" align="center" valign="top">
         <img src="docs/screenshots/06_on_device_ocr_extraction.jpg" alt="Google ML Kit On-Device Latin OCR Text Extraction" width="100%" /><br />
         <b>8. Google ML Kit On-Device OCR</b><br /><br />
         <div align="left">
           <sub>100% offline text recognition extracted from screenshot evidence, revealing verbatim perpetrator demands (<code>"Pay 50,000 to this UPI ID: darkshadow2005@okaxis"</code>, <code>"If not, I'll leak everything"</code>, <code>"24 hours"</code>).</sub>
         </div>
       </td>
-      <td width="33%" align="center" valign="top">
+      <td width="33.33%" align="center" valign="top">
         <img src="docs/screenshots/07_audio_transcription_whisper.jpg" alt="Whisper.cpp Speech-to-Text & Local AI Analysis" width="100%" /><br />
         <b>9. Whisper.cpp Local Audio AI</b><br /><br />
         <div align="left">
           <sub>Audio evidence view showing preserved file SHA-256 hash (<code>3d68f4fd...</code>), local GGML Tiny model Whisper.cpp speech transcription module, and on-device Gemma 2B analysis execution trigger.</sub>
         </div>
       </td>
-      <td width="33%" align="center" valign="top">
+    </tr>
+    <tr>
+      <td width="33.33%" align="center" valign="top">
         <img src="docs/screenshots/08_gemma_ai_forensic_findings.jpg" alt="On-Device Gemma 2B AI Structured Findings" width="100%" /><br />
         <b>10. Gemma 2B Local AI Findings</b><br /><br />
         <div align="left">
           <sub>Structured forensic extraction generated on-device by Gemma 2B INT4, classifying the incident as <code>BLACKMAIL</code>, identifying 1 verified hostile statement, 2 coercive financial demands, and 4 verified facts linked to source evidence UUIDs.</sub>
         </div>
       </td>
-    </tr>
-    <tr>
-      <td width="33%" align="center" valign="top">
+      <td width="33.33%" align="center" valign="top">
         <img src="docs/screenshots/09_threat_detection_actors.jpg" alt="Threat Detection, Coercion Demands & Actor Attribution" width="100%" /><br />
         <b>11. Threat & Actor Attribution</b><br /><br />
         <div align="left">
           <sub>Detailed AI extraction identifying perpetrator entity (<code>@okaxis</code>), complainant/victim attribution, exact payment demands (INR 50,000 via UPI), and explicit coercion deadlines without network access.</sub>
         </div>
       </td>
-      <td width="33%" align="center" valign="top">
+      <td width="33.33%" align="center" valign="top">
         <img src="docs/screenshots/10_grounded_findings_dashboard.jpg" alt="Evidence-Grounded Forensic Findings Overview" width="100%" /><br />
         <b>12. Grounded Findings Overview</b><br /><br />
         <div align="left">
           <sub>High-level forensic findings dashboard synthesizing incident classification, detected threat indicators, and cryptographic chain-of-custody confirmation.</sub>
-        </div>
-      </td>
-      <td width="33%" align="center" valign="top">
-        <img src="docs/screenshots/11_incident_timeline_reconstruction.jpg" alt="Deterministic Chronological Incident Timeline" width="100%" /><br />
-        <b>13. Deterministic Incident Timeline</b><br /><br />
-        <div align="left">
-          <sub>Reconstructed event sequence governed strictly by verified timestamps (embedded chat times & ingestion records), filtering events across modern Verified, Inferred, Uncertain, and Rejected category pills.</sub>
         </div>
       </td>
     </tr>
@@ -228,42 +211,49 @@ Captured directly from an active Android physical device running TRACE (Case **`
 
 ---
 
-### 4. Cryptographic Provenance Ledger & Court-Admissible Reporting
+### 3. Deterministic Timeline, Cryptographic Ledger & Court Dossier
 <div align="center">
   <table>
     <tr>
-      <td width="33%" align="center" valign="top">
+      <td width="33.33%" align="center" valign="top">
+        <img src="docs/screenshots/11_incident_timeline_reconstruction.jpg" alt="Deterministic Chronological Incident Timeline" width="100%" /><br />
+        <b>13. Deterministic Incident Timeline</b><br /><br />
+        <div align="left">
+          <sub>Reconstructed event sequence governed strictly by verified timestamps (embedded chat times & ingestion records), filtering events across modern Verified, Inferred, Uncertain, and Rejected category pills.</sub>
+        </div>
+      </td>
+      <td width="33.33%" align="center" valign="top">
         <img src="docs/screenshots/12_integrity_ledger_audit.jpg" alt="Tamper-Evident Cryptographic Hash Chain Audit" width="100%" /><br />
         <b>14. Hash Chain Audit</b><br /><br />
         <div align="left">
           <sub>Overall case integrity audit screen verifying all 4 hash chain ledger nodes against live files, with an interactive <code>Re-Verify Entire Hash Chain</code> action.</sub>
         </div>
       </td>
-      <td width="33%" align="center" valign="top">
+      <td width="33.33%" align="center" valign="top">
         <img src="docs/screenshots/13_hash_chain_nodes_ledger.jpg" alt="Sequential Blockchain-Style Ledger Nodes" width="100%" /><br />
         <b>15. Ledger Node Blocks</b><br /><br />
         <div align="left">
           <sub>Immutable transaction records displaying sequential blocks: Node #1 (<code>IMPORT</code>), Node #2 (<code>IMPORT</code>), Node #3 (<code>OCR</code>), and Node #4 (<code>ANALYZE</code>) with SHA-256 payload and chain hashes.</sub>
         </div>
       </td>
-      <td width="33%" align="center" valign="top">
+    </tr>
+    <tr>
+      <td width="33.33%" align="center" valign="top">
         <img src="docs/screenshots/14_report_generator_config.jpg" alt="Forensic Case Report Customization Console" width="100%" /><br />
-        <b>16. Report Customizer</b><br /><br />
+        <b>16. Report Customizer Console</b><br /><br />
         <div align="left">
           <sub>Court report console showing target case summary (2 evidence items, 1 tampered item), agency branding (<code>TRACE Digital Forensics Unit</code>), investigator notes, and customization switches.</sub>
         </div>
       </td>
-    </tr>
-    <tr>
-      <td width="50%" align="center" valign="top">
-        <img src="docs/screenshots/14b_report_generator_action.jpg" alt="Generating Forensic Dossier Progress" width="80%" /><br />
+      <td width="33.33%" align="center" valign="top">
+        <img src="docs/screenshots/14b_report_generator_action.jpg" alt="Generating Forensic Dossier Progress" width="100%" /><br />
         <b>17. Dossier Generation Progress</b><br /><br />
         <div align="left">
           <sub>One-tap court dossier compilation with real-time progress indicator, evidence verification, and cryptographic sealing.</sub>
         </div>
       </td>
-      <td width="50%" align="center" valign="top" colspan="2">
-        <img src="docs/screenshots/15_report_preview_proof_seal.jpg" alt="Forensic Report Preview with Cryptographic Proof Seal" width="80%" /><br />
+      <td width="33.33%" align="center" valign="top">
+        <img src="docs/screenshots/15_report_preview_proof_seal.jpg" alt="Forensic Report Preview with Cryptographic Proof Seal" width="100%" /><br />
         <b>18. Proof Seal & Export</b><br /><br />
         <div align="left">
           <sub>Report preview modal displaying tampering alerts, evidence manifest with SHA-256 checksums, Cryptographic Proof Seal with hardware digital signature (<code>SIG_TRACE_HARDWARE_ED25519</code>), and <code>Export / Share PDF</code> action.</sub>
