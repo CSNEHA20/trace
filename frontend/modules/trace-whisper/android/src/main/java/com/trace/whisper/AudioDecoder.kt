@@ -66,11 +66,13 @@ object AudioDecoder {
     codec.configure(format, null, null, 0)
     codec.start()
 
-    val rawPcmBytes = mutableListOf<Byte>()
+    val outStream = java.io.ByteArrayOutputStream(1024 * 128)
     val bufferInfo = MediaCodec.BufferInfo()
     var isExtractorEOS = false
     var isDecoderEOS = false
     val kTimeoutUs = 5000L
+    var emptyPollCount = 0
+    val maxEmptyPollsAfterExtractorEOS = 50
 
     try {
       while (!isDecoderEOS) {
@@ -93,34 +95,44 @@ object AudioDecoder {
 
         val outIndex = codec.dequeueOutputBuffer(bufferInfo, kTimeoutUs)
         if (outIndex >= 0) {
+          emptyPollCount = 0
           val outBuffer = codec.getOutputBuffer(outIndex)
           if (outBuffer != null && bufferInfo.size > 0) {
             outBuffer.position(bufferInfo.offset)
             outBuffer.limit(bufferInfo.offset + bufferInfo.size)
             val chunk = ByteArray(bufferInfo.size)
             outBuffer.get(chunk)
-            for (b in chunk) {
-              rawPcmBytes.add(b)
-            }
+            outStream.write(chunk)
           }
           codec.releaseOutputBuffer(outIndex, false)
           if ((bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
             isDecoderEOS = true
           }
+        } else if (isExtractorEOS) {
+          emptyPollCount++
+          if (emptyPollCount >= maxEmptyPollsAfterExtractorEOS) {
+            isDecoderEOS = true
+          }
         }
       }
     } finally {
-      codec.stop()
-      codec.release()
-      extractor.release()
+      try {
+        codec.stop()
+      } catch (_: Exception) {}
+      try {
+        codec.release()
+      } catch (_: Exception) {}
+      try {
+        extractor.release()
+      } catch (_: Exception) {}
     }
 
-    if (rawPcmBytes.isEmpty()) {
-      return DecodedAudio(FloatArray(0), TARGET_SAMPLE_RATE, 1, 0.0)
+    val pcmByteArray = outStream.toByteArray()
+    if (pcmByteArray.isEmpty()) {
+      return DecodedAudio(FloatArray(0), TARGET_SAMPLE_RATE, 1, durationSec)
     }
 
     // Convert raw 16-bit PCM bytes to FloatArray
-    val pcmByteArray = rawPcmBytes.toByteArray()
     val shortBuffer = ByteBuffer.wrap(pcmByteArray).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
     val shortCount = shortBuffer.remaining()
     val rawShorts = ShortArray(shortCount)
