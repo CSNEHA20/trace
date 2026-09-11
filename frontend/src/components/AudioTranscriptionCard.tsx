@@ -137,12 +137,12 @@ export const AudioTranscriptionCard: React.FC<AudioTranscriptionCardProps> = ({
         </View>
       )}
 
-      {/* Completed View */}
-      {status === 'COMPLETED' && transcriptText && (
+      {/* Completed / Existing Transcript View */}
+      {transcriptText && status !== 'PROCESSING' && status !== 'LOADING_MODEL' && (
         <View style={styles.resultContainer} testID="transcription-result-view">
           <Text style={styles.resultHeader}>TRANSCRIPT PREVIEW</Text>
           <View style={styles.transcriptBox}>
-            <Text style={styles.transcriptText}>{transcriptText}</Text>
+            <Text style={styles.transcriptText} selectable>{transcriptText}</Text>
           </View>
 
           {result?.processingHash && (

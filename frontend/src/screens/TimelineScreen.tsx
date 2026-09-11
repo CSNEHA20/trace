@@ -193,7 +193,7 @@ export function TimelineScreen() {
             onChangeText={setSearchQuery}
           />
 
-          <View style={styles.trustFilterRow}>
+          <View style={styles.segmentedControl}>
             {(['VERIFIED', 'INFERRED', 'UNCERTAIN', 'REJECTED'] as TrustIndicator[]).map((t) => {
               const active = selectedTrust.includes(t);
               const colorInfo = TRUST_CONFIG[t];
@@ -201,13 +201,24 @@ export function TimelineScreen() {
                 <TouchableOpacity
                   key={t}
                   style={[
-                    styles.trustChip,
-                    active && { backgroundColor: colorInfo.bg, borderColor: colorInfo.border },
+                    styles.segmentedTab,
+                    active && styles.segmentedTabActive,
                   ]}
                   onPress={() => toggleTrust(t)}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.trustChipText, { color: active ? colorInfo.text : Colors.textMuted }]}>
+                  <View
+                    style={[
+                      styles.trustDot,
+                      { backgroundColor: active ? colorInfo.text : Colors.border },
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      styles.segmentedTabText,
+                      active && { color: colorInfo.text, fontWeight: '800' },
+                    ]}
+                  >
                     {t}
                   </Text>
                 </TouchableOpacity>
@@ -253,12 +264,14 @@ export function TimelineScreen() {
 
                   return (
                     <View key={ev.id} style={styles.timelineRow}>
-                      {/* Left: Time column */}
+                      {/* Left: Time Box */}
                       <View style={styles.timeCol}>
-                        <Text style={styles.timeText}>{timeDisplay}</Text>
-                        <Text style={styles.dateText}>{dateDisplay}</Text>
-                        <View style={styles.provenancePill}>
-                          <Text style={styles.provenanceTag}>{ev.timestampProvenance}</Text>
+                        <View style={styles.timeBox}>
+                          <Text style={styles.timeText}>{timeDisplay}</Text>
+                          <Text style={styles.dateText}>{dateDisplay}</Text>
+                          <View style={styles.provenancePill}>
+                            <Text style={styles.provenanceTag}>{ev.timestampProvenance}</Text>
+                          </View>
                         </View>
                       </View>
 
@@ -492,23 +505,44 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontSize: 13,
   },
-  trustFilterRow: {
+  segmentedControl: {
     flexDirection: 'row',
-    gap: 6,
-  },
-  trustChip: {
-    flex: 1,
-    paddingVertical: 6,
-    borderRadius: Radius.full,
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md,
+    padding: 3,
     borderWidth: 1,
     borderColor: Colors.border,
-    backgroundColor: Colors.cardBg,
-    alignItems: 'center',
+    gap: 3,
   },
-  trustChipText: {
+  segmentedTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 7,
+    paddingHorizontal: 2,
+    borderRadius: Radius.sm,
+    gap: 4,
+  },
+  segmentedTabActive: {
+    backgroundColor: Colors.cardBg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  trustDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  segmentedTabText: {
     ...Typography.bodyStrong,
-    fontSize: 10,
-    fontWeight: '800',
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: Colors.textMuted,
+    letterSpacing: 0.2,
   },
   timelineSectionHeader: {
     marginBottom: Spacing.sm,
@@ -536,36 +570,53 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   timeCol: {
-    width: 74,
-    paddingRight: 6,
-    alignItems: 'flex-end',
-    paddingTop: 2,
+    width: 82,
+    paddingRight: 4,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+  },
+  timeBox: {
+    width: '100%',
+    backgroundColor: Colors.cardBg,
+    borderRadius: Radius.md,
+    borderWidth: 1.2,
+    borderColor: Colors.border,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadows.subtle,
   },
   timeText: {
     ...Typography.mono,
-    fontSize: 11.5,
+    fontSize: 11,
     fontWeight: '800',
-    color: Colors.text,
+    color: Colors.ink,
+    textAlign: 'center',
   },
   dateText: {
     ...Typography.body,
-    fontSize: 9.5,
+    fontSize: 9,
     fontWeight: '700',
     color: Colors.textMuted,
-    marginTop: 1,
+    marginTop: 2,
+    textAlign: 'center',
   },
   provenancePill: {
-    marginTop: 3,
+    marginTop: 4,
     paddingHorizontal: 4,
-    paddingVertical: 1,
+    paddingVertical: 1.5,
     borderRadius: Radius.sm,
     backgroundColor: Colors.surface,
+    borderWidth: 0.5,
+    borderColor: Colors.border,
   },
   provenanceTag: {
     ...Typography.mono,
     fontSize: 7.5,
     fontWeight: '800',
     color: Colors.textMuted,
+    textAlign: 'center',
   },
   spineCol: {
     width: 16,

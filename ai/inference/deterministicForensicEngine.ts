@@ -61,11 +61,14 @@ export function extractForensicDataDeterministically(
   const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
   const urlRegex = /(?:https?:\/\/|www\.)[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?/gi;
   const handleRegex = /@([a-zA-Z0-9_]{3,30})/g;
+  const monetaryRegex = /(?:[\$€£₹]|USD|EUR|INR|BTC|ETH)\s?[\d,]+(?:\.\d+)?|\b\d+(?:,\d{3})*(?:\.\d+)?\s*(?:dollars|rupees|inr|usd|btc|eth|crypto|bucks|grand)\b/gi;
+  const ipAddressRegex = /\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b/g;
+  const cryptoRegex = /\b(?:0x[a-fA-F0-9]{40}|[13][a-km-zA-HJ-NP-Z1-9]{25,34}|bc1[a-z0-9]{39,59})\b/g;
 
   // Keyword banks
-  const threatKeywords = ['kill', 'die', 'hurt', 'harm', 'destroy', 'ruin', 'attack', 'expose', 'leak', 'doxx', 'watch your back', 'end you', 'consequences', 'or else', 'regret'];
-  const blackmailKeywords = ['pay', 'money', 'crypto', 'bitcoin', 'btc', 'cash', 'dollars', 'inr', 'rupees', 'transfer', 'ransom', 'blackmail', 'extort', 'private photos', 'private videos', 'compromising'];
-  const coercionKeywords = ['do not tell', 'keep quiet', 'or i will', 'if you tell', 'last chance', 'last warning', 'hurry up', 'final notice', 'deadline', 'dont go to police'];
+  const threatKeywords = ['kill', 'die', 'hurt', 'harm', 'destroy', 'ruin', 'attack', 'expose', 'leak', 'doxx', 'watch your back', 'end you', 'consequences', 'or else', 'regret', 'consequence', 'destroy you', 'post your', 'release your'];
+  const blackmailKeywords = ['pay', 'money', 'crypto', 'bitcoin', 'btc', 'cash', 'dollars', 'inr', 'rupees', 'transfer', 'ransom', 'blackmail', 'extort', 'private photos', 'private videos', 'compromising', 'wire transfer', 'account', 'wallet', 'funds', 'remit'];
+  const coercionKeywords = ['do not tell', 'keep quiet', 'or i will', 'if you tell', 'last chance', 'last warning', 'hurry up', 'final notice', 'deadline', 'dont go to police', 'don\'t call', 'secret', 'comply'];
 
   let totalThreatsDetected = 0;
   let totalBlackmailDetected = 0;
@@ -93,7 +96,6 @@ export function extractForensicDataDeterministically(
     if (matchedPhones) {
       for (const phone of matchedPhones) {
         const cleanDigits = phone.replace(/\D/g, '');
-        // Filter out false positives like years (e.g. 2026) or short numbers
         if (cleanDigits.length >= 10 && cleanDigits.length <= 15) {
           phoneNumbers.add(phone.trim());
           communicationChannels.add('cellular_or_messaging');
@@ -142,7 +144,55 @@ export function extractForensicDataDeterministically(
       }
     }
 
-    // 6. Sentence & Statement Analysis
+    // 6. Extract Monetary Amounts & Payment Identifiers
+    const matchedMoney = rawText.match(monetaryRegex);
+    if (matchedMoney) {
+      for (const amt of matchedMoney) {
+        if (!paymentDemands.includes(amt.trim())) {
+          paymentDemands.push(amt.trim());
+          totalBlackmailDetected++;
+          extractedFacts.push({
+            fact: `Financial amount or demand detected in ${mediaType} (${fileName}): ${amt.trim()}`,
+            type: 'demand',
+            sourceEvidenceId: item.id,
+            sourceSpan: amt.trim(),
+            certainty: 'explicit',
+          });
+        }
+      }
+    }
+
+    // 7. Extract IP Addresses
+    const matchedIps = rawText.match(ipAddressRegex);
+    if (matchedIps) {
+      for (const ip of matchedIps) {
+        communicationChannels.add('network_ip');
+        extractedFacts.push({
+          fact: `Network IP address extracted from ${fileName}: ${ip.trim()}`,
+          type: 'technical_artifact',
+          sourceEvidenceId: item.id,
+          sourceSpan: ip.trim(),
+          certainty: 'explicit',
+        });
+      }
+    }
+
+    // 8. Extract Crypto / Wallet Addresses
+    const matchedCrypto = rawText.match(cryptoRegex);
+    if (matchedCrypto) {
+      for (const addr of matchedCrypto) {
+        communicationChannels.add('cryptocurrency_ledger');
+        extractedFacts.push({
+          fact: `Cryptocurrency address/transaction identified: ${addr.trim()}`,
+          type: 'technical_artifact',
+          sourceEvidenceId: item.id,
+          sourceSpan: addr.trim(),
+          certainty: 'explicit',
+        });
+      }
+    }
+
+    // 9. Sentence & Statement Analysis
     let itemHasThreat = false;
     let itemHasDemand = false;
     let primarySnippet = '';
@@ -153,6 +203,8 @@ export function extractForensicDataDeterministically(
         .split(/(?<=[.!?\n])\s+/)
         .map(l => l.trim())
         .filter(l => l.length > 5);
+
+      let extractedSubstantiveCount = 0;
 
       for (const line of lines) {
         const lower = line.toLowerCase();
@@ -167,7 +219,7 @@ export function extractForensicDataDeterministically(
           primarySnippet = line;
 
           extractedFacts.push({
-            fact: `Explicit threatening statement identified in evidence: "${line.slice(0, 120)}"`,
+            fact: `Explicit threatening statement identified in evidence: "${line.slice(0, 140)}"`,
             type: 'statement',
             sourceEvidenceId: item.id,
             sourceSpan: line,
@@ -186,7 +238,7 @@ export function extractForensicDataDeterministically(
           if (!primarySnippet) primarySnippet = line;
 
           extractedFacts.push({
-            fact: `Coercive financial / extortion demand observed: "${line.slice(0, 120)}"`,
+            fact: `Coercive financial / extortion demand observed: "${line.slice(0, 140)}"`,
             type: 'demand',
             sourceEvidenceId: item.id,
             sourceSpan: line,
@@ -201,13 +253,26 @@ export function extractForensicDataDeterministically(
           totalHarassmentDetected++;
           if (!quotedStatements.includes(line)) quotedStatements.push(line);
         }
+
+        // For structured documents, extract top substantive clauses
+        if (!hasThreatWord && !hasBlackmailWord && line.length > 20 && extractedSubstantiveCount < 4) {
+          extractedSubstantiveCount++;
+          extractedFacts.push({
+            fact: `Document clause extracted from "${fileName}": "${line.slice(0, 140)}"`,
+            type: 'statement',
+            sourceEvidenceId: item.id,
+            sourceSpan: line,
+            certainty: 'explicit',
+          });
+          if (!primarySnippet) primarySnippet = line;
+        }
       }
 
-      // If no threats were flagged but text is present, extract first substantive line as fact
-      if (lines.length > 0 && !itemHasThreat && !itemHasDemand) {
+      // If no threats were flagged but text is present and nothing was extracted
+      if (lines.length > 0 && !itemHasThreat && !itemHasDemand && extractedSubstantiveCount === 0) {
         const firstLine = lines[0];
         extractedFacts.push({
-          fact: `Evidence content transcript excerpt: "${firstLine.slice(0, 100)}"`,
+          fact: `Evidence content transcript excerpt: "${firstLine.slice(0, 120)}"`,
           type: 'statement',
           sourceEvidenceId: item.id,
           sourceSpan: firstLine,

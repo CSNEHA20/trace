@@ -14,7 +14,7 @@ class AiService {
   ): Promise<AiAnalysisResult> {
     logger.info(`Running on-device AI inference pipeline for ${type} at ${fileUri}`);
 
-    if (type === 'IMAGE' && evidenceId) {
+    if ((type === 'IMAGE' || type === 'DOCUMENT') && evidenceId) {
       const ocrResult = await ocrService.processEvidenceOcr(evidenceId, fileUri, type);
       if (ocrResult.status === 'COMPLETED' && ocrResult.text) {
         return {

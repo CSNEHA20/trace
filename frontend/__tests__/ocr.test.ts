@@ -51,14 +51,14 @@ describe('TRACE Step 4: Real On-Device OCR Suite', () => {
       expect(result.errorCode).toBe('NOT_AN_IMAGE');
     });
 
-    it('rejects DOCUMENT evidence before invoking native OCR', async () => {
+    it('handles DOCUMENT evidence through document pipeline and validates existence', async () => {
       const result = await ocrService.processEvidenceOcr(
         'doc-ev-1',
         'file:///mock/sandbox/document.pdf',
         'DOCUMENT'
       );
       expect(result.status).toBe('FAILED');
-      expect(result.errorCode).toBe('NOT_AN_IMAGE');
+      expect(result.errorCode).toBe('FILE_NOT_FOUND');
     });
   });
 

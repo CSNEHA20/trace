@@ -56,8 +56,9 @@ export function EvidenceVaultScreen() {
         const ImagePicker = require('expo-image-picker');
         if (ImagePicker && typeof ImagePicker.getPendingResultAsync === 'function') {
           const pending = await ImagePicker.getPendingResultAsync();
-          if (Array.isArray(pending) && pending.length > 0 && mounted) {
-            for (const item of pending) {
+          if (pending && mounted) {
+            const pendingList = Array.isArray(pending) ? pending : [pending];
+            for (const item of pendingList) {
               if (item && !item.canceled && item.assets && item.assets[0]?.uri) {
                 const asset = item.assets[0];
                 if (activeCase?.id) {

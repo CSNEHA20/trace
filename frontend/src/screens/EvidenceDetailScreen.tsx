@@ -270,7 +270,7 @@ export function EvidenceDetailScreen() {
           <Text style={styles.sectionBadgeText}>EXTRACTED CONTENT (DETERMINISTIC / DERIVED)</Text>
         </View>
 
-        {item.type === 'IMAGE' && (
+        {(item.type === 'IMAGE' || item.type === 'DOCUMENT') && (
           <ImageOcrCard
             evidenceId={item.id}
             fileUri={item.fileUri}
