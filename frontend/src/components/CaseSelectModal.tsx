@@ -7,9 +7,10 @@ import {
   ScrollView,
   StyleSheet,
 } from 'react-native';
-import { palette } from '../theme';
+import { colors, rounded, typography } from '../theme';
 import { Case } from '../types';
 import { formatDate } from '../utils/crypto';
+import { Ionicons } from '@expo/vector-icons';
 
 interface CaseSelectModalProps {
   visible: boolean;
@@ -34,8 +35,8 @@ export function CaseSelectModal({
         <View style={styles.dialog}>
           <View style={styles.headerRow}>
             <Text style={styles.title}>Select Forensic Case</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Text style={styles.closeText}>✕</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
+              <Ionicons name="close" size={20} color={colors.inkMuted80} />
             </TouchableOpacity>
           </View>
           <Text style={styles.subtitle}>Choose an authoritative case file from SQLite</Text>
@@ -56,14 +57,19 @@ export function CaseSelectModal({
                       onSelectCase(c.id);
                       onClose();
                     }}
+                    activeOpacity={0.8}
                   >
                     <View style={styles.caseItemHeader}>
-                      <Text style={styles.caseNumber}>{c.caseNumber}</Text>
-                      {isActive && <Text style={styles.activeBadge}>ACTIVE</Text>}
+                      <Text style={[styles.caseNumber, isActive && { color: colors.primary }]}>{c.caseNumber}</Text>
+                      {isActive && (
+                        <View style={styles.activeBadge}>
+                          <Text style={styles.activeBadgeText}>ACTIVE</Text>
+                        </View>
+                      )}
                     </View>
                     <Text style={styles.caseTitle} numberOfLines={1}>{c.title}</Text>
                     <Text style={styles.caseMeta}>
-                      Investigator: {c.investigatorName} · Created: {formatDate(c.createdAt)}
+                      Investigator: {c.investigatorName} · {formatDate(c.createdAt)}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -78,6 +84,7 @@ export function CaseSelectModal({
                 onClose();
                 onCreateNewPress();
               }}
+              activeOpacity={0.85}
             >
               <Text style={styles.newCaseBtnText}>+ Initialize New Case</Text>
             </TouchableOpacity>
@@ -91,25 +98,25 @@ export function CaseSelectModal({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   dialog: {
     width: '100%',
-    maxWidth: 480,
+    maxWidth: 440,
     maxHeight: '80%',
-    backgroundColor: palette.surface,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: palette.borderDark,
-    padding: 20,
-    elevation: 6,
+    backgroundColor: colors.canvas,
+    borderRadius: rounded.xl,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    padding: 22,
+    elevation: 8,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
   },
   headerRow: {
     flexDirection: 'row',
@@ -118,51 +125,52 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: '900',
-    color: palette.deepBlack,
-    marginBottom: 4,
+    fontWeight: '600',
+    color: colors.ink,
+    letterSpacing: -0.3,
   },
-  closeText: {
-    color: palette.deepBlack,
-    fontSize: 18,
-    fontWeight: '800',
-    padding: 4,
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: rounded.full,
+    backgroundColor: colors.canvasParchment,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   subtitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: palette.textSecondary,
+    fontSize: 13,
+    fontWeight: '400',
+    color: colors.bodyMuted,
+    marginTop: 4,
     marginBottom: 16,
+    letterSpacing: -0.1,
   },
   list: {
-    maxHeight: 340,
+    maxHeight: 320,
   },
   caseListContent: {
-    gap: 10,
+    gap: 8,
   },
   emptyContainer: {
     padding: 24,
     alignItems: 'center',
   },
   emptyText: {
-    color: palette.textSecondary,
+    color: colors.bodyMuted,
     fontSize: 13,
-    fontWeight: '600',
   },
   caseItem: {
-    backgroundColor: palette.surface,
-    borderWidth: 1.5,
-    borderColor: palette.borderDark,
-    borderRadius: 10,
+    backgroundColor: colors.canvas,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    borderRadius: rounded.lg,
     padding: 14,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   caseItemActive: {
-    borderColor: palette.brandYellow,
-    backgroundColor: palette.brandYellowBg,
-    borderWidth: 2,
-    borderLeftWidth: 4,
-    borderLeftColor: palette.brandYellow,
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySubtle,
+    borderWidth: 1.5,
   },
   caseItemHeader: {
     flexDirection: 'row',
@@ -173,48 +181,48 @@ const styles = StyleSheet.create({
   caseNumber: {
     fontFamily: 'monospace',
     fontSize: 12,
-    fontWeight: '900',
-    color: palette.deepBlack,
+    fontWeight: '700',
+    color: colors.ink,
   },
   activeBadge: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: palette.deepBlack,
-    backgroundColor: palette.brandYellow,
-    paddingHorizontal: 7,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: rounded.pill,
+  },
+  activeBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.white,
+    letterSpacing: 0.4,
   },
   caseTitle: {
     fontSize: 15,
-    fontWeight: '800',
-    color: palette.deepBlack,
+    fontWeight: '600',
+    color: colors.ink,
     marginBottom: 4,
+    letterSpacing: -0.2,
   },
   caseMeta: {
     fontSize: 11,
-    fontWeight: '600',
-    color: palette.textSecondary,
+    color: colors.bodyMuted,
   },
   footerRow: {
-    marginTop: 16,
+    marginTop: 14,
     borderTopWidth: 1,
-    borderTopColor: palette.border,
+    borderTopColor: colors.dividerSoft,
     paddingTop: 14,
   },
   newCaseBtn: {
-    backgroundColor: palette.deepBlack,
-    borderRadius: 10,
-    paddingVertical: 14,
+    backgroundColor: colors.primary,
+    borderRadius: rounded.pill,
+    paddingVertical: 12,
     alignItems: 'center',
-    borderLeftWidth: 4,
-    borderLeftColor: palette.brandYellow,
-    elevation: 3,
   },
   newCaseBtnText: {
-    color: palette.white,
+    color: colors.white,
     fontSize: 14,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+    fontWeight: '600',
+    letterSpacing: 0.1,
   },
 });

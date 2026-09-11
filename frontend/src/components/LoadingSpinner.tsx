@@ -1,15 +1,17 @@
 import React from 'react';
 import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
-import { palette } from '../theme';
+import { colors, typography } from '../theme';
 
 interface LoadingSpinnerProps {
   label?: string;
+  size?: 'small' | 'large';
+  color?: string;
 }
 
-export function LoadingSpinner({ label }: LoadingSpinnerProps) {
+export function LoadingSpinner({ label, size = 'large', color = colors.primary }: LoadingSpinnerProps) {
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" color={palette.brandYellow} />
+      <ActivityIndicator size={size} color={color} />
       {label ? <Text style={styles.label}>{label}</Text> : null}
     </View>
   );
@@ -24,6 +26,8 @@ const styles = StyleSheet.create({
   label: {
     marginTop: 12,
     fontSize: 13,
-    color: palette.textSecondary,
+    fontWeight: '500',
+    color: colors.bodyMuted,
+    letterSpacing: -0.1,
   },
 });

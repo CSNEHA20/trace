@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Case } from '../types';
-import { palette } from '../theme';
+import { Colors, Radius, Typography, Shadows, Spacing } from '../theme';
 import { StatusBadge } from './StatusBadge';
 import { formatDate } from '../utils/crypto';
 
@@ -24,7 +24,7 @@ export function CaseCard({ caseItem, onPress }: CaseCardProps) {
         </Text>
       ) : null}
       <View style={styles.footer}>
-        <Text style={styles.investigator}>{caseItem.investigatorName}</Text>
+        <Text style={styles.investigator} numberOfLines={2}>{caseItem.investigatorName || 'Investigator'}</Text>
         <Text style={styles.date}>{formatDate(caseItem.createdAt)}</Text>
       </View>
     </TouchableOpacity>
@@ -33,19 +33,13 @@ export function CaseCard({ caseItem, onPress }: CaseCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: palette.card,
-    borderRadius: 12,
+    backgroundColor: Colors.cardBg,
+    borderRadius: Radius.lg,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: palette.border,
-    borderLeftWidth: 4,
-    borderLeftColor: palette.brandYellow,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 1,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    ...Shadows.card,
   },
   header: {
     flexDirection: 'row',
@@ -54,39 +48,41 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   caseNumber: {
+    ...Typography.mono,
     fontSize: 12,
-    fontWeight: '800',
-    color: palette.deepBlack,
-    letterSpacing: 0.5,
+    color: Colors.primary,
   },
   title: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: palette.text,
+    ...Typography.headline,
+    fontSize: 16,
+    color: Colors.ink,
     marginBottom: 4,
   },
   description: {
+    ...Typography.body,
     fontSize: 13,
-    color: palette.textSecondary,
+    color: Colors.textSecondary,
     marginBottom: 12,
-    lineHeight: 18,
+    lineHeight: 19,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 8,
+    paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: palette.border,
+    borderTopColor: Colors.border,
   },
   investigator: {
+    ...Typography.bodyStrong,
     fontSize: 12,
-    color: palette.textSecondary,
-    fontWeight: '500',
+    color: Colors.text,
+    flex: 1,
+    marginRight: 8,
   },
   date: {
+    ...Typography.body,
     fontSize: 11,
-    color: palette.textSecondary,
+    color: Colors.textMuted,
   },
 });
-

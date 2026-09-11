@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { Card, Button, ProgressBar, Chip, useTheme } from 'react-native-paper';
+import { ProgressBar } from 'react-native-paper';
 import { TranscriptionStatus, TranscriptionErrorCode, TranscriptionResult } from '../types';
-import { palette } from '../theme';
+import { colors, rounded, typography } from '../theme';
+import { Ionicons } from '@expo/vector-icons';
 
 export interface AudioTranscriptionCardProps {
   evidenceId: string;
@@ -27,25 +28,39 @@ export const AudioTranscriptionCard: React.FC<AudioTranscriptionCardProps> = ({
   onStartTranscription,
   onCancelTranscription,
 }) => {
-  const theme = useTheme();
   const [copied, setCopied] = useState(false);
 
   const getStatusColor = (st: TranscriptionStatus) => {
     switch (st) {
       case 'COMPLETED':
-        return palette.success; // Build Green
+        return colors.success;
       case 'PROCESSING':
       case 'LOADING_MODEL':
-        return palette.brandYellow; // iQOO Brand Yellow
+        return colors.primary;
       case 'FAILED':
-        return palette.error; // Restriction Red
+        return colors.error;
       case 'CANCELLED':
-        return palette.brandYellow;
+        return colors.warning;
       default:
-        return palette.textSecondary;
+        return colors.bodyMuted;
     }
   };
 
+  const getStatusBg = (st: TranscriptionStatus) => {
+    switch (st) {
+      case 'COMPLETED':
+        return colors.successBg;
+      case 'PROCESSING':
+      case 'LOADING_MODEL':
+        return colors.primarySubtle;
+      case 'FAILED':
+        return colors.errorBg;
+      case 'CANCELLED':
+        return colors.warningBg;
+      default:
+        return colors.canvasParchment;
+    }
+  };
 
   const formatErrorCode = (code?: TranscriptionErrorCode) => {
     switch (code) {
@@ -76,160 +91,158 @@ export const AudioTranscriptionCard: React.FC<AudioTranscriptionCardProps> = ({
   };
 
   return (
-    <Card style={styles.card} testID="audio-transcription-card">
-      <Card.Content>
-        {/* Header */}
-        <View style={styles.headerRow}>
-          <View style={styles.titleContainer}>
-            <Text style={styles.titleText}>Whisper.cpp Local Transcription</Text>
-            <Text style={styles.subtitleText}>On-Device GGML Tiny Model (~39MB)</Text>
-          </View>
-          <Chip
-            style={[styles.statusChip, { backgroundColor: getStatusColor(status) + '20' }]}
-            textStyle={{ color: getStatusColor(status), fontSize: 11, fontWeight: 'bold' }}
-            testID="transcription-status-chip"
-          >
-            {status}
-          </Chip>
+    <View style={styles.card} testID="audio-transcription-card">
+      {/* Header */}
+      <View style={styles.headerRow}>
+        <View style={styles.titleContainer}>
+          <Text style={styles.titleText}>On-Device Audio Transcription</Text>
+          <Text style={styles.subtitleText}>Whisper GGML Local Model · 100% Offline</Text>
         </View>
+        <View
+          style={[
+            styles.statusChip,
+            { backgroundColor: getStatusBg(status), borderColor: getStatusColor(status) },
+          ]}
+          testID="transcription-status-chip"
+        >
+          <Text style={[styles.statusChipText, { color: getStatusColor(status) }]}>
+            {status}
+          </Text>
+        </View>
+      </View>
 
-        {/* Progress Bar View */}
-        {(status === 'PROCESSING' || status === 'LOADING_MODEL') && (
-          <View style={styles.progressSection} testID="transcription-progress-view">
-            <View style={styles.progressLabelRow}>
-              <Text style={styles.progressStatusText}>
-                {statusMessage || (status === 'LOADING_MODEL' ? 'Loading GGML Model...' : 'Transcribing speech...')}
+      {/* Progress Bar View */}
+      {(status === 'PROCESSING' || status === 'LOADING_MODEL') && (
+        <View style={styles.progressSection} testID="transcription-progress-view">
+          <View style={styles.progressLabelRow}>
+            <Text style={styles.progressStatusText}>
+              {statusMessage || (status === 'LOADING_MODEL' ? 'Loading GGML Model…' : 'Transcribing speech…')}
+            </Text>
+            <Text style={styles.progressPercentText}>{Math.round(progressPercent)}%</Text>
+          </View>
+          <ProgressBar
+            progress={progressPercent / 100}
+            color={colors.primary}
+            style={styles.progressBar}
+          />
+          {onCancelTranscription && (
+            <TouchableOpacity
+              style={styles.cancelBtn}
+              onPress={onCancelTranscription}
+              testID="cancel-transcription-btn"
+            >
+              <Text style={styles.cancelBtnText}>Cancel Process</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {/* Completed View */}
+      {status === 'COMPLETED' && transcriptText && (
+        <View style={styles.resultContainer} testID="transcription-result-view">
+          <Text style={styles.resultHeader}>TRANSCRIPT PREVIEW</Text>
+          <View style={styles.transcriptBox}>
+            <Text style={styles.transcriptText}>{transcriptText}</Text>
+          </View>
+
+          {result?.processingHash && (
+            <View style={styles.hashBadge}>
+              <Text style={styles.hashLabel}>Processing Hash (SHA-256):</Text>
+              <Text style={styles.hashValue} numberOfLines={1}>
+                {result.processingHash}
               </Text>
-              <Text style={styles.progressPercentText}>{Math.round(progressPercent)}%</Text>
             </View>
-            <ProgressBar
-              progress={progressPercent / 100}
-              color={palette.brandYellow}
-              style={styles.progressBar}
-            />
-            {onCancelTranscription && (
-              <TouchableOpacity
-                style={styles.cancelBtn}
-                onPress={onCancelTranscription}
-                testID="cancel-transcription-btn"
-              >
-                <Text style={styles.cancelBtnText}>Cancel Process</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
+          )}
 
-        {/* Completed View */}
-        {status === 'COMPLETED' && transcriptText && (
-          <View style={styles.resultContainer} testID="transcription-result-view">
-            <Text style={styles.resultHeader}>Transcript Preview:</Text>
-            <View style={styles.transcriptBox}>
-              <Text style={styles.transcriptText}>{transcriptText}</Text>
-            </View>
-
-            {result?.processingHash && (
-              <View style={styles.hashBadge}>
-                <Text style={styles.hashLabel}>Processing Hash (SHA-256):</Text>
-                <Text style={styles.hashValue} numberOfLines={1}>
-                  {result.processingHash}
-                </Text>
-              </View>
-            )}
-
-            <View style={styles.actionRow}>
-              <Button
-                mode="outlined"
-                onPress={handleCopy}
-                icon={copied ? 'check' : 'content-copy'}
-                compact
-                style={styles.actionBtn}
-                testID="copy-transcript-btn"
-              >
-                {copied ? 'Copied' : 'Copy Text'}
-              </Button>
-              <Button
-                mode="text"
-                onPress={onStartTranscription}
-                compact
-                testID="retranscribe-btn"
-              >
-                Re-transcribe
-              </Button>
-            </View>
-          </View>
-        )}
-
-        {/* Error State View */}
-        {status === 'FAILED' && (
-          <View style={styles.errorContainer} testID="transcription-error-view">
-            <Text style={styles.errorTitle}>
-              {formatErrorCode(result?.errorCode)}
-            </Text>
-            <Text style={styles.errorText}>
-              {result?.error || 'Audio transcription failed. Check file format or acoustic quality.'}
-            </Text>
-            <Button
-              mode="contained"
-              buttonColor={palette.error}
-              textColor={palette.white}
-              onPress={onStartTranscription}
-              style={styles.retryBtn}
-              testID="retry-transcription-btn"
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={styles.copyBtn}
+              onPress={handleCopy}
+              activeOpacity={0.8}
+              testID="copy-transcript-btn"
             >
-              Retry Local Transcription
-            </Button>
-          </View>
-        )}
-
-        {/* Cancelled View */}
-        {status === 'CANCELLED' && (
-          <View style={styles.cancelledContainer} testID="transcription-cancelled-view">
-            <Text style={styles.cancelledText}>Transcription process was cancelled.</Text>
-            <Button
-              mode="outlined"
+              <Ionicons name={copied ? "checkmark" : "copy-outline"} size={14} color={colors.primary} />
+              <Text style={styles.copyBtnText}>{copied ? 'Copied' : 'Copy Text'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.retranscribeBtn}
               onPress={onStartTranscription}
-              style={styles.retryBtn}
-              testID="restart-transcription-btn"
+              activeOpacity={0.7}
+              testID="retranscribe-btn"
             >
-              Start Transcription
-            </Button>
+              <Text style={styles.retranscribeBtnText}>Re-transcribe</Text>
+            </TouchableOpacity>
           </View>
-        )}
+        </View>
+      )}
 
-        {/* Idle View */}
-        {status === 'IDLE' && !transcriptText && (
-          <View style={styles.idleContainer} testID="transcription-idle-view">
-            <Text style={styles.idleText}>
-              No transcript generated yet. Run local Whisper speech-to-text on this sandbox audio file.
-            </Text>
-            <Button
-              mode="contained"
-              onPress={onStartTranscription}
-              icon="microphone"
-              style={styles.startBtn}
-              testID="start-transcription-btn"
-            >
-              Start Local Whisper AI
-            </Button>
-          </View>
-        )}
-      </Card.Content>
-    </Card>
+      {/* Error State View */}
+      {status === 'FAILED' && (
+        <View style={styles.errorContainer} testID="transcription-error-view">
+          <Text style={styles.errorTitle}>
+            {formatErrorCode(result?.errorCode)}
+          </Text>
+          <Text style={styles.errorText}>
+            {result?.error || 'Audio transcription failed. Check file format or acoustic quality.'}
+          </Text>
+          <TouchableOpacity
+            style={styles.retryBtn}
+            onPress={onStartTranscription}
+            testID="retry-transcription-btn"
+          >
+            <Text style={styles.retryBtnText}>Retry Local Transcription</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Cancelled View */}
+      {status === 'CANCELLED' && (
+        <View style={styles.cancelledContainer} testID="transcription-cancelled-view">
+          <Text style={styles.cancelledText}>Transcription process was cancelled.</Text>
+          <TouchableOpacity
+            style={styles.retryBtn}
+            onPress={onStartTranscription}
+            testID="restart-transcription-btn"
+          >
+            <Text style={styles.retryBtnText}>Start Transcription</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Idle View */}
+      {status === 'IDLE' && !transcriptText && (
+        <View style={styles.idleContainer} testID="transcription-idle-view">
+          <Text style={styles.idleText}>
+            No transcript generated yet. Run local Whisper speech-to-text on this sandbox audio file.
+          </Text>
+          <TouchableOpacity
+            style={styles.startBtn}
+            onPress={onStartTranscription}
+            activeOpacity={0.8}
+            testID="start-transcription-btn"
+          >
+            <Ionicons name="mic-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Text style={styles.startBtnText}>Start Local Whisper AI</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
     marginVertical: 8,
-    borderRadius: 12,
-    backgroundColor: palette.card,
+    borderRadius: rounded.lg,
+    backgroundColor: colors.canvas,
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: colors.hairline,
+    padding: 16,
     elevation: 1,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
   },
   headerRow: {
     flexDirection: 'row',
@@ -242,16 +255,25 @@ const styles = StyleSheet.create({
   },
   titleText: {
     fontSize: 15,
-    fontWeight: 'bold',
-    color: palette.text,
+    fontWeight: '600',
+    color: colors.ink,
+    letterSpacing: -0.2,
   },
   subtitleText: {
-    fontSize: 11,
-    color: palette.textSecondary,
+    fontSize: 12,
+    color: colors.bodyMuted,
     marginTop: 2,
   },
   statusChip: {
-    height: 24,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: rounded.pill,
+    borderWidth: 1,
+  },
+  statusChipText: {
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.3,
   },
   progressSection: {
     marginVertical: 8,
@@ -259,21 +281,21 @@ const styles = StyleSheet.create({
   progressLabelRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   progressStatusText: {
     fontSize: 12,
-    color: palette.textSecondary,
+    color: colors.bodyMuted,
   },
   progressPercentText: {
     fontSize: 12,
-    fontWeight: 'bold',
-    color: palette.brandYellow,
+    fontWeight: '600',
+    color: colors.primary,
   },
   progressBar: {
     height: 6,
     borderRadius: 3,
-    backgroundColor: palette.border,
+    backgroundColor: colors.canvasParchment,
   },
   cancelBtn: {
     alignSelf: 'flex-end',
@@ -281,95 +303,138 @@ const styles = StyleSheet.create({
   },
   cancelBtnText: {
     fontSize: 12,
-    color: palette.error,
+    color: colors.error,
+    fontWeight: '500',
   },
   resultContainer: {
     marginTop: 4,
   },
   resultHeader: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '600',
-    color: palette.textSecondary,
-    marginBottom: 4,
+    color: colors.bodyMuted,
+    letterSpacing: 0.4,
+    marginBottom: 6,
   },
   transcriptBox: {
-    backgroundColor: palette.surfaceVariant,
-    padding: 10,
-    borderRadius: 8,
+    backgroundColor: colors.canvasParchment,
+    padding: 12,
+    borderRadius: rounded.sm,
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: colors.hairline,
     marginBottom: 8,
   },
   transcriptText: {
     fontSize: 13,
-    color: palette.text,
-    lineHeight: 18,
+    color: colors.ink,
+    lineHeight: 19,
   },
   hashBadge: {
-    marginBottom: 8,
+    marginBottom: 10,
   },
   hashLabel: {
     fontSize: 10,
-    color: palette.textSecondary,
+    color: colors.bodyMuted,
   },
   hashValue: {
     fontSize: 11,
     fontFamily: 'monospace',
-    color: palette.success,
+    color: colors.success,
   },
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginTop: 4,
   },
-  actionBtn: {
-    borderColor: palette.border,
+  copyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: rounded.pill,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    backgroundColor: colors.surfacePearl,
+  },
+  copyBtnText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.primary,
+  },
+  retranscribeBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  retranscribeBtnText: {
+    fontSize: 12,
+    color: colors.bodyMuted,
+    fontWeight: '500',
   },
   errorContainer: {
-    backgroundColor: palette.errorBg,
+    backgroundColor: colors.errorBg,
     padding: 12,
-    borderRadius: 8,
+    borderRadius: rounded.sm,
     marginTop: 4,
     borderWidth: 1,
-    borderColor: 'rgba(220, 38, 38, 0.3)',
+    borderColor: colors.errorBorder,
   },
   errorTitle: {
     fontSize: 13,
-    fontWeight: 'bold',
-    color: palette.error,
+    fontWeight: '600',
+    color: colors.error,
     marginBottom: 4,
   },
   errorText: {
     fontSize: 12,
-    color: '#991B1B',
-    marginBottom: 8,
+    color: colors.ink,
+    marginBottom: 10,
   },
   cancelledContainer: {
-    backgroundColor: palette.warningBg,
-    borderRadius: 8,
-    padding: 8,
+    backgroundColor: colors.warningBg,
+    borderRadius: rounded.sm,
+    padding: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(245, 166, 35, 0.3)',
+    borderColor: colors.warningBorder,
   },
   cancelledText: {
     fontSize: 12,
-    color: '#B45309',
+    color: colors.ink,
     marginBottom: 8,
   },
   idleContainer: {
     paddingVertical: 4,
   },
   idleText: {
-    fontSize: 12,
-    color: palette.textSecondary,
-    marginBottom: 10,
+    fontSize: 13,
+    color: colors.bodyMuted,
+    lineHeight: 18,
+    marginBottom: 12,
   },
   startBtn: {
-    backgroundColor: palette.primary,
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
+    borderRadius: rounded.pill,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  startBtnText: {
+    color: colors.white,
+    fontWeight: '600',
+    fontSize: 13,
   },
   retryBtn: {
-    marginTop: 4,
+    backgroundColor: colors.primary,
+    paddingVertical: 10,
+    borderRadius: rounded.pill,
+    alignItems: 'center',
+  },
+  retryBtnText: {
+    color: colors.white,
+    fontWeight: '600',
+    fontSize: 12,
   },
 });
-

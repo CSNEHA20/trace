@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import { MediaCategory, IngestionStatus } from '../types';
-import { palette } from '../theme';
+import { colors, rounded, typography } from '../theme';
 
 interface EvidenceVaultThumbnailProps {
   mediaType: MediaCategory;
@@ -19,21 +19,19 @@ const TYPE_ICONS: Record<MediaCategory, string> = {
 };
 
 const STATUS_OVERLAY: Partial<Record<IngestionStatus, { icon: string; color: string }>> = {
-  COMPLETE: { icon: '✓', color: palette.success },
-  FAILED: { icon: '✗', color: palette.error },
-  DUPLICATE: { icon: '⧉', color: palette.warning },
-  HASHING: { icon: '⟳', color: palette.secondary },
-  COPYING: { icon: '⟳', color: palette.secondary },
-  RECORDING: { icon: '⟳', color: palette.primary },
-  CANCELLED: { icon: '✕', color: palette.textSecondary },
-  PENDING: { icon: '…', color: palette.textSecondary },
+  COMPLETE: { icon: '✓', color: colors.success },
+  FAILED: { icon: '✗', color: colors.error },
+  DUPLICATE: { icon: '⧉', color: colors.warning },
+  HASHING: { icon: '⟳', color: colors.primary },
+  COPYING: { icon: '⟳', color: colors.primary },
+  RECORDING: { icon: '⟳', color: colors.primary },
+  CANCELLED: { icon: '✕', color: colors.bodyMuted },
+  PENDING: { icon: '…', color: colors.bodyMuted },
 };
 
 /**
- * Renders a thumbnail for any evidence type.
- * For images: shows the actual image from the sandbox URI.
- * For other types: shows a type icon with the format label.
- * Overlays a status indicator badge on top-right corner.
+ * Renders an Apple-styled thumbnail for any evidence type.
+ * Features 1:1 square crop with rounded.sm (8px-12px) and subtle border.
  */
 export function EvidenceVaultThumbnail({
   mediaType,
@@ -42,19 +40,20 @@ export function EvidenceVaultThumbnail({
   size = 56,
 }: EvidenceVaultThumbnailProps) {
   const statusInfo = ingestionStatus ? STATUS_OVERLAY[ingestionStatus] : undefined;
+  const radius = size * 0.2;
 
   return (
-    <View style={[styles.container, { width: size, height: size, borderRadius: size * 0.2 }]}>
+    <View style={[styles.container, { width: size, height: size, borderRadius: radius }]}>
       {mediaType === 'IMAGE' && fileUri && !fileUri.startsWith('clipboard://') ? (
         <Image
           source={{ uri: fileUri }}
-          style={[styles.image, { width: size, height: size, borderRadius: size * 0.2 }]}
+          style={[styles.image, { width: size, height: size, borderRadius: radius }]}
           resizeMode="cover"
         />
       ) : (
-        <View style={[styles.iconContainer, { width: size, height: size, borderRadius: size * 0.2 }]}>
-          <Text style={[styles.icon, { fontSize: size * 0.45 }]}>{TYPE_ICONS[mediaType]}</Text>
-          <Text style={[styles.typeLabel, { fontSize: size * 0.17 }]}>{mediaType}</Text>
+        <View style={[styles.iconContainer, { width: size, height: size, borderRadius: radius }]}>
+          <Text style={[styles.icon, { fontSize: size * 0.42 }]}>{TYPE_ICONS[mediaType]}</Text>
+          <Text style={[styles.typeLabel, { fontSize: Math.max(size * 0.16, 9) }]}>{mediaType}</Text>
         </View>
       )}
 
@@ -62,7 +61,7 @@ export function EvidenceVaultThumbnail({
         <View
           style={[
             styles.statusBadge,
-            { backgroundColor: statusInfo.color, width: size * 0.35, height: size * 0.35, borderRadius: size * 0.175 },
+            { backgroundColor: statusInfo.color, width: size * 0.36, height: size * 0.36, borderRadius: size * 0.18 },
           ]}
         >
           <Text style={[styles.statusIcon, { fontSize: size * 0.18 }]}>{statusInfo.icon}</Text>
@@ -78,36 +77,39 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   image: {
-    backgroundColor: palette.surfaceVariant,
+    backgroundColor: colors.canvasParchment,
+    borderWidth: 1,
+    borderColor: colors.hairline,
   },
   iconContainer: {
-    backgroundColor: palette.surfaceVariant,
+    backgroundColor: colors.canvasParchment,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: colors.hairline,
   },
   icon: {
     lineHeight: undefined,
   },
   typeLabel: {
-    color: palette.textSecondary,
-    fontWeight: 'bold',
+    color: colors.bodyMuted,
+    fontWeight: '600',
     marginTop: 2,
+    letterSpacing: 0.2,
   },
   statusBadge: {
     position: 'absolute',
-    top: -6,
-    right: -6,
+    top: -5,
+    right: -5,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: palette.surface,
+    borderColor: colors.canvas,
     zIndex: 10,
   },
   statusIcon: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: '#ffffff',
+    fontWeight: '700',
     lineHeight: undefined,
   },
 });

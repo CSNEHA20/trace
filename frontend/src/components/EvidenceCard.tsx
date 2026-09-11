@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { EvidenceItem } from '../types';
-import { palette } from '../theme';
+import { Colors, Radius, Typography, Shadows, Spacing } from '../theme';
 import { formatHashShort, formatFileSize, formatDate } from '../utils/crypto';
 import { StatusBadge } from './StatusBadge';
 
@@ -14,16 +14,18 @@ export function EvidenceCard({ item, onPress }: EvidenceCardProps) {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
       <View style={styles.header}>
-        <Text style={styles.typeBadge}>{item.type}</Text>
+        <View style={styles.typeBadge}>
+          <Text style={styles.typeBadgeText}>{item.type}</Text>
+        </View>
         <StatusBadge status={item.isTampered ? 'TAMPERED' : 'VERIFIED'} />
       </View>
 
-      <Text style={styles.title}>{item.title}</Text>
+      <Text style={styles.title}>{item.title || item.fileName}</Text>
       <Text style={styles.hash}>SHA-256: {formatHashShort(item.sha256Hash, 10)}</Text>
 
       {item.aiAnalysis?.gemmaSummary ? (
         <View style={styles.aiBox}>
-          <Text style={styles.aiLabel}>Gemma AI Analysis:</Text>
+          <Text style={styles.aiLabel}>Gemma AI Analysis</Text>
           <Text style={styles.aiText} numberOfLines={2}>
             {item.aiAnalysis.gemmaSummary}
           </Text>
@@ -40,81 +42,77 @@ export function EvidenceCard({ item, onPress }: EvidenceCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: palette.card,
-    borderRadius: 12,
+    backgroundColor: Colors.cardBg,
+    borderRadius: Radius.lg,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: palette.border,
-    borderLeftWidth: 4,
-    borderLeftColor: palette.brandYellow,
-    elevation: 1,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    ...Shadows.card,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   typeBadge: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: palette.deepBlack,
-    backgroundColor: palette.surfaceVariant,
+    backgroundColor: Colors.surface,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: Radius.full,
     borderWidth: 1,
-    borderColor: palette.borderDark,
-    letterSpacing: 0.5,
+    borderColor: Colors.border,
+  },
+  typeBadgeText: {
+    ...Typography.subtopLabel,
+    fontSize: 10,
+    color: Colors.ink,
   },
   title: {
+    ...Typography.headline,
     fontSize: 15,
-    fontWeight: '700',
-    color: palette.text,
+    color: Colors.ink,
     marginBottom: 4,
   },
   hash: {
+    ...Typography.mono,
     fontSize: 11,
-    fontFamily: 'monospace',
-    color: palette.textSecondary,
+    color: Colors.textMuted,
     marginBottom: 8,
   },
   aiBox: {
-    backgroundColor: palette.surfaceVariant,
+    backgroundColor: Colors.primarySubtle,
     padding: 10,
-    borderRadius: 8,
+    borderRadius: Radius.sm,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: Colors.primaryBorder,
   },
   aiLabel: {
+    ...Typography.subtopHeading,
     fontSize: 11,
-    fontWeight: 'bold',
-    color: palette.brandYellow,
+    color: Colors.primary,
     marginBottom: 2,
   },
   aiText: {
+    ...Typography.body,
     fontSize: 12,
-    color: palette.text,
-    lineHeight: 17,
+    color: Colors.ink,
+    lineHeight: 18,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: palette.border,
+    borderTopColor: Colors.border,
     paddingTop: 8,
     marginTop: 4,
   },
   meta: {
+    ...Typography.body,
     fontSize: 11,
-    color: palette.textSecondary,
+    color: Colors.textMuted,
   },
 });
-

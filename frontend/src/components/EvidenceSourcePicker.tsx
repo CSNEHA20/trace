@@ -8,13 +8,12 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { palette } from '../theme';
+import { colors, rounded, typography } from '../theme';
 import { IngestionSource } from '../types';
 
 // Lazy-load native modules for runtime safety and testability
 function getDocumentPicker() {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     return require('expo-document-picker');
   } catch {
     return null;
@@ -23,7 +22,6 @@ function getDocumentPicker() {
 
 function getImagePicker() {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     return require('expo-image-picker');
   } catch {
     return null;
@@ -32,7 +30,6 @@ function getImagePicker() {
 
 function getClipboard() {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     return require('expo-clipboard');
   } catch {
     return null;
@@ -41,7 +38,6 @@ function getClipboard() {
 
 function getFileSystem() {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     return require('expo-file-system');
   } catch {
     return null;
@@ -90,11 +86,8 @@ interface EvidenceSourcePickerProps {
 }
 
 /**
- * Bottom-sheet UI that lets the investigator pick a real evidence source:
+ * Apple-style bottom-sheet UI that lets the investigator pick a real evidence source:
  * Camera | Gallery | Files | Clipboard
- *
- * ZERO mock fallback behavior:
- * Handles real permission requests, genuine cancellation, and surfaces real errors.
  */
 export function EvidenceSourcePicker({
   visible,
@@ -399,38 +392,46 @@ export function EvidenceSourcePicker({
 
         {(isLoading || picking) ? (
           <View style={styles.loadingRow}>
-            <ActivityIndicator color={palette.primary} size="large" />
+            <ActivityIndicator color={colors.primary} size="large" />
             <Text style={styles.loadingText}>Opening source...</Text>
           </View>
         ) : (
           <View style={styles.optionGrid}>
-            <TouchableOpacity style={styles.optionBtn} onPress={handleCamera} activeOpacity={0.8}>
-              <Text style={styles.optionIcon}>📷</Text>
+            <TouchableOpacity style={styles.optionBtn} onPress={handleCamera} activeOpacity={0.75}>
+              <View style={styles.iconCircle}>
+                <Text style={styles.optionIcon}>📷</Text>
+              </View>
               <Text style={styles.optionLabel}>Camera</Text>
               <Text style={styles.optionHint}>Capture photo</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.optionBtn} onPress={handleGallery} activeOpacity={0.8}>
-              <Text style={styles.optionIcon}>🖼️</Text>
+            <TouchableOpacity style={styles.optionBtn} onPress={handleGallery} activeOpacity={0.75}>
+              <View style={styles.iconCircle}>
+                <Text style={styles.optionIcon}>🖼️</Text>
+              </View>
               <Text style={styles.optionLabel}>Gallery</Text>
               <Text style={styles.optionHint}>Choose media</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.optionBtn} onPress={handleFiles} activeOpacity={0.8}>
-              <Text style={styles.optionIcon}>📁</Text>
+            <TouchableOpacity style={styles.optionBtn} onPress={handleFiles} activeOpacity={0.75}>
+              <View style={styles.iconCircle}>
+                <Text style={styles.optionIcon}>📁</Text>
+              </View>
               <Text style={styles.optionLabel}>Files</Text>
               <Text style={styles.optionHint}>PDF / Doc / Audio</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.optionBtn} onPress={handleClipboard} activeOpacity={0.8}>
-              <Text style={styles.optionIcon}>📋</Text>
+            <TouchableOpacity style={styles.optionBtn} onPress={handleClipboard} activeOpacity={0.75}>
+              <View style={styles.iconCircle}>
+                <Text style={styles.optionIcon}>📋</Text>
+              </View>
               <Text style={styles.optionLabel}>Clipboard</Text>
               <Text style={styles.optionHint}>Paste text</Text>
             </TouchableOpacity>
           </View>
         )}
 
-        <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel}>
+        <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel} activeOpacity={0.8}>
           <Text style={styles.cancelText}>Cancel</Text>
         </TouchableOpacity>
       </View>
@@ -441,43 +442,46 @@ export function EvidenceSourcePicker({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
   },
   sheet: {
-    backgroundColor: palette.surface,
+    backgroundColor: colors.canvas,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingBottom: 36,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderColor: palette.border,
-    elevation: 8,
+    borderColor: colors.hairline,
+    elevation: 10,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: -4 },
+    shadowOffset: { width: 0, height: -6 },
     shadowOpacity: 0.1,
-    shadowRadius: 12,
+    shadowRadius: 16,
   },
   handle: {
-    width: 40,
+    width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: palette.borderDark,
+    backgroundColor: colors.borderDark,
     alignSelf: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: palette.text,
+    fontSize: 19,
+    fontWeight: '600',
+    color: colors.ink,
     textAlign: 'center',
+    letterSpacing: -0.3,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 13,
-    color: palette.textSecondary,
+    fontWeight: '400',
+    color: colors.bodyMuted,
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
+    letterSpacing: -0.1,
   },
   optionGrid: {
     flexDirection: 'row',
@@ -487,50 +491,61 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   optionBtn: {
-    width: '47%',
-    backgroundColor: palette.surfaceVariant,
-    borderRadius: 14,
-    padding: 18,
+    width: '48%',
+    backgroundColor: colors.canvasParchment,
+    borderRadius: rounded.lg,
+    padding: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: colors.hairline,
+  },
+  iconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: rounded.full,
+    backgroundColor: colors.canvas,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: colors.hairline,
   },
   optionIcon: {
-    fontSize: 32,
-    marginBottom: 8,
+    fontSize: 24,
   },
   optionLabel: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: palette.text,
+    fontWeight: '600',
+    color: colors.ink,
     marginBottom: 2,
+    letterSpacing: -0.1,
   },
   optionHint: {
     fontSize: 11,
-    color: palette.textSecondary,
+    color: colors.bodyMuted,
     textAlign: 'center',
   },
   loadingRow: {
     alignItems: 'center',
-    paddingVertical: 40,
+    paddingVertical: 36,
     gap: 12,
   },
   loadingText: {
-    color: palette.textSecondary,
+    color: colors.bodyMuted,
     fontSize: 14,
+    fontWeight: '500',
   },
   cancelBtn: {
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 12,
+    borderRadius: rounded.pill,
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: colors.hairline,
     alignItems: 'center',
-    backgroundColor: palette.surface,
+    backgroundColor: colors.surfacePearl,
   },
   cancelText: {
-    fontSize: 15,
-    color: palette.error,
-    fontWeight: '600',
+    fontSize: 14,
+    color: colors.ink,
+    fontWeight: '500',
   },
 });
-

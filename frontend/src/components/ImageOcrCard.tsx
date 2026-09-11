@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { palette } from '../theme';
+import { colors, rounded, typography } from '../theme';
 import { OcrStatus, OcrResult } from '../types';
 
 interface ImageOcrCardProps {
@@ -27,40 +27,50 @@ export function ImageOcrCard({
   const getStatusColor = () => {
     switch (displayStatus) {
       case 'COMPLETED':
-        return palette.success;
+        return colors.success;
       case 'FAILED':
-        return palette.error;
+        return colors.error;
       case 'PROCESSING':
       case 'VALIDATING':
-        return palette.brandYellow;
+        return colors.primary;
       default:
-        return palette.textSecondary;
+        return colors.bodyMuted;
     }
   };
 
-  const getStatusLabel = () => {
-    return displayStatus;
+  const getStatusBg = () => {
+    switch (displayStatus) {
+      case 'COMPLETED':
+        return colors.successBg;
+      case 'FAILED':
+        return colors.errorBg;
+      case 'PROCESSING':
+      case 'VALIDATING':
+        return colors.primarySubtle;
+      default:
+        return colors.canvasParchment;
+    }
   };
 
   return (
     <View style={styles.card}>
       <View style={styles.headerRow}>
         <View>
-          <Text style={styles.title}>On-Device OCR (ML Kit)</Text>
-          <Text style={styles.subtitle}>Latin Text Recognition • 100% Offline</Text>
+          <Text style={styles.title}>On-Device Text Recognition</Text>
+          <Text style={styles.subtitle}>Latin OCR Engine · 100% Offline</Text>
         </View>
-        <View style={[styles.statusBadge, { borderColor: getStatusColor() }]}>
+        <View style={[styles.statusBadge, { backgroundColor: getStatusBg(), borderColor: getStatusColor() }]}>
           <Text style={[styles.statusText, { color: getStatusColor() }]}>
-            {getStatusLabel()}
+            {displayStatus}
           </Text>
         </View>
       </View>
 
       {isProcessing ? (
         <View style={styles.processingContainer}>
-          <ActivityIndicator size="small" color={palette.brandYellow} />
+          <ActivityIndicator size="small" color={colors.primary} />
           <Text style={styles.processingText}>
-            {status === 'VALIDATING' ? 'Validating image integrity...' : 'Recognizing text on-device...'}
+            {status === 'VALIDATING' ? 'Validating image integrity…' : 'Recognizing text on-device…'}
           </Text>
         </View>
       ) : null}
@@ -76,7 +86,7 @@ export function ImageOcrCard({
         <View style={styles.resultContainer}>
           {hasText ? (
             <View style={styles.textBox}>
-              <Text style={styles.textLabel}>Recognized Text:</Text>
+              <Text style={styles.textLabel}>RECOGNIZED TEXT</Text>
               <Text style={styles.recognizedText} selectable>{currentText}</Text>
             </View>
           ) : (
@@ -127,12 +137,17 @@ export function ImageOcrCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: palette.card,
-    borderRadius: 10,
+    backgroundColor: colors.canvas,
+    borderRadius: rounded.lg,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 14,
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: colors.hairline,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 1,
   },
   headerRow: {
     flexDirection: 'row',
@@ -142,114 +157,120 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 15,
-    fontWeight: 'bold',
-    color: palette.primary,
+    fontWeight: '600',
+    color: colors.ink,
+    letterSpacing: -0.2,
   },
   subtitle: {
-    fontSize: 11,
-    color: palette.secondary,
+    fontSize: 12,
+    color: colors.bodyMuted,
     marginTop: 2,
   },
   statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 4,
+    borderRadius: rounded.pill,
     borderWidth: 1,
   },
   statusText: {
-    fontSize: 11,
-    fontWeight: 'bold',
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.3,
   },
   processingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+    backgroundColor: colors.primarySubtle,
     padding: 12,
-    borderRadius: 6,
+    borderRadius: rounded.sm,
     marginVertical: 8,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder,
   },
   processingText: {
     marginLeft: 10,
     fontSize: 13,
-    color: palette.text,
+    color: colors.ink,
+    fontWeight: '500',
   },
   errorBox: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderColor: 'rgba(239, 68, 68, 0.3)',
+    backgroundColor: colors.errorBg,
+    borderColor: colors.errorBorder,
     borderWidth: 1,
     padding: 10,
-    borderRadius: 6,
+    borderRadius: rounded.sm,
     marginVertical: 8,
   },
   errorLabel: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: palette.error || '#EF4444',
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.error,
   },
   errorMsg: {
     fontSize: 12,
-    color: palette.text,
+    color: colors.ink,
     marginTop: 2,
   },
   resultContainer: {
     marginVertical: 8,
   },
   textBox: {
-    backgroundColor: palette.surfaceVariant,
+    backgroundColor: colors.canvasParchment,
     padding: 12,
-    borderRadius: 8,
+    borderRadius: rounded.sm,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: colors.hairline,
   },
   textLabel: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: palette.brandYellow,
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.bodyMuted,
+    letterSpacing: 0.4,
     marginBottom: 4,
   },
   recognizedText: {
     fontSize: 13,
-    lineHeight: 18,
-    color: palette.text,
+    lineHeight: 19,
+    color: colors.ink,
     fontFamily: 'monospace',
   },
   emptyTextBox: {
-    backgroundColor: palette.surfaceVariant,
+    backgroundColor: colors.canvasParchment,
     padding: 12,
-    borderRadius: 8,
+    borderRadius: rounded.sm,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: palette.border,
+    borderColor: colors.hairline,
   },
   emptyTextTitle: {
     fontSize: 13,
-    fontWeight: 'bold',
-    color: palette.text,
+    fontWeight: '600',
+    color: colors.ink,
   },
   emptyTextDescription: {
     fontSize: 12,
-    color: palette.textSecondary,
+    color: colors.bodyMuted,
     marginTop: 2,
   },
   metaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 2,
+    paddingVertical: 3,
   },
   metaLabel: {
     fontSize: 11,
-    color: palette.textSecondary,
+    color: colors.bodyMuted,
   },
   metaValue: {
     fontSize: 11,
     fontFamily: 'monospace',
-    color: palette.text,
+    color: colors.ink,
   },
   actionBtn: {
-    backgroundColor: palette.primary,
-    paddingVertical: 10,
-    borderRadius: 8,
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
+    borderRadius: rounded.pill,
     alignItems: 'center',
     marginTop: 8,
   },
@@ -257,9 +278,9 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   actionBtnText: {
-    color: palette.white,
-    fontWeight: 'bold',
+    color: colors.white,
+    fontWeight: '600',
     fontSize: 13,
+    letterSpacing: 0.1,
   },
 });
-

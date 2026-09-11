@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { palette } from '../theme';
+import { colors, rounded, typography } from '../theme';
 import { useCaseStore } from '../store/caseStore';
 
 interface CaseCreateModalProps {
@@ -61,7 +61,7 @@ export function CaseCreateModal({ visible, onClose, onCaseCreated }: CaseCreateM
           <TextInput
             style={styles.input}
             placeholder="e.g., Cyber Extortion Incident 2026-09"
-            placeholderTextColor={palette.textSecondary}
+            placeholderTextColor={colors.inkMuted48}
             value={title}
             onChangeText={setTitle}
           />
@@ -70,7 +70,7 @@ export function CaseCreateModal({ visible, onClose, onCaseCreated }: CaseCreateM
           <TextInput
             style={[styles.input, styles.multiline]}
             placeholder="Initial details, suspected threat actors, incident context..."
-            placeholderTextColor={palette.textSecondary}
+            placeholderTextColor={colors.inkMuted48}
             value={description}
             onChangeText={setDescription}
             multiline
@@ -81,17 +81,17 @@ export function CaseCreateModal({ visible, onClose, onCaseCreated }: CaseCreateM
           <TextInput
             style={styles.input}
             placeholder="Investigator name"
-            placeholderTextColor={palette.textSecondary}
+            placeholderTextColor={colors.inkMuted48}
             value={investigatorName}
             onChangeText={setInvestigatorName}
           />
 
           <View style={styles.btnRow}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={onClose} disabled={isSubmitting}>
+            <TouchableOpacity style={styles.cancelBtn} onPress={onClose} disabled={isSubmitting} activeOpacity={0.8}>
               <Text style={styles.cancelBtnText}>Cancel</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} disabled={isSubmitting}>
+            <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} disabled={isSubmitting} activeOpacity={0.8}>
               {isSubmitting ? (
                 <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
@@ -108,54 +108,56 @@ export function CaseCreateModal({ visible, onClose, onCaseCreated }: CaseCreateM
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   dialog: {
     width: '100%',
-    maxWidth: 480,
-    backgroundColor: palette.surface,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: palette.borderDark,
-    padding: 20,
-    elevation: 6,
+    maxWidth: 440,
+    backgroundColor: colors.canvas,
+    borderRadius: rounded.xl,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    padding: 22,
+    elevation: 8,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
   },
   title: {
     fontSize: 18,
-    fontWeight: '900',
-    color: palette.deepBlack,
+    fontWeight: '600',
+    color: colors.ink,
+    letterSpacing: -0.3,
     marginBottom: 4,
   },
   subtitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: palette.textSecondary,
-    marginBottom: 16,
+    fontSize: 13,
+    fontWeight: '400',
+    color: colors.bodyMuted,
+    marginBottom: 18,
+    letterSpacing: -0.1,
   },
   label: {
     fontSize: 11,
-    fontWeight: '800',
-    color: palette.deepBlack,
+    fontWeight: '600',
+    color: colors.inkMuted80,
     marginBottom: 6,
-    letterSpacing: 0.5,
+    letterSpacing: 0.2,
   },
   input: {
-    backgroundColor: palette.surfaceVariant,
-    borderWidth: 1.5,
-    borderColor: palette.borderDark,
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    backgroundColor: colors.canvasParchment,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    borderRadius: rounded.sm,
+    paddingHorizontal: 14,
     paddingVertical: 10,
-    color: palette.deepBlack,
+    color: colors.ink,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '400',
     marginBottom: 14,
   },
   multiline: {
@@ -165,37 +167,34 @@ const styles = StyleSheet.create({
   btnRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 12,
+    gap: 10,
     marginTop: 8,
   },
   cancelBtn: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: palette.borderDark,
-    backgroundColor: palette.surface,
+    borderRadius: rounded.pill,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    backgroundColor: colors.surfacePearl,
   },
   cancelBtnText: {
-    color: palette.deepBlack,
-    fontSize: 14,
-    fontWeight: '700',
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '500',
   },
   submitBtn: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 22,
     paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: palette.deepBlack,
-    borderLeftWidth: 3,
-    borderLeftColor: palette.brandYellow,
-    minWidth: 100,
+    borderRadius: rounded.pill,
+    backgroundColor: colors.primary,
+    minWidth: 110,
     alignItems: 'center',
-    elevation: 2,
   },
   submitBtnText: {
-    color: palette.white,
-    fontSize: 14,
-    fontWeight: '800',
+    color: colors.white,
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.1,
   },
 });
-

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { EvidenceItem } from '../types';
-import { palette } from '../theme';
+import { Colors, Radius, Typography, Shadows, Spacing } from '../theme';
 import { formatHashShort, formatFileSize, formatDate } from '../utils/crypto';
 import { EvidenceVaultThumbnail } from './EvidenceVaultThumbnail';
 
@@ -10,24 +10,20 @@ interface EvidenceVaultCardProps {
   onPress: () => void;
 }
 
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  COMPLETE: { label: '✓ Verified', color: palette.success },
-  FAILED: { label: '✗ Failed', color: palette.error },
-  DUPLICATE: { label: '⧉ Duplicate', color: palette.warning },
-  HASHING: { label: '⟳ Hashing…', color: palette.secondary },
-  COPYING: { label: '⟳ Copying…', color: palette.secondary },
-  RECORDING: { label: '⟳ Recording…', color: palette.primary },
-  CANCELLED: { label: '✕ Cancelled', color: palette.textSecondary },
-  PENDING: { label: '… Pending', color: palette.textSecondary },
-  TAMPERED: { label: '⚠ TAMPERED', color: palette.error },
+const STATUS_LABELS: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  COMPLETE: { label: 'VERIFIED', color: Colors.emerald, bg: 'rgba(5, 150, 105, 0.12)', border: 'rgba(5, 150, 105, 0.35)' },
+  FAILED: { label: 'FAILED', color: Colors.crimson, bg: 'rgba(220, 38, 38, 0.12)', border: 'rgba(220, 38, 38, 0.35)' },
+  DUPLICATE: { label: 'DUPLICATE', color: Colors.amber, bg: 'rgba(217, 119, 6, 0.12)', border: 'rgba(217, 119, 6, 0.35)' },
+  HASHING: { label: 'HASHING…', color: Colors.primary, bg: Colors.primarySubtle, border: Colors.primaryBorder },
+  COPYING: { label: 'COPYING…', color: Colors.primary, bg: Colors.primarySubtle, border: Colors.primaryBorder },
+  RECORDING: { label: 'RECORDING…', color: Colors.primary, bg: Colors.primarySubtle, border: Colors.primaryBorder },
+  CANCELLED: { label: 'CANCELLED', color: Colors.textMuted, bg: Colors.canvasParchment, border: Colors.border },
+  PENDING: { label: 'PENDING', color: Colors.amber, bg: 'rgba(217, 119, 6, 0.12)', border: 'rgba(217, 119, 6, 0.35)' },
+  TAMPERED: { label: 'TAMPERED', color: Colors.crimson, bg: 'rgba(220, 38, 38, 0.14)', border: 'rgba(220, 38, 38, 0.4)' },
 };
 
 /**
- * Evidence Vault list card — shows:
- *   - Thumbnail (image preview or type icon) with status badge
- *   - Filename, type, import timestamp
- *   - SHA-256 hash (abbreviated)
- *   - Processing / hash status chip
+ * Evidence Vault list card — 3-Tier Typography & High-Contrast Elevation
  */
 export function EvidenceVaultCard({ item, onPress }: EvidenceVaultCardProps) {
   const statusKey = item.isTampered
@@ -43,7 +39,7 @@ export function EvidenceVaultCard({ item, onPress }: EvidenceVaultCardProps) {
           mediaType={item.type}
           fileUri={item.fileUri}
           ingestionStatus={(item as any).ingestionStatus || (item.isTampered ? 'FAILED' : 'COMPLETE')}
-          size={60}
+          size={56}
         />
       </View>
 
@@ -53,7 +49,8 @@ export function EvidenceVaultCard({ item, onPress }: EvidenceVaultCardProps) {
           <View style={styles.typePill}>
             <Text style={styles.typePillText}>{item.type}</Text>
           </View>
-          <View style={[styles.statusPill, { borderColor: statusInfo.color }]}>
+          <View style={[styles.statusPill, { backgroundColor: statusInfo.bg, borderColor: statusInfo.border }]}>
+            <View style={[styles.statusDot, { backgroundColor: statusInfo.color }]} />
             <Text style={[styles.statusPillText, { color: statusInfo.color }]}>
               {statusInfo.label}
             </Text>
@@ -84,82 +81,83 @@ export function EvidenceVaultCard({ item, onPress }: EvidenceVaultCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: palette.card,
-    borderRadius: 12,
+    backgroundColor: Colors.cardBg,
+    borderRadius: Radius.lg,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1.5,
-    borderColor: palette.borderDark,
-    borderLeftWidth: 4,
-    borderLeftColor: palette.brandYellow,
+    borderColor: Colors.border,
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 12,
-    elevation: 2,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
+    ...Shadows.card,
   },
   thumbContainer: {
-    paddingTop: 2,
+    paddingTop: 1,
   },
   meta: {
     flex: 1,
-    gap: 4,
+    gap: 3,
   },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 2,
   },
   typePill: {
-    backgroundColor: palette.deepBlack,
+    backgroundColor: Colors.surface,
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingVertical: 3,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   typePillText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: palette.white,
-    letterSpacing: 0.5,
+    ...Typography.subtopLabel,
+    fontSize: 9.5,
+    color: Colors.text,
   },
   statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    borderWidth: 1.5,
-    backgroundColor: palette.surface,
+    paddingVertical: 3,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+  },
+  statusDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
   },
   statusPillText: {
-    fontSize: 10,
-    fontWeight: '800',
+    ...Typography.subtopLabel,
+    fontSize: 9,
   },
   filename: {
+    ...Typography.bodyStrong,
     fontSize: 14,
-    fontWeight: '800',
-    color: palette.deepBlack,
+    color: Colors.text,
+    letterSpacing: -0.2,
   },
   hash: {
+    ...Typography.mono,
     fontSize: 11,
-    fontFamily: 'monospace',
-    color: palette.deepBlack,
-    fontWeight: '600',
+    color: Colors.textMuted,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 6,
+    marginTop: 4,
     borderTopWidth: 1,
-    borderTopColor: palette.border,
-    paddingTop: 6,
+    borderTopColor: Colors.border,
+    paddingTop: 4,
   },
   footerMeta: {
+    ...Typography.body,
     fontSize: 11,
-    fontWeight: '600',
-    color: palette.textSecondary,
+    color: Colors.textMuted,
   },
 });
-

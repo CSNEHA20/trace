@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Modal, ActivityIndicator } from 'react-native';
 import { IngestionStatus } from '../types';
-import { palette } from '../theme';
+import { colors, rounded, typography } from '../theme';
 
 interface IngestionProgressOverlayProps {
   visible: boolean;
@@ -14,13 +14,13 @@ interface IngestionProgressOverlayProps {
 const STATUS_MESSAGES: Record<IngestionStatus, string> = {
   PENDING: 'Preparing forensic intake…',
   SELECTING: 'Selecting source media…',
-  COPYING: 'Copying to private storage…',
+  COPYING: 'Preserving in secure storage…',
   VALIDATING: 'Validating format & integrity…',
   HASHING: 'Computing SHA-256 digest…',
   EXTRACTING_METADATA: 'Extracting EXIF & metadata…',
-  PROCESSING_EXTRACT: 'Running on-device extraction (OCR / Audio)…',
-  RECORDING: 'Writing SQLite record & hash chain…',
-  COMPLETE: 'Evidence Preserved & Locked ✓',
+  PROCESSING_EXTRACT: 'Extracting forensic content…',
+  RECORDING: 'Locking into cryptographic ledger…',
+  COMPLETE: 'Evidence Preserved & Locked',
   FAILED: 'Preservation Failed',
   DUPLICATE: 'Duplicate Evidence Detected',
   CANCELLED: 'Intake Cancelled',
@@ -37,13 +37,13 @@ const STATUS_STEPS: IngestionStatus[] = [
 ];
 
 const STEP_LABELS: Record<string, string> = {
-  COPYING: 'COPY',
-  VALIDATING: 'CHECK',
-  HASHING: 'HASH',
-  EXTRACTING_METADATA: 'META',
-  PROCESSING_EXTRACT: 'EXTRACT',
-  RECORDING: 'LEDGER',
-  COMPLETE: 'SECURED',
+  COPYING: 'Preserve',
+  VALIDATING: 'Validate',
+  HASHING: 'SHA-256',
+  EXTRACTING_METADATA: 'EXIF Metadata',
+  PROCESSING_EXTRACT: 'Extract Content',
+  RECORDING: 'Ledger Node',
+  COMPLETE: 'Cryptographically Sealed',
 };
 
 function stepIndex(status: IngestionStatus | null): number {
@@ -52,8 +52,8 @@ function stepIndex(status: IngestionStatus | null): number {
 }
 
 /**
- * Full-screen transparent overlay shown during evidence ingestion.
- * Displays real pipeline stage progress and filename being preserved.
+ * Full-screen overlay shown during evidence ingestion.
+ * Apple-style frosted modal with real pipeline progression.
  */
 export function IngestionProgressOverlay({
   visible,
@@ -71,23 +71,31 @@ export function IngestionProgressOverlay({
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          <Text style={styles.bannerHeader}>FORENSIC PRESERVATION WORKFLOW</Text>
+          <Text style={styles.bannerHeader}>FORENSIC INTAKE & PRESERVATION</Text>
 
           {!isTerminal && (
-            <ActivityIndicator color={palette.primary} size="large" style={styles.spinner} />
+            <ActivityIndicator color={colors.primary} size="large" style={styles.spinner} />
           )}
 
           {status === 'COMPLETE' && (
-            <Text style={[styles.terminalIcon, { color: palette.success }]}>✓</Text>
+            <View style={[styles.terminalBadge, { backgroundColor: colors.successBg }]}>
+              <Text style={[styles.terminalIcon, { color: colors.success }]}>✓</Text>
+            </View>
           )}
           {status === 'FAILED' && (
-            <Text style={[styles.terminalIcon, { color: palette.error }]}>✗</Text>
+            <View style={[styles.terminalBadge, { backgroundColor: colors.errorBg }]}>
+              <Text style={[styles.terminalIcon, { color: colors.error }]}>✗</Text>
+            </View>
           )}
           {status === 'DUPLICATE' && (
-            <Text style={[styles.terminalIcon, { color: palette.warning }]}>⧉</Text>
+            <View style={[styles.terminalBadge, { backgroundColor: colors.warningBg }]}>
+              <Text style={[styles.terminalIcon, { color: colors.warning }]}>⧉</Text>
+            </View>
           )}
           {status === 'CANCELLED' && (
-            <Text style={[styles.terminalIcon, { color: palette.textSecondary }]}>✕</Text>
+            <View style={[styles.terminalBadge, { backgroundColor: colors.canvasParchment }]}>
+              <Text style={[styles.terminalIcon, { color: colors.bodyMuted }]}>✕</Text>
+            </View>
           )}
 
           <Text style={styles.statusText}>
@@ -100,7 +108,7 @@ export function IngestionProgressOverlay({
             </Text>
           ) : null}
 
-          {/* Stage Progress Spine */}
+          {/* Stage Progress Container */}
           <View style={styles.stepsContainer}>
             {STATUS_STEPS.map((step, i) => {
               const isActive = i === currentStep;
@@ -112,20 +120,20 @@ export function IngestionProgressOverlay({
                     style={[
                       styles.stepDot,
                       isDone
-                        ? { backgroundColor: palette.success, borderColor: palette.success }
+                        ? { backgroundColor: colors.success, borderColor: colors.success }
                         : isActive
-                        ? { backgroundColor: palette.primary, borderColor: palette.primary }
-                        : { backgroundColor: palette.surfaceVariant, borderColor: palette.border },
+                        ? { backgroundColor: colors.primary, borderColor: colors.primary }
+                        : { backgroundColor: colors.canvas, borderColor: colors.hairline },
                     ]}
                   />
                   <Text
                     style={[
                       styles.stepLabel,
                       isDone
-                        ? { color: palette.success, fontWeight: 'bold' }
+                        ? { color: colors.success, fontWeight: '600' }
                         : isActive
-                        ? { color: palette.primary, fontWeight: 'bold' }
-                        : { color: palette.textSecondary },
+                        ? { color: colors.primary, fontWeight: '600' }
+                        : { color: colors.bodyMuted },
                     ]}
                   >
                     {STEP_LABELS[step] || step}
@@ -144,62 +152,72 @@ export function IngestionProgressOverlay({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
   },
   card: {
-    backgroundColor: palette.surface,
-    borderRadius: 16,
+    backgroundColor: colors.canvas,
+    borderRadius: rounded.xl,
     padding: 24,
     width: '100%',
     maxWidth: 360,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: palette.border,
-    gap: 10,
-    elevation: 8,
+    borderColor: colors.hairline,
+    gap: 8,
+    elevation: 10,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.12,
-    shadowRadius: 12,
+    shadowRadius: 20,
   },
   bannerHeader: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: palette.brandYellow,
-    letterSpacing: 0.8,
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.primary,
+    letterSpacing: 0.5,
     marginBottom: 4,
   },
   spinner: {
+    marginVertical: 6,
+  },
+  terminalBadge: {
+    width: 52,
+    height: 52,
+    borderRadius: rounded.full,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginVertical: 4,
   },
   terminalIcon: {
-    fontSize: 40,
-    fontWeight: 'bold',
-    marginVertical: 2,
+    fontSize: 26,
+    fontWeight: '700',
   },
   statusText: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: palette.text,
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.ink,
     textAlign: 'center',
+    letterSpacing: -0.2,
   },
   filename: {
-    fontSize: 11,
-    color: palette.textSecondary,
+    fontSize: 12,
+    color: colors.bodyMuted,
     textAlign: 'center',
     fontFamily: 'monospace',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   stepsContainer: {
     width: '100%',
-    backgroundColor: palette.surfaceVariant,
-    borderRadius: 10,
-    padding: 12,
-    marginTop: 6,
-    gap: 8,
+    backgroundColor: colors.canvasParchment,
+    borderRadius: rounded.lg,
+    padding: 14,
+    marginTop: 4,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: colors.hairline,
   },
   stepRow: {
     flexDirection: 'row',
@@ -207,18 +225,19 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   stepDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    borderWidth: 2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    borderWidth: 1.5,
   },
   stepLabel: {
-    fontSize: 11,
+    fontSize: 12,
     flex: 1,
+    letterSpacing: -0.1,
   },
   stepCheck: {
     fontSize: 11,
-    color: palette.success,
-    fontWeight: 'bold',
+    color: colors.success,
+    fontWeight: '700',
   },
 });

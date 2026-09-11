@@ -1,19 +1,21 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { palette } from '../theme';
+import { colors, rounded, typography } from '../theme';
 
 interface EmptyStateProps {
   title: string;
   message: string;
   icon?: keyof typeof Ionicons.glyphMap;
+  actionText?: string;
+  onAction?: () => void;
 }
 
-export function EmptyState({ title, message, icon = 'file-tray-outline' }: EmptyStateProps) {
+export function EmptyState({ title, message, icon = 'file-tray-outline', actionText, onAction }: EmptyStateProps) {
   return (
     <View style={styles.container}>
       <View style={styles.iconCircle}>
-        <Ionicons name={icon} size={28} color={palette.brandYellow} />
+        <Ionicons name={icon} size={28} color={colors.primary} />
       </View>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.message}>{message}</Text>
@@ -23,46 +25,43 @@ export function EmptyState({ title, message, icon = 'file-tray-outline' }: Empty
 
 const styles = StyleSheet.create({
   container: {
-    padding: 24,
-    backgroundColor: palette.surface,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: palette.borderDark,
-    borderLeftWidth: 4,
-    borderLeftColor: palette.brandYellow,
+    padding: 28,
+    backgroundColor: colors.canvas,
+    borderRadius: rounded.lg,
+    borderWidth: 1,
+    borderColor: colors.hairline,
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 10,
-    elevation: 1,
+    marginVertical: 12,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 8,
+    elevation: 1,
   },
   iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: palette.surfaceVariant,
-    borderWidth: 1,
-    borderColor: palette.border,
+    width: 52,
+    height: 52,
+    borderRadius: rounded.full,
+    backgroundColor: colors.primarySubtle,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   title: {
-    fontSize: 15,
-    fontWeight: '900',
-    color: palette.deepBlack,
-    letterSpacing: 0.5,
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.ink,
+    letterSpacing: -0.2,
     marginBottom: 6,
     textAlign: 'center',
   },
   message: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: palette.textSecondary,
+    fontSize: 13,
+    fontWeight: '400',
+    color: colors.bodyMuted,
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 19,
+    letterSpacing: -0.1,
   },
 });
